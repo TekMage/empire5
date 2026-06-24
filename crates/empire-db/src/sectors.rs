@@ -44,7 +44,7 @@ struct SectorRow {
     dist_x: i64, dist_y: i64, avail: i64, flags: i64, elev: i64,
     work: i64, coastal: i64, new_type: i64,
     min_ore: i64, gmin: i64, fertil: i64, oil: i64, uran: i64,
-    old_own: i64,
+    old_own: i64, che: i64, che_target: i64,
     items: String,   // JSON [i16; 14]
     mines: i64, pstage: i64, ptime: i64, fallout: i64,
 }
@@ -103,6 +103,7 @@ impl From<SectorRow> for Sector {
             min: r.min_ore as u8, gmin: r.gmin as u8,
             fertil: r.fertil as u8, oil: r.oil as u8, uran: r.uran as u8,
             old_own: r.old_own as NatId,
+            che: r.che as u8, che_target: r.che_target as NatId,
             items: items_from_json(&r.items),
             del: [DistEntry::default(); 26],  // Phase 1: distribute omitted
             mines: r.mines as i16, pstage: r.pstage as i16,
@@ -162,9 +163,9 @@ pub async fn put(db: &Db, s: &Sector) -> DbResult<()> {
         "INSERT OR REPLACE INTO sectors \
          (uid,own,x,y,sector_type,effic,mobil,off,loyal,\
           terr0,terr1,terr2,terr3,dterr,dist_x,dist_y,avail,flags,elev,\
-          work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,\
+          work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,che,che_target,\
           items,mines,pstage,ptime,fallout,updated_at) \
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
     .bind(s.uid).bind(s.own as i64)
     .bind(s.x as i64).bind(s.y as i64)
@@ -179,6 +180,7 @@ pub async fn put(db: &Db, s: &Sector) -> DbResult<()> {
     .bind(s.new_type as i64)
     .bind(s.min as i64).bind(s.gmin as i64).bind(s.fertil as i64)
     .bind(s.oil as i64).bind(s.uran as i64).bind(s.old_own as i64)
+    .bind(s.che as i64).bind(s.che_target as i64)
     .bind(items_to_json(&s.items))
     .bind(s.mines as i64).bind(s.pstage as i64)
     .bind(s.ptime as i64).bind(s.fallout as i64)
@@ -194,9 +196,9 @@ pub async fn put_many(db: &Db, sectors: &[Sector]) -> DbResult<()> {
             "INSERT OR REPLACE INTO sectors \
              (uid,own,x,y,sector_type,effic,mobil,off,loyal,\
               terr0,terr1,terr2,terr3,dterr,dist_x,dist_y,avail,flags,elev,\
-              work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,\
+              work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,che,che_target,\
               items,mines,pstage,ptime,fallout,updated_at) \
-             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
         )
         .bind(s.uid).bind(s.own as i64)
         .bind(s.x as i64).bind(s.y as i64)
@@ -211,6 +213,7 @@ pub async fn put_many(db: &Db, sectors: &[Sector]) -> DbResult<()> {
         .bind(s.new_type as i64)
         .bind(s.min as i64).bind(s.gmin as i64).bind(s.fertil as i64)
         .bind(s.oil as i64).bind(s.uran as i64).bind(s.old_own as i64)
+        .bind(s.che as i64).bind(s.che_target as i64)
         .bind(items_to_json(&s.items))
         .bind(s.mines as i64).bind(s.pstage as i64)
         .bind(s.ptime as i64).bind(s.fallout as i64)
@@ -236,6 +239,7 @@ mod tests {
             dist_x: 0, dist_y: 0, avail: 50, flags: 0, elev: 0,
             work: 100, coastal: false, new_type: SectorType::Urban,
             min: 0, gmin: 0, fertil: 80, oil: 0, uran: 0, old_own: 0,
+            che: 0, che_target: 0,
             items: Inventory::zero(), del: [DistEntry::default();26],
             mines: 0, pstage: 0, ptime: 0, fallout: 0,
         };

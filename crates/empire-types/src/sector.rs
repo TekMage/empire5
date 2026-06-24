@@ -132,6 +132,8 @@ pub struct Sector {
     pub oil: u8,             // oil content
     pub uran: u8,            // uranium ore content
     pub old_own: NatId,      // previous owner (for liberation)
+    pub che: u8,             // number of guerrillas (0..CHE_MAX=255)
+    pub che_target: NatId,   // nation that CHE fights (0 = none)
 
     pub items: Inventory,
 
@@ -141,6 +143,8 @@ pub struct Sector {
     pub ptime: i16,          // plague time remaining
     pub fallout: i32,
 }
+
+pub const CHE_MAX: u8 = 255;
 
 /// One distribute entry (direction + threshold).  ref: struct diststr in sect.h
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]

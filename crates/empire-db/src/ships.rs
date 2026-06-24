@@ -103,6 +103,14 @@ pub async fn get_by_fleet(db: &Db, own: NatId, fleet: char) -> DbResult<Vec<Ship
     .fetch_all(db.pool()).await?.into_iter().map(Ship::from).collect())
 }
 
+pub async fn get_at_xy(db: &Db, x: Coord, y: Coord) -> DbResult<Vec<Ship>> {
+    Ok(sqlx::query_as::<_, ShipRow>(
+        "SELECT * FROM ships WHERE x=? AND y=? ORDER BY uid",
+    )
+    .bind(x as i64).bind(y as i64)
+    .fetch_all(db.pool()).await?.into_iter().map(Ship::from).collect())
+}
+
 pub async fn put(db: &Db, s: &Ship) -> DbResult<()> {
     sqlx::query(
         "INSERT OR REPLACE INTO ships \

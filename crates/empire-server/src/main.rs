@@ -42,6 +42,7 @@ mod state;
 mod error;
 mod protocol;
 mod journal;
+mod subs;
 
 use std::path::PathBuf;
 use std::sync::Arc;

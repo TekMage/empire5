@@ -271,6 +271,7 @@ mod tests {
             dist_x: 0, dist_y: 0, avail: 0, flags: 0, elev: 0,
             work: 100, coastal: false, new_type: SectorType::Urban,
             min: 0, gmin: 0, fertil: 80, oil: 0, uran: 0, old_own: 0,
+            che: 0, che_target: 0,
             items: Inventory::zero(), del: [DistEntry::default(); 26],
             mines: 0, pstage: 0, ptime: 0, fallout: 0,
         };

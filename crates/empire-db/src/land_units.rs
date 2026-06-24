@@ -111,6 +111,14 @@ pub async fn get_on_ship(db: &Db, ship_uid: i32) -> DbResult<Vec<LandUnit>> {
     .fetch_all(db.pool()).await?.into_iter().map(LandUnit::from).collect())
 }
 
+pub async fn get_at_xy(db: &Db, x: Coord, y: Coord) -> DbResult<Vec<LandUnit>> {
+    Ok(sqlx::query_as::<_, LandRow>(
+        "SELECT * FROM land_units WHERE x=? AND y=? ORDER BY uid",
+    )
+    .bind(x as i64).bind(y as i64)
+    .fetch_all(db.pool()).await?.into_iter().map(LandUnit::from).collect())
+}
+
 pub async fn put(db: &Db, u: &LandUnit) -> DbResult<()> {
     sqlx::query(
         "INSERT OR REPLACE INTO land_units \

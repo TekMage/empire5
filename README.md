@@ -100,14 +100,21 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
 - [ ] Port market update (`server/marketup.c`) — deferred to Phase 4
 - [ ] Port update scheduler schedule-file support — deferred to Phase 4
 
-### Phase 4 — Game Subsystems (`src/lib/subs/`, 64 files)
+### Phase 4 — Game Subsystems (`src/lib/subs/`, 64 files) ✅
 Priority order by coupling:
-1. `attsub.c` — attack resolution (2,589 lines, most complex)
-2. `lndsub.c`, `shpsub.c`, `plnsub.c` — unit management
-3. `mission.c` — standing orders
-4. `aircombat.c` — air combat
-5. `pathfind.c` — movement (already in `lib/common/`)
-6. Remaining map, commodity, trade subsystems
+- [x] `geo.rs` — directions, neighbors, mapdist, coordinate formatting (ports `dir.c`, `xy.c`, `mapdist.c`)
+- [x] `damage.rs` — damage application for ships/land/planes/sectors (ports `damage.c`)
+- [x] `control.rs` — military control and sector abandonment (ports `control.c`)
+- [x] `takeover.rs` — sector and unit takeover, CHE generation (ports `takeover.c`)
+- [x] `nat_util.rs` — nation display and name validation (ports `natsub.c`, `natarg.c`)
+- [x] `che`/`che_target` fields added to `Sector` (migration 003)
+- [x] `get_at_xy` added to DB layer for land units, ships, planes
+- [ ] `attsub.c` — attack resolution (2,589 lines, most complex) — Phase 5
+- [ ] `lndsub.c`, `shpsub.c`, `plnsub.c` — unit management — Phase 5
+- [ ] `mission.c` — standing orders — Phase 5
+- [ ] `aircombat.c` — air combat — Phase 5
+- [ ] `pathfind.c` — movement — Phase 5
+- [ ] Remaining map, commodity, trade subsystems — Phase 5
 
 ### Phase 5 — Commands (`src/lib/commands/`, 151 files)
 Each command becomes an `async fn` in `empire-server/src/commands/`. Assign by group:

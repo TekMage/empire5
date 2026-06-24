@@ -206,6 +206,7 @@ fn row_to_sector(row: &HashMap<String, String>) -> UndumpResult<Sector> {
         min: 0, gmin: 0,
         fertil: get_u8(row, "fertil")?, oil: get_u8(row, "oil")?,
         uran: get_u8(row, "uran")?, old_own: 0,
+        che: 0, che_target: 0,
         items: inventory_from_row(row)?,
         del: [DistEntry::default(); 26],
         mines: get_i16(row, "mines")?, pstage: 0, ptime: 0,
