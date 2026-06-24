@@ -145,9 +145,19 @@ Remaining (Phase 6+):
 - [ ] Admin/deity: `edit`, `enable`, `add`, `new`, `wipe`, `shutdown`
 - [ ] Info: `show`, `power`, `news`, `dump`
 
-### Phase 6 — World Generator & Utilities
-- Port `fairland.c` (world generator, 1,681 lines)
-- Port `empdump`, `empsched`, `pconfig`, `files`
+### Phase 6 — World Generator & Utilities ✅
+- [x] `empire-world` binary — full port of `fairland.c` (1,681 lines) + `files.c`
+  - Capital drift (perturbation technique) to maximise inter-capital distance
+  - Weighted random continent & island growing with spike control
+  - Elevation creation (random walk + plateau/mountain classification)
+  - Resource computation (iron, gold, fertility, oil, uranium) from elevation curves
+  - Sector DB write via `sectors::put_many` (all 1,024 valid hex positions for a 64×32 world)
+  - `newcap_script` generation for deity setup
+  - Deity nation ("POGO") and visitor slot auto-created on first run
+  - CLI: `empire-world [OPTIONS] NC SC [NI [IS [SP [PM [DI [ID]]]]]]`
+- [ ] `empdump` — export/import via xdump (deferred; server xdump already works)
+- [ ] `empsched` — update scheduler (deferred; schedule built into server loop)
+- [ ] `pconfig` — print config values (deferred; trivial)
 
 ### Phase 7 — Client (optional)
 - Keep C client as-is (compatible with Rust server protocol)
