@@ -45,8 +45,9 @@ struct SectorRow {
     work: i64, coastal: i64, new_type: i64,
     min_ore: i64, gmin: i64, fertil: i64, oil: i64, uran: i64,
     old_own: i64, che: i64, che_target: i64,
-    items: String,   // JSON [i16; 14]
+    items: String,           // JSON [i16; 14]
     mines: i64, pstage: i64, ptime: i64, fallout: i64,
+    thresholds_json: String, // JSON [i16; 14] — per-item distribution thresholds
 }
 
 // ── Conversions ──────────────────────────────────────────────────────────────
@@ -83,6 +84,20 @@ fn items_to_json(inv: &Inventory) -> String {
     serde_json::to_string(&inv.0.as_slice()).unwrap_or_else(|_| "[]".to_string())
 }
 
+fn thresholds_from_json(s: &str) -> [i16; 14] {
+    let vals: Vec<i16> = serde_json::from_str(s).unwrap_or_default();
+    let mut out = [0i16; 14];
+    for (i, v) in vals.iter().enumerate().take(14) {
+        out[i] = *v;
+    }
+    out
+}
+
+fn thresholds_to_json(del: &[DistEntry; 26]) -> String {
+    let vals: Vec<i16> = (0..14).map(|i| del[i].threshold).collect();
+    serde_json::to_string(&vals).unwrap_or_else(|_| "[]".to_string())
+}
+
 impl From<SectorRow> for Sector {
     fn from(r: SectorRow) -> Self {
         Sector {
@@ -105,7 +120,14 @@ impl From<SectorRow> for Sector {
             old_own: r.old_own as NatId,
             che: r.che as u8, che_target: r.che_target as NatId,
             items: items_from_json(&r.items),
-            del: [DistEntry::default(); 26],  // Phase 1: distribute omitted
+            del: {
+                let thresholds = thresholds_from_json(&r.thresholds_json);
+                let mut del = [DistEntry::default(); 26];
+                for (i, t) in thresholds.iter().enumerate() {
+                    del[i].threshold = *t;
+                }
+                del
+            },
             mines: r.mines as i16, pstage: r.pstage as i16,
             ptime: r.ptime as i16, fallout: r.fallout as i32,
         }
@@ -164,8 +186,8 @@ pub async fn put(db: &Db, s: &Sector) -> DbResult<()> {
          (uid,own,x,y,sector_type,effic,mobil,off,loyal,\
           terr0,terr1,terr2,terr3,dterr,dist_x,dist_y,avail,flags,elev,\
           work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,che,che_target,\
-          items,mines,pstage,ptime,fallout,updated_at) \
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+          items,mines,pstage,ptime,fallout,thresholds_json,updated_at) \
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
     .bind(s.uid).bind(s.own as i64)
     .bind(s.x as i64).bind(s.y as i64)
@@ -184,6 +206,7 @@ pub async fn put(db: &Db, s: &Sector) -> DbResult<()> {
     .bind(items_to_json(&s.items))
     .bind(s.mines as i64).bind(s.pstage as i64)
     .bind(s.ptime as i64).bind(s.fallout as i64)
+    .bind(thresholds_to_json(&s.del))
     .execute(db.pool()).await?;
     Ok(())
 }
@@ -197,8 +220,8 @@ pub async fn put_many(db: &Db, sectors: &[Sector]) -> DbResult<()> {
              (uid,own,x,y,sector_type,effic,mobil,off,loyal,\
               terr0,terr1,terr2,terr3,dterr,dist_x,dist_y,avail,flags,elev,\
               work,coastal,new_type,min_ore,gmin,fertil,oil,uran,old_own,che,che_target,\
-              items,mines,pstage,ptime,fallout,updated_at) \
-             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+              items,mines,pstage,ptime,fallout,thresholds_json,updated_at) \
+             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
         )
         .bind(s.uid).bind(s.own as i64)
         .bind(s.x as i64).bind(s.y as i64)
@@ -217,6 +240,7 @@ pub async fn put_many(db: &Db, sectors: &[Sector]) -> DbResult<()> {
         .bind(items_to_json(&s.items))
         .bind(s.mines as i64).bind(s.pstage as i64)
         .bind(s.ptime as i64).bind(s.fallout as i64)
+        .bind(thresholds_to_json(&s.del))
         .execute(&mut *tx).await?;
     }
     tx.commit().await?;

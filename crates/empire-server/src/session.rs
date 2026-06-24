@@ -430,7 +430,7 @@ async fn playing_loop<R>(
     state: &Arc<RwLock<GameState>>,
     sessions: &Arc<SessionRegistry>,
     journal: &Arc<Journal>,
-    _config: &Arc<Config>,
+    config: &Arc<Config>,
 ) -> ServerResult<()>
 where
     R: tokio::io::AsyncRead + Unpin,
@@ -502,7 +502,7 @@ where
             _ => {
                 journal.command(thread_name, cmd_name);
                 let gs = state.read().await;
-                let output = dispatch(&line, cnum, &gs).await;
+                let output = dispatch(&line, cnum, &gs, config).await;
                 drop(gs);
                 writer.write_all(output.as_bytes()).await?;
                 writer.write_all(

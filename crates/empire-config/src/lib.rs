@@ -97,6 +97,10 @@ pub struct GameConfig {
     pub news_keep_days: i32,
     /// Keep lost-items entries for this many hours.
     pub lost_keep_hours: i32,
+    /// World width in sectors (must be even; default 64 matches fairland).
+    pub world_x: i32,
+    /// World height in sectors (must be even; default 32 matches fairland).
+    pub world_y: i32,
 }
 
 /// Update schedule settings.
@@ -253,6 +257,8 @@ impl Default for GameConfig {
             anno_keep_days: 7,
             news_keep_days: 10,
             lost_keep_hours: 48,
+            world_x: 64,
+            world_y: 32,
         }
     }
 }

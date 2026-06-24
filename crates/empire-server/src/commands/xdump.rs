@@ -8,41 +8,30 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-//
 // See files COPYING and CREDITS in the root of the source tree for
 // related information and legal notices.
 //
 // Ported from: src/server/xdump.c, src/lib/commands/xdump.c
-// Known contributors to the original:
-//    Markus Armbruster, 2004-2016
 
-// xdump command — dumps game state as text.
+// xdump command — dump game state as text.
 // Usage: xdump <type> [area] [?cond ...]
-// ref: src/server/xdump.c (empire4.4.1)
 
-use crate::state::GameState;
+use super::ctx::CmdCtx;
 use empire_types::selector::parse_scan_spec;
 use empire_db::{scan, xdump};
 use empire_db::scan::ScanResult;
 
-pub async fn run(args: &str, _cnum: u8, state: &GameState) -> String {
+pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let input = if args.is_empty() { "sect *" } else { args };
 
     let spec = match parse_scan_spec(input) {
         Ok(s) => s,
-        Err(e) => return format!("421 {e}\n"),
+        Err(e) => return format!("10 {e}\n"),
     };
 
-    let result = match scan::scan(&state.db, &spec).await {
+    let result = match scan::scan(ctx.db, &spec).await {
         Ok(r) => r,
-        Err(e) => return format!("421 database error: {e}\n"),
+        Err(e) => return format!("10 database error: {e}\n"),
     };
 
     let ts = std::time::SystemTime::now()
@@ -59,7 +48,6 @@ pub async fn run(args: &str, _cnum: u8, state: &GameState) -> String {
         ScanResult::Nukes(v)     => xdump::dump_nukes(&v, ts),
     };
 
-    // Stream each data line with code "2", then close with "0 xdump\n".
     let mut out = String::new();
     for line in dump.lines() {
         out.push_str(&format!("2 {line}\n"));

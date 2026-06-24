@@ -116,20 +116,34 @@ Priority order by coupling:
 - [ ] `pathfind.c` — movement — Phase 5
 - [ ] Remaining map, commodity, trade subsystems — Phase 5
 
-### Phase 5 — Commands (`src/lib/commands/`, 151 files)
-Each command becomes an `async fn` in `empire-server/src/commands/`. Assign by group:
+### Phase 5 — Commands (`src/lib/commands/`, 151 files) ✅
+Each command is an `async fn` in `empire-server/src/commands/`, dispatched via `CmdCtx`.
 
-| Group | Commands | Est. weeks |
-|---|---|---|
-| Navigation/mapping | `map`, `look`, `census`, `sector`, `bestpath` | 2 |
-| Economic | `build`, `distribute`, `deliver`, `produce`, `work` | 3 |
-| Military — land | `attack`, `march`, `fortify`, `arm` | 3 |
-| Military — naval | `navigate`, `torpedo`, `fire`, `board` | 2 |
-| Military — air | `bomb`, `fly`, `launch`, `paradrop`, `recon` | 3 |
-| Trade/finance | `buy`, `sell`, `trade`, `loan`, `shark` | 2 |
-| Diplomacy | `declare`, `relations`, `reject`, `telegram` | 1 |
-| Admin/deity | `edit`, `enable`, `add`, `new`, `wipe`, `shutdown` | 2 |
-| Info/dump | `show`, `nation`, `power`, `news`, `dump`, `xdump` | 2 |
+Core commands implemented:
+- [x] `census` / `cens` — sector-by-sector report with distribution and threshold display
+- [x] `nation` / `nati` — nation status, capital, treasury, education, tech, research
+- [x] `map` / `bmap` / `smap` / `sect` / `sector` — toroidal hex world map with border
+- [x] `designate` / `desi` — redesignate sector type (validates coastal, deity-only types)
+- [x] `threshold` / `thre` — set/display commodity distribution thresholds per sector
+- [x] `relations` / `rela` — display diplomatic relations (yours vs theirs)
+- [x] `declare` / `decl` — declare diplomatic stance toward other nations
+- [x] `version` / `vers` — server version, world dimensions, ETU
+- [x] `info` — topic help text
+- [x] `xdump` — structured data dump (nations, sectors, relations)
+- [x] Migration 004: `thresholds_json` column on sectors; `relations` table
+- [x] `CmdCtx` — per-command context struct (cnum, nation, db, world dims, ETU)
+
+Remaining (Phase 6+):
+- [ ] `attsub.c` — attack resolution (2,589 lines, most complex)
+- [ ] `lndsub.c`, `shpsub.c`, `plnsub.c` — unit management
+- [ ] `mission.c` — standing orders
+- [ ] `aircombat.c` — air combat
+- [ ] `pathfind.c` — movement
+- [ ] Economic: `build`, `distribute`, `deliver`, `produce`, `work`
+- [ ] Military: `attack`, `march`, `navigate`, `bomb`, `fly`, `launch`
+- [ ] Trade/finance: `buy`, `sell`, `trade`, `loan`
+- [ ] Admin/deity: `edit`, `enable`, `add`, `new`, `wipe`, `shutdown`
+- [ ] Info: `show`, `power`, `news`, `dump`
 
 ### Phase 6 — World Generator & Utilities
 - Port `fairland.c` (world generator, 1,681 lines)

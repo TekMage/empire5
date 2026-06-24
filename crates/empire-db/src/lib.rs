@@ -40,6 +40,7 @@ pub mod ships;
 pub mod planes;
 pub mod land_units;
 pub mod nukes;
+pub mod relations;
 pub mod scan;
 pub mod xdump;
 pub mod xundump;
@@ -104,6 +105,15 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 4 {
+            sqlx::raw_sql(include_str!("migrations/004_thresholds_and_relations.sql"))
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -120,6 +130,8 @@ pub(crate) async fn test_db() -> Db {
     sqlx::raw_sql(include_str!("migrations/002_passwords.sql"))
         .execute(&pool).await.unwrap();
     sqlx::raw_sql(include_str!("migrations/003_che_fields.sql"))
+        .execute(&pool).await.unwrap();
+    sqlx::raw_sql(include_str!("migrations/004_thresholds_and_relations.sql"))
         .execute(&pool).await.unwrap();
     Db { pool }
 }
