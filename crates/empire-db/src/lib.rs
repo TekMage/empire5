@@ -79,10 +79,22 @@ impl Db {
         Ok(Db { pool })
     }
 
-    /// Run embedded SQL migrations in order.
+    /// Run embedded SQL migrations in version order.
     async fn migrate(pool: &SqlitePool) -> DbResult<()> {
-        let schema = include_str!("migrations/001_initial.sql");
-        sqlx::raw_sql(schema).execute(pool).await?;
+        // 001: always idempotent (CREATE TABLE IF NOT EXISTS)
+        sqlx::raw_sql(include_str!("migrations/001_initial.sql"))
+            .execute(pool).await?;
+
+        // Subsequent migrations guarded by schema_version
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 2 {
+            sqlx::raw_sql(include_str!("migrations/002_passwords.sql"))
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -94,7 +106,9 @@ impl Db {
 #[cfg(test)]
 pub(crate) async fn test_db() -> Db {
     let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let schema = include_str!("migrations/001_initial.sql");
-    sqlx::raw_sql(schema).execute(&pool).await.unwrap();
+    sqlx::raw_sql(include_str!("migrations/001_initial.sql"))
+        .execute(&pool).await.unwrap();
+    sqlx::raw_sql(include_str!("migrations/002_passwords.sql"))
+        .execute(&pool).await.unwrap();
     Db { pool }
 }

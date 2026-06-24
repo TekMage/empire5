@@ -39,10 +39,15 @@ use tokio::time;
 use tracing::info;
 
 use empire_config::UpdateConfig;
+use crate::journal::Journal;
 use crate::state::GameState;
 
 /// Run the update loop indefinitely.  Called as a Tokio task from main.
-pub async fn run_update_loop(state: Arc<RwLock<GameState>>, cfg: UpdateConfig) {
+pub async fn run_update_loop(
+    state: Arc<RwLock<GameState>>,
+    cfg: UpdateConfig,
+    journal: Arc<Journal>,
+) {
     let interval_secs = cfg.update_interval_secs.max(60);
     let mut ticker = time::interval(Duration::from_secs(interval_secs));
     ticker.set_missed_tick_behavior(time::MissedTickBehavior::Delay);
@@ -60,6 +65,7 @@ pub async fn run_update_loop(state: Arc<RwLock<GameState>>, cfg: UpdateConfig) {
         let tick = gs.update_number;
 
         info!(tick, "Update tick starting");
+        journal.update(tick);
 
         // Phase 3: run_economic_update(&mut gs).await;
         // Phase 3: run_military_update(&mut gs).await;

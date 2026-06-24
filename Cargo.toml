@@ -45,6 +45,7 @@ chrono = { version = "0.4", features = ["serde"] }
 bytes = "1"
 rand = "0.8"
 bitflags = "2"
+bcrypt = "0.15"
 
 # Internal crates
 empire-types  = { path = "crates/empire-types" }

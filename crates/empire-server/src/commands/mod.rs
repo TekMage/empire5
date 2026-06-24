@@ -26,6 +26,7 @@
 // Phase 5: all 151 commands fully ported.
 
 use crate::state::GameState;
+use crate::protocol::{code, response};
 
 mod version;
 mod info;
@@ -44,11 +45,10 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState) -> String {
         "echo"             => echo_cmd(args),
         "xdump"            => xdump::run(args, cnum, state).await,
 
-        // Phase 5 stubs — will be replaced with full implementations
-        _ => format!("421 Unknown command: {cmd}\n"),
+        _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }
 }
 
 fn echo_cmd(args: &str) -> String {
-    format!("2 {args}\n1 echo\n")
+    format!("{} {args}\n{} echo\n", code::INIT, code::DATA)
 }

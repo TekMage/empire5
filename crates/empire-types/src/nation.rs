@@ -59,6 +59,8 @@ bitflags::bitflags! {
         const COASTWATCH = 0x0004;
         const SONAR      = 0x0008;
         const TECHLISTS  = 0x0010;
+        /// Inline telegram notification (NF_INFORM)
+        const INFORM     = 0x0020;
     }
 }
 impl serde::Serialize for NatFlags {
@@ -120,6 +122,14 @@ pub struct Nation {
     // Login tracking
     pub login_count: i32,
     pub tele_cnt: i32,      // # telegrams waiting
+
+    // Authentication (Phase 2)
+    /// bcrypt hash of the nation password; empty = no password set
+    pub passwd_hash: String,
+    /// Unix timestamp of last successful login (0 = never)
+    pub last_login: i64,
+    /// Unix timestamp of last logout (0 = never)
+    pub last_logout: i64,
 }
 
 impl Nation {

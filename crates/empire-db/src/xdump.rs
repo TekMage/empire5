@@ -48,7 +48,7 @@ pub fn dump_nations(nations: &[Nation], ts: i64) -> String {
         "name", "representative", "host",
         "xcap", "ycap", "xorg", "yorg",
         "money", "reserve", "tech", "research", "education", "happiness",
-        "login_count",
+        "login_count", "passwd_hash", "last_login", "last_logout",
     ];
     let mut out = header("nation", ts);
     out.push_str(&fields.join(" "));
@@ -64,6 +64,8 @@ pub fn dump_nations(nations: &[Nation], ts: i64) -> String {
             format!("{:.2}", n.tech), format!("{:.2}", n.research),
             format!("{:.2}", n.education), format!("{:.2}", n.happiness),
             n.login_count.to_string(),
+            quote_str(&n.passwd_hash),
+            n.last_login.to_string(), n.last_logout.to_string(),
         ];
         out.push_str(&row.join(" "));
         out.push('\n');
@@ -248,6 +250,7 @@ mod tests {
             money: 20_000, reserve: 0,
             tech: 10.5, research: 0.0, education: 0.0, happiness: 50.0,
             login_count: 3, tele_cnt: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0,
         }
     }
 

@@ -22,46 +22,61 @@
 // Empire wire protocol helpers.
 //
 // The protocol is a simple line-oriented text protocol over TCP (port 6665).
-// Server responses begin with a numeric code prefix (like SMTP/FTP):
+// Every server response line begins with a decimal numeric code, matching the
+// C constants in include/proto.h:
 //
-//   "version <N>\n"   — sent at connect
-//   "login <country> <password>\n"  — client auth
-//   "client <name> <version>\n"     — client identification (optional)
-//   "<command> [args]\n"            — player commands
+//   C_CMDOK  = 0x0  success, no further output
+//   C_DATA   = 0x1  data line (game output)
+//   C_INIT   = 0x2  connection / play start confirmation
+//   C_EXIT   = 0x3  server closing connection
+//   C_FLUSH  = 0x4  flush buffered output
+//   C_NOECHO = 0x5  suppress client echo (for password input)
+//   C_PROMPT = 0x6  ready for next command
+//   C_ABORT  = 0x7  command aborted
+//   C_CMDERR = 0xA  command execution error
+//   C_BADCMD = 0xB  unknown command
 //
-// Server sends:
-//   "<data lines>"
-//   "<code> <message>\n"  — code 0xx = success, 4xx = failure
+// Client → server login commands (before play):
+//   client <id...>
+//   user <name>
+//   coun <country-name>
+//   pass <password>
+//   play [user [country [password]]]
+//   options [key=val...]
+//   kill
+//   quit
 //
-// This module provides line-reading/writing helpers.  Full protocol
-// implementation happens in Phase 2.
+// After successful play the server sends C_INIT with the protocol version:
+//   "2 2\n"  (CLIENTPROTO = 2)
 
-/// Protocol response codes (matches empire4.x C/S_* constants)
-#[allow(dead_code)]
+/// Protocol codes — decimal string representation sent on the wire.
+/// Values match the C_* constants in include/proto.h.
 pub mod code {
-    pub const OK: &str = "0";          // C_OK
-    pub const CMDOK: &str = "1";       // C_CMDOK — command accepted, more output follows
-    pub const DATA: &str = "2";        // C_DATA  — data line
-    pub const PROMPT: &str = "6";      // C_PROMPT — ready for next command
-    pub const FLUSH: &str = "7";       // C_FLUSH — flush output
-    pub const EXIT: &str = "12";       // C_EXIT  — server is closing connection
-    pub const BADCMD: &str = "421";    // C_BADCMD
-    pub const BADARG: &str = "422";    // C_BADARG
-    pub const CMDERR: &str = "424";    // C_CMDERR
-    pub const NOPLAY: &str = "500";    // C_NOPLAY — can't play right now
-    pub const BADCOUNTRY: &str = "501"; // C_BADCOUNTRY
-    pub const BADPASS: &str = "502";   // C_BADPASS
+    pub const CMDOK:  &str = "0";   // C_CMDOK  — success
+    pub const DATA:   &str = "1";   // C_DATA   — data line
+    pub const INIT:   &str = "2";   // C_INIT   — connection / play start
+    pub const EXIT:   &str = "3";   // C_EXIT   — closing connection
+    pub const FLUSH:  &str = "4";   // C_FLUSH  — flush output
+    pub const NOECHO: &str = "5";   // C_NOECHO — suppress client echo
+    pub const PROMPT: &str = "6";   // C_PROMPT — ready for command
+    pub const ABORT:  &str = "7";   // C_ABORT  — command aborted
+    pub const CMDERR: &str = "10";  // C_CMDERR — command error (0xA)
+    pub const BADCMD: &str = "11";  // C_BADCMD — unknown command (0xB)
 }
+
+/// Protocol version sent to the client after a successful play command.
+/// Matches CLIENTPROTO in include/proto.h.
+pub const CLIENT_PROTO: u32 = 2;
 
 /// Maximum line length accepted from a client (bytes).
 pub const MAX_LINE: usize = 1024;
 
-/// Format a server response line.
+/// Format a server response line: "<code> <message>\n"
 pub fn response(code: &str, message: &str) -> String {
     format!("{code} {message}\n")
 }
 
-/// Format a data line (raw game output, no code prefix in data body).
+/// Format a data line: "1 <text>\n"
 pub fn data_line(text: &str) -> String {
     format!("{} {text}\n", code::DATA)
 }

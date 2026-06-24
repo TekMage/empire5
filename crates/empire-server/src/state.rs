@@ -19,26 +19,81 @@
 // See files COPYING and CREDITS in the root of the source tree for
 // related information and legal notices.
 
-// Shared game state.  Held behind Arc<RwLock<GameState>>.
-// The update engine acquires a write lock for the duration of each update.
-// Player command handlers acquire a read lock (concurrent reads are fine).
+// Shared game state and session registry.
+//
+// GameState is held behind Arc<RwLock<GameState>>:
+//   - Update engine acquires a write lock for the full tick duration.
+//   - Player command handlers acquire a read lock (concurrent OK).
+//
+// SessionRegistry is a separate Arc<SessionRegistry> with its own Mutex so
+// that login/logout bookkeeping never blocks on the update-engine write lock.
+// Mirrors the Players queue (accept.c) and getplayer() (accept.c).
+
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 use empire_db::Db;
+
+// ── Game state (behind Arc<RwLock>) ──────────────────────────────────────────
 
 pub struct GameState {
     pub db: Db,
     /// Monotonically increasing update counter (ETU tick number).
     pub update_number: u64,
-    /// Whether the server is accepting new connections.
-    pub accepting: bool,
 }
 
 impl GameState {
     pub fn new(db: Db) -> Self {
-        GameState {
-            db,
-            update_number: 0,
-            accepting: true,
+        GameState { db, update_number: 0 }
+    }
+}
+
+// ── Session registry (separate Arc<SessionRegistry>) ─────────────────────────
+
+/// Metadata about one active player session.
+#[derive(Debug, Clone)]
+pub struct SessionInfo {
+    pub cnum: u8,
+    pub host_addr: String,
+    pub user_id: String,
+    /// Formatted as "Session-{N}" for the journal thread column.
+    pub thread_name: String,
+}
+
+/// Tracks which country numbers have an active PS_PLAYING session.
+/// Mirrors the Players linked-list and getplayer() in src/lib/player/accept.c.
+pub struct SessionRegistry {
+    inner: Mutex<HashMap<u8, SessionInfo>>,
+}
+
+impl SessionRegistry {
+    pub fn new() -> Self {
+        SessionRegistry { inner: Mutex::new(HashMap::new()) }
+    }
+
+    /// Attempt to register a new session for `cnum`.
+    /// Returns `false` (country in use) if a session for that cnum already exists.
+    pub fn try_enter(&self, info: SessionInfo) -> bool {
+        let mut map = self.inner.lock().unwrap();
+        if map.contains_key(&info.cnum) {
+            return false;
         }
+        map.insert(info.cnum, info);
+        true
+    }
+
+    /// Remove the session for `cnum` (called on disconnect).
+    pub fn leave(&self, cnum: u8) {
+        self.inner.lock().unwrap().remove(&cnum);
+    }
+
+    /// Return a copy of the SessionInfo for `cnum` if it is currently playing.
+    pub fn get(&self, cnum: u8) -> Option<SessionInfo> {
+        self.inner.lock().unwrap().get(&cnum).cloned()
+    }
+
+    /// Return the number of currently active sessions.
+    pub fn count(&self) -> usize {
+        self.inner.lock().unwrap().len()
     }
 }

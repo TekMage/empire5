@@ -26,14 +26,15 @@
 //    Steve McClure, 1998-2000
 
 // DB accessors for the nations table.
-// ref: struct natstr / nat.h, ef_read/ef_write pattern from file.c
+// ref: struct natstr / nat.h, natbyname/natpass from src/lib/player/nat.c,
+//      ef_read/ef_write pattern from src/lib/common/file.c
 
 use sqlx::FromRow;
 use empire_types::nation::{Nation, NatFlags, NatStatus, Realm};
 use empire_types::coords::Coord;
 use crate::{Db, DbError, DbResult};
 
-// ── Raw DB row ───────────────────────────────────────────────────────────────
+// ── Raw DB row ────────────────────────────────────────────────────────────────
 
 #[derive(FromRow)]
 struct NationRow {
@@ -43,6 +44,7 @@ struct NationRow {
     money: i64, reserve: i64,
     tech: f64, research: f64, education: f64, happiness: f64,
     login_count: i64, tele_cnt: i64,
+    passwd_hash: String, last_login: i64, last_logout: i64,
 }
 
 #[derive(FromRow)]
@@ -51,7 +53,7 @@ struct RealmRow {
     xl: i64, xh: i64, yl: i64, yh: i64,
 }
 
-// ── Conversions ──────────────────────────────────────────────────────────────
+// ── Conversions ───────────────────────────────────────────────────────────────
 
 impl From<NationRow> for Nation {
     fn from(r: NationRow) -> Self {
@@ -71,6 +73,9 @@ impl From<NationRow> for Nation {
             education: r.education, happiness: r.happiness,
             login_count: r.login_count as i32,
             tele_cnt: r.tele_cnt as i32,
+            passwd_hash: r.passwd_hash,
+            last_login: r.last_login,
+            last_logout: r.last_logout,
         }
     }
 }
@@ -93,7 +98,7 @@ fn nat_status(v: i64) -> NatStatus {
     }
 }
 
-// ── Reads ────────────────────────────────────────────────────────────────────
+// ── Reads ─────────────────────────────────────────────────────────────────────
 
 pub async fn get(db: &Db, uid: i32) -> DbResult<Option<Nation>> {
     Ok(sqlx::query_as::<_, NationRow>("SELECT * FROM nations WHERE uid = ?")
@@ -122,6 +127,16 @@ pub async fn get_active(db: &Db) -> DbResult<Vec<Nation>> {
     .fetch_all(db.pool()).await?.into_iter().map(Nation::from).collect())
 }
 
+/// Find a nation by its country name (case-sensitive, ignores Unused slots).
+/// Mirrors natbyname() in src/lib/player/nat.c.
+pub async fn natbyname(db: &Db, name: &str) -> DbResult<Option<Nation>> {
+    Ok(sqlx::query_as::<_, NationRow>(
+        "SELECT * FROM nations WHERE name = ? AND status != 0 LIMIT 1",
+    )
+    .bind(name)
+    .fetch_optional(db.pool()).await?.map(Nation::from))
+}
+
 pub async fn get_realms(db: &Db, cnum: u8) -> DbResult<Vec<Realm>> {
     Ok(sqlx::query_as::<_, RealmRow>(
         "SELECT * FROM realms WHERE cnum = ? ORDER BY realm",
@@ -139,15 +154,16 @@ pub async fn count_active(db: &Db) -> DbResult<i64> {
     Ok(row.0)
 }
 
-// ── Writes ───────────────────────────────────────────────────────────────────
+// ── Writes ────────────────────────────────────────────────────────────────────
 
 pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
     sqlx::query(
         "INSERT OR REPLACE INTO nations \
          (uid,cnum,status,flags,name,representative,host_addr,user_id,\
           xcap,ycap,xorg,yorg,money,reserve,tech,research,education,\
-          happiness,login_count,tele_cnt,updated_at) \
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+          happiness,login_count,tele_cnt,passwd_hash,last_login,last_logout,\
+          updated_at) \
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
     .bind(n.uid).bind(n.cnum as i64).bind(n.status as i64)
     .bind(n.flags.bits() as i64)
@@ -157,6 +173,7 @@ pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
     .bind(n.money as i64).bind(n.reserve as i64)
     .bind(n.tech).bind(n.research).bind(n.education).bind(n.happiness)
     .bind(n.login_count as i64).bind(n.tele_cnt as i64)
+    .bind(&n.passwd_hash).bind(n.last_login).bind(n.last_logout)
     .execute(db.pool()).await?;
     Ok(())
 }
@@ -178,12 +195,79 @@ pub async fn clear(db: &Db, cnum: u8) -> DbResult<()> {
     Ok(())
 }
 
+// ── Authentication ────────────────────────────────────────────────────────────
+
+/// Verify a login password for the given country number.
+///
+/// Mirrors natpass() in src/lib/player/nat.c:
+/// - Visitor nations (STAT_VIS) always pass regardless of password.
+/// - If no hash is stored yet, accept an empty password (allows fresh installs).
+/// - Otherwise bcrypt-verify the supplied plaintext against the stored hash.
+pub async fn verify_passwd(db: &Db, cnum: u8, password: &str) -> DbResult<bool> {
+    let n = match get_by_cnum(db, cnum).await? {
+        Some(n) => n,
+        None => return Ok(false),
+    };
+    if n.status == NatStatus::Visitor {
+        return Ok(true);
+    }
+    if n.passwd_hash.is_empty() {
+        return Ok(password.is_empty());
+    }
+    Ok(bcrypt::verify(password, &n.passwd_hash).unwrap_or(false))
+}
+
+/// Hash and store a new password for the given country.
+pub async fn set_passwd(db: &Db, cnum: u8, password: &str) -> DbResult<()> {
+    let hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
+        .map_err(|e| DbError::NotFound(format!("bcrypt error: {e}")))?;
+    sqlx::query("UPDATE nations SET passwd_hash=? WHERE cnum=?")
+        .bind(&hash).bind(cnum as i64)
+        .execute(db.pool()).await?;
+    Ok(())
+}
+
+/// Record a successful login: update host_addr, user_id, last_login, login_count.
+pub async fn record_login(db: &Db, cnum: u8, host_addr: &str, user_id: &str, now: i64)
+    -> DbResult<()>
+{
+    sqlx::query(
+        "UPDATE nations SET host_addr=?, user_id=?, last_login=?, \
+         login_count=login_count+1 WHERE cnum=?",
+    )
+    .bind(host_addr).bind(user_id).bind(now).bind(cnum as i64)
+    .execute(db.pool()).await?;
+    Ok(())
+}
+
+/// Record logout timestamp.
+pub async fn record_logout(db: &Db, cnum: u8, now: i64) -> DbResult<()> {
+    sqlx::query("UPDATE nations SET last_logout=? WHERE cnum=?")
+        .bind(now).bind(cnum as i64)
+        .execute(db.pool()).await?;
+    Ok(())
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_db;
+
+    fn make_nation(uid: i32, cnum: u8, status: NatStatus, name: &str) -> Nation {
+        Nation {
+            uid, cnum, status,
+            flags: NatFlags::empty(),
+            name: name.into(), representative: "".into(),
+            host_addr: "".into(), user_id: "".into(),
+            xcap: 0, ycap: 0, xorg: 0, yorg: 0,
+            money: 0, reserve: 0,
+            tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
+            login_count: 0, tele_cnt: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0,
+        }
+    }
 
     #[tokio::test]
     async fn put_and_get_round_trips() {
@@ -197,6 +281,7 @@ mod tests {
             money: 20_000, reserve: 0,
             tech: 10.5, research: 3.2, education: 1.0, happiness: 50.0,
             login_count: 1, tele_cnt: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0,
         };
         put(&db, &n).await.unwrap();
         let got = get(&db, 1).await.unwrap().unwrap();
@@ -214,17 +299,51 @@ mod tests {
     #[tokio::test]
     async fn get_active_filters() {
         let db = test_db().await;
-        let mut n = Nation { uid: 1, cnum: 1, status: NatStatus::Active, money: 1,
-            flags: NatFlags::empty(), name: "A".into(), representative: "".into(),
-            host_addr: "".into(), user_id: "".into(),
-            xcap: 0, ycap: 0, xorg: 0, yorg: 0, reserve: 0,
-            tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
-            login_count: 0, tele_cnt: 0 };
-        put(&db, &n).await.unwrap();
-        n.uid = 2; n.cnum = 2; n.status = NatStatus::Unused;
-        put(&db, &n).await.unwrap();
+        put(&db, &make_nation(1, 1, NatStatus::Active, "A")).await.unwrap();
+        put(&db, &make_nation(2, 2, NatStatus::Unused, "B")).await.unwrap();
         let active = get_active(&db).await.unwrap();
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].cnum, 1);
+    }
+
+    #[tokio::test]
+    async fn natbyname_finds_existing() {
+        let db = test_db().await;
+        put(&db, &make_nation(1, 1, NatStatus::Active, "Wolfpack")).await.unwrap();
+        let found = natbyname(&db, "Wolfpack").await.unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().cnum, 1);
+    }
+
+    #[tokio::test]
+    async fn natbyname_misses_unused() {
+        let db = test_db().await;
+        put(&db, &make_nation(1, 1, NatStatus::Unused, "Ghost")).await.unwrap();
+        assert!(natbyname(&db, "Ghost").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn verify_passwd_empty_hash_accepts_empty_password() {
+        let db = test_db().await;
+        put(&db, &make_nation(1, 1, NatStatus::Active, "X")).await.unwrap();
+        assert!(verify_passwd(&db, 1, "").await.unwrap());
+        assert!(!verify_passwd(&db, 1, "wrong").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn set_and_verify_passwd() {
+        let db = test_db().await;
+        put(&db, &make_nation(1, 1, NatStatus::Active, "X")).await.unwrap();
+        set_passwd(&db, 1, "secret").await.unwrap();
+        assert!(verify_passwd(&db, 1, "secret").await.unwrap());
+        assert!(!verify_passwd(&db, 1, "wrong").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn visitor_bypasses_passwd() {
+        let db = test_db().await;
+        put(&db, &make_nation(1, 1, NatStatus::Visitor, "Visitor")).await.unwrap();
+        assert!(verify_passwd(&db, 1, "anything").await.unwrap());
+        assert!(verify_passwd(&db, 1, "").await.unwrap());
     }
 }

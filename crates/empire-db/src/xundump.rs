@@ -187,6 +187,9 @@ fn row_to_nation(row: &HashMap<String, String>) -> UndumpResult<Nation> {
         tech: get_f64(row, "tech")?, research: get_f64(row, "research")?,
         education: get_f64(row, "education")?, happiness: get_f64(row, "happiness")?,
         login_count: get_i32(row, "login_count")?, tele_cnt: 0,
+        passwd_hash: row.get("passwd_hash").cloned().unwrap_or_default(),
+        last_login: get_i64(row, "last_login").unwrap_or(0),
+        last_logout: get_i64(row, "last_logout").unwrap_or(0),
     })
 }
 
@@ -337,6 +340,7 @@ mod tests {
             money: 20_000, reserve: 0,
             tech: 10.5, research: 0.0, education: 0.0, happiness: 50.0,
             login_count: 3, tele_cnt: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0,
         }
     }
 

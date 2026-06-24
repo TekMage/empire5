@@ -41,6 +41,7 @@ mod update;
 mod state;
 mod error;
 mod protocol;
+mod journal;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -52,7 +53,8 @@ use tracing_subscriber::EnvFilter;
 
 use empire_config::{Config, load_or_default};
 use empire_db::Db;
-use state::GameState;
+use journal::Journal;
+use state::{GameState, SessionRegistry};
 
 #[derive(Parser, Debug)]
 #[command(name = "empire-server", about = "Empire 5 game server")]
@@ -101,6 +103,14 @@ async fn main() -> anyhow::Result<()> {
     let db = Db::open(&db_path).await?;
     info!(path = %db_path.display(), "Database ready");
 
+    // Open the journal (append-only event log at data/journal)
+    let journal = Arc::new(Journal::open(&config.server.data_dir)?);
+    journal.startup();
+    info!(path = %config.server.data_dir.join("journal").display(), "Journal open");
+
+    // Session registry — tracks which cnums are currently playing
+    let sessions: Arc<SessionRegistry> = Arc::new(SessionRegistry::new());
+
     // Shared game state — wrapped in Arc<RwLock> so the update task can
     // take an exclusive write lock while player tasks hold shared read locks.
     let state = Arc::new(RwLock::new(GameState::new(db.clone())));
@@ -108,12 +118,12 @@ async fn main() -> anyhow::Result<()> {
     // Spawn the update engine
     let update_state = Arc::clone(&state);
     let update_cfg = config.update.clone();
+    let update_journal = Arc::clone(&journal);
     tokio::spawn(async move {
-        update::run_update_loop(update_state, update_cfg).await;
+        update::run_update_loop(update_state, update_cfg, update_journal).await;
     });
 
     // Bind TCP listener (replaces tcp_listen.c + player_accept thread)
-    // Empty listen_addr means all interfaces; use 0.0.0.0 for the bind string.
     let host = if config.server.listen_addr.is_empty() {
         "0.0.0.0"
     } else {
@@ -125,15 +135,21 @@ async fn main() -> anyhow::Result<()> {
 
     // Accept loop — one task per connection
     let config = Arc::new(config);
+    let mut conn_id: u64 = 0;
     loop {
         match listener.accept().await {
             Ok((socket, peer_addr)) => {
-                info!(%peer_addr, "New connection");
+                conn_id += 1;
+                info!(%peer_addr, conn_id, "New connection");
                 let state = Arc::clone(&state);
+                let sessions = Arc::clone(&sessions);
+                let journal = Arc::clone(&journal);
                 let cfg = Arc::clone(&config);
                 tokio::spawn(async move {
-                    if let Err(e) = session::handle(socket, peer_addr, state, cfg).await {
-                        warn!(%peer_addr, error = %e, "Session ended with error");
+                    if let Err(e) = session::handle(
+                        socket, peer_addr, state, sessions, journal, cfg, conn_id
+                    ).await {
+                        warn!(%peer_addr, conn_id, error = %e, "Session ended with error");
                     }
                 });
             }
