@@ -861,6 +861,7 @@ impl Fairland {
                 let ch = match t {
                     SectorType::Sea      => '.',
                     SectorType::Mountain => '^',
+                    _ if c < 0 => '.',               // sea sector elevated by prep spillover
                     _ if c >= self.nc as i32 => '%',
                     _ => {
                         let cc = c as usize;
