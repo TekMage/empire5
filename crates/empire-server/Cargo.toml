@@ -1,0 +1,27 @@
+[package]
+name = "empire-server"
+description = "Empire 5 async TCP game server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "empire-server"
+path = "src/main.rs"
+
+[dependencies]
+empire-types  = { workspace = true }
+empire-config = { workspace = true }
+empire-db     = { workspace = true }
+
+tokio     = { workspace = true }
+tokio-util = { workspace = true }
+serde     = { workspace = true }
+thiserror = { workspace = true }
+anyhow    = { workspace = true }
+tracing   = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap      = { workspace = true }
+bytes     = { workspace = true }
+chrono    = { workspace = true }
+rand      = { workspace = true }

@@ -1,0 +1,52 @@
+# Empire 5 — server configuration
+# Equivalent to the econfig key-value file in empire4.x
+# All values shown are defaults; uncomment and change as needed.
+
+[server]
+# IP address to bind ("" = all interfaces, "127.0.0.1" = loopback only)
+listen_addr = ""
+# TCP port (6665 is the historic Empire port)
+port = 6665
+# Directory where game state (empire.db) is stored
+data_dir = "data"
+# Directory where info/help pages are stored
+info_dir = "info"
+# Path to the update schedule file
+schedule_file = "schedule"
+# Write a journal of all player I/O
+keep_journal = true
+journal_file = "journal"
+# Message-of-the-day shown at login
+motd_file = "motd"
+# Downtime message (if present, login is refused)
+down_file = "down"
+# Directory for telegram files
+tel_dir = "tele"
+
+[game]
+# ETU (Empire Time Units) granted per update cycle
+etu_per_update = 60
+# Technology production multiplier
+tech_pop = 1.0
+# Mobility gain per ETU
+mob_scale = 1.0
+# Maximum mobility a unit or sector can accumulate
+mob_max = 127
+# Starting money for a new nation
+start_money = 20000
+# Nuclear fallout decay per ETU
+fallout_spread = 0.5
+
+[update]
+# Seconds between automatic updates (when no schedule file is used)
+update_interval_secs = 3600
+# Allow the deity to force an immediate update
+allow_force = false
+
+[limits]
+# Maximum number of countries in a game (hard-coded 99 in empire4.x MAXNOC)
+max_nations = 99
+# Maximum number of realms per nation
+max_realms = 50
+# Maximum simultaneous player connections
+max_connections = 512

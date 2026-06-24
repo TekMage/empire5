@@ -1,0 +1,17 @@
+[package]
+name = "empire-db"
+description = "SQLite persistence layer for Empire 5"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+empire-types  = { workspace = true }
+empire-config = { workspace = true }
+sqlx    = { workspace = true }
+serde   = { workspace = true }
+serde_json = { workspace = true }
+tokio   = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono  = { workspace = true }

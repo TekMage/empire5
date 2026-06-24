@@ -1,0 +1,52 @@
+[workspace]
+members = [
+    "crates/empire-types",
+    "crates/empire-config",
+    "crates/empire-db",
+    "crates/empire-server",
+    "crates/empire-client",
+    "crates/empire-world",
+    "crates/empire-util",
+]
+resolver = "2"
+
+[workspace.package]
+version = "5.0.0-dev"
+edition = "2021"
+license = "GPL-3.0-or-later"
+authors = ["Wolfpack Empire Contributors"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate", "chrono"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1"
+rand = "0.8"
+bitflags = "2"
+
+# Internal crates
+empire-types  = { path = "crates/empire-types" }
+empire-config = { path = "crates/empire-config" }
+empire-db     = { path = "crates/empire-db" }

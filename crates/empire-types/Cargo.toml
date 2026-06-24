@@ -1,0 +1,11 @@
+[package]
+name = "empire-types"
+description = "Core game-object types for Empire 5"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+chrono = { workspace = true }
+bitflags = { workspace = true }

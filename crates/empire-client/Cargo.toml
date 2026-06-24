@@ -1,0 +1,17 @@
+[package]
+name = "empire-client"
+description = "Empire 5 terminal client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "empire-client"
+path = "src/main.rs"
+
+[dependencies]
+clap   = { workspace = true }
+tokio  = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }

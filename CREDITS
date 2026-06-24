@@ -1,0 +1,67 @@
+Empire 5 is a Rust rewrite of Wolfpack Empire 4.4.1.  All game logic,
+data structures, and protocol design derive from the work of the original
+Empire contributors listed below.  Empire 5 inherits the GNU General
+Public License v3 from the upstream project; see COPYING for the full
+license text.
+
+---
+
+The five principal architects of Empire, each leading a successive
+development stage on which all later work depends:
+
+  Dave Pare <mr-frog@smarttouch.com>          (UCSD/BSD)
+  Jeff Bailey <bailey@mcs.kent.edu>           (KSU 1.04 / BSD)
+  Thomas Ruschak <ts@ecn.purdue.edu>          (Chainsaw)
+  Ken Stevens <KStevens@GlobeandMail.ca>      (3.0.x)
+  Steve McClure <ionica@empire.cx>            (Wolfpack)
+
+Wolfpack development was subsequently led by Markus Armbruster, whose
+extensive refactoring and clean-up underpins most of the 4.x codebase
+from which Empire 5 is ported.
+
+  Markus Armbruster <armbru@pond.sub.org>
+
+---
+
+Additional contributors to Wolfpack Empire 4.x whose work is reflected
+in the ported Rust code (from empire4.4.1/CREDITS):
+
+James Anderson, Jeff Anton, Markus Armbruster, Jeff Bailey,
+Mark Ballinger, Jan van Beethoven, Paul Byrne, Geoff Cashman,
+Bill Canning, Trannie Carter, Sean Casey, David Davis,
+Aaron Dewell, Jorge Diaz, Drake Diedrich, Yaser Doleh, Ed Down,
+Phill Everson, Scott Ferguson, Robert Forsman, Bill Frolick,
+Steven Grady, Keith Graham, Jim Griffith, Steven Grimm,
+Karl Hagen, Doug Hay, Ken Huisman, Ray Hyatt, Lewis R. Jansen,
+Mike St. Johns, Beorn Johnson, William S. Kaster, Jeremy Kennebel,
+Kevin Klemmick, Ron Koenderink, Ron Kuris, Nick Lai, Phil Lapsley,
+Curtis Larsen, Robert A. Larson, Jonathan Lee, Craig Leres,
+Dan Logcher, Pat Loney, Shelley Louie, Steve McClure,
+Chris Metcalf, Sasha Mikheev, Kevin Morgan, Richard Moss,
+Keith Muller, Chuck Musciano, Dave Nye, Kevin O'Connor,
+Jeff Okamoto, Marc Olzheim, Julian Onions, Jim Ortlieb,
+Dave Pare, Gregory Paris, Kurt Pires, Brett Reid,
+Bernhard Reiter, Jim Reuter, James Risner, Thomas Ruschak,
+Edward M. Rynes, David Muir Sharnoff, Alex Shatsky,
+Walter Smith, Ken Stevens, Michael Straub, Tom Tedrick,
+Sam Tetherow, Yannick Tremblay, Janjaap van Velthooven,
+Ville Virrankoski, Peter Vukovich, Jeff Wallace, Sverker Wiberg,
+Mike Wise, John Yockey, Chad Zabel
+
+See empire4.4.1/CREDITS for the full list with contact information.
+
+---
+
+Empire 5 Rust rewrite contributors:
+
+  Dave Nye <tekmage@gmail.com>
+    — Empire 5 project lead; Rust architecture and implementation
+
+  Claude (Anthropic) <https://anthropic.com/claude>
+    — AI pair programmer; assisted with Rust port, type design, and tooling
+
+---
+
+Empire is based on a game originally written in the late 1970s / early
+1980s by Peter Langston.  The current codebase is a clean-room
+reimplementation; none of Langston's original code remains.
