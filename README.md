@@ -77,11 +77,11 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
 - [x] Tokio async server skeleton with command dispatch (`empire-server`)
 - [x] Stubs for client, world generator, utilities
 
-### Phase 1 — Data Layer
-- Port `struct empfile` flat-file tables to SQLite
-- Port `xdump` / `xundump` (text dump/restore)
-- Port `ef_read`, `ef_write`, `ef_scan` iteration to type-safe SQL queries
-- Port `nsc.c` selector mini-language (parser + evaluator) to Rust
+### Phase 1 — Data Layer ✅
+- [x] Port `struct empfile` flat-file tables to SQLite
+- [x] Port `xdump` / `xundump` (text dump/restore)
+- [x] Port `ef_read`, `ef_write`, `ef_scan` iteration to type-safe SQL queries
+- [x] Port `nsc.c` selector mini-language (parser + evaluator) to Rust
 
 ### Phase 2 — Server Core
 - Port player connection/login flow (`src/lib/player/`)
