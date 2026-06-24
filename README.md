@@ -83,18 +83,22 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
 - [x] Port `ef_read`, `ef_write`, `ef_scan` iteration to type-safe SQL queries
 - [x] Port `nsc.c` selector mini-language (parser + evaluator) to Rust
 
-### Phase 2 — Server Core
-- Port player connection/login flow (`src/lib/player/`)
-- Port I/O queue (`src/lib/gen/ioqueue.c`) to tokio buffered I/O
-- Port journal logging (`src/lib/common/journal.c`)
-- Port per-player state machine (PS_INIT → PS_PLAYING → PS_SHUTDOWN)
+### Phase 2 — Server Core ✅
+- [x] Port player connection/login flow (`src/lib/player/`)
+- [x] Port I/O queue (`src/lib/gen/ioqueue.c`) to tokio buffered I/O
+- [x] Port journal logging (`src/lib/common/journal.c`)
+- [x] Port per-player state machine (PS_INIT → PS_PLAYING → PS_SHUTDOWN)
+- [x] bcrypt password storage, SessionRegistry duplicate-login detection
 
-### Phase 3 — Update Engine
-- Port `server/update.c` and all of `src/lib/update/`
-  - Economic: populace, mobility, delivery, production
-  - Military: sector repair, unit recovery
-- Port market update (`server/marketup.c`)
-- Port update scheduler (`src/util/empsched.c`, `src/lib/common/rdsched.c`)
+### Phase 3 — Update Engine ✅
+- [x] Port `server/update.c` and core of `src/lib/update/`
+  - [x] Economic: populace accounting, tax, bank income, sector production
+  - [x] Military: enlistment, mobility accrual for sectors/ships/planes/land units
+  - [x] Nation levels: tech/research/education/happiness accumulation + aging
+  - [x] Sector and product descriptor tables (dchr/pchr equivalent)
+  - [x] Update rate constants in empire-config (all econfig-spec.h parameters)
+- [ ] Port market update (`server/marketup.c`) — deferred to Phase 4
+- [ ] Port update scheduler schedule-file support — deferred to Phase 4
 
 ### Phase 4 — Game Subsystems (`src/lib/subs/`, 64 files)
 Priority order by coupling:

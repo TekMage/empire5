@@ -119,8 +119,9 @@ async fn main() -> anyhow::Result<()> {
     let update_state = Arc::clone(&state);
     let update_cfg = config.update.clone();
     let update_journal = Arc::clone(&journal);
+    let update_config = Arc::new(config.clone());
     tokio::spawn(async move {
-        update::run_update_loop(update_state, update_cfg, update_journal).await;
+        update::run_update_loop(update_state, update_cfg, update_journal, update_config).await;
     });
 
     // Bind TCP listener (replaces tcp_listen.c + player_accept thread)

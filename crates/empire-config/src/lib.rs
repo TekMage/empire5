@@ -19,7 +19,8 @@
 // See files COPYING and CREDITS in the root of the source tree for
 // related information and legal notices.
 //
-// Ported from: include/econfig-spec.h, include/optlist.h
+// Ported from: include/econfig-spec.h, include/optlist.h,
+//              src/lib/global/constants.c
 // Known contributors to the original:
 //    Julian Onions (optlist)
 //    Ken Stevens, 1995
@@ -27,10 +28,8 @@
 //    Steve McClure, 1998
 //    Markus Armbruster, 2004-2020
 
-// ref: include/econfig-spec.h, include/optlist.h
-//
-// The original econfig key-value format is replaced by TOML for readability
-// and editor tooling support.  Key names are preserved where sensible.
+// The original econfig key-value format is replaced by TOML.
+// Key names and default values are preserved from constants.c.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -52,6 +51,7 @@ pub struct Config {
     pub server: ServerConfig,
     pub game: GameConfig,
     pub update: UpdateConfig,
+    pub rates: UpdateRates,
     pub limits: LimitsConfig,
 }
 
@@ -59,7 +59,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ServerConfig {
-    /// IP address the server binds (empty string = all interfaces).
+    /// IP address the server binds (empty = all interfaces).
     pub listen_addr: String,
     /// TCP port.  Default 6665 matches the historic Empire port.
     pub port: u16,
@@ -71,8 +71,6 @@ pub struct ServerConfig {
     pub schedule_file: PathBuf,
     /// Write a journal log of all player I/O.
     pub keep_journal: bool,
-    /// Path to journal file.
-    pub journal_file: PathBuf,
     /// Message-of-the-day file shown at login.
     pub motd_file: PathBuf,
     /// Downtime message file.
@@ -81,32 +79,24 @@ pub struct ServerConfig {
     pub tel_dir: PathBuf,
 }
 
-/// Game-balance parameters.
+/// Game-balance parameters.  ref: src/lib/global/constants.c, econfig-spec.h
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GameConfig {
-    /// ETU (Empire Time Units) per update cycle.
+    /// ETU (Empire Time Units) per update cycle.  Default 60.
     pub etu_per_update: i32,
-    /// Technology multiplier (float, default 1.0).
-    pub tech_pop: f64,
-    /// Production rate for light construction materials.
-    pub lcm_per_etu: f64,
-    /// Production rate for heavy construction materials.
-    pub hcm_per_etu: f64,
-    /// Nuclear fallout decay rate.
-    pub fallout_spread: f64,
-    /// Mobility gain per ETU.
-    pub mob_scale: f64,
-    /// Maximum mobility a unit/sector can accumulate.
-    pub mob_max: i32,
     /// Starting money for a new nation.
-    pub start_money: i32,
-    /// Minimum efficiency at which ships can be built.
-    pub ship_mineff: i8,
-    /// Minimum efficiency at which planes can be built.
-    pub plane_mineff: i8,
-    /// Minimum efficiency at which land units can be built.
-    pub land_mineff: i8,
+    pub start_cash: i32,
+    /// Starting mobility for sanctuaries.
+    pub startmob: i32,
+    /// Maximum avail units that roll over an update.
+    pub rollover_avail_max: i32,
+    /// Keep announcements for this many days (< 0 = forever).
+    pub anno_keep_days: i32,
+    /// Keep news items for this many days.
+    pub news_keep_days: i32,
+    /// Keep lost-items entries for this many hours.
+    pub lost_keep_hours: i32,
 }
 
 /// Update schedule settings.
@@ -115,21 +105,115 @@ pub struct GameConfig {
 pub struct UpdateConfig {
     /// Seconds between update cycles (when not using a schedule file).
     pub update_interval_secs: u64,
+    /// Time window (seconds) after scheduled time in which update may fire.
+    pub update_window: i32,
     /// Allow players to force an update (deity only).
     pub allow_force: bool,
+}
+
+/// Tunable rates used during the update cycle.
+/// All defaults match src/lib/global/constants.c.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UpdateRates {
+    // ── Mobility ──────────────────────────────────────────────────────────────
+    /// Sector mobility accumulation per ETU.
+    pub sect_mob_scale: f32,
+    /// Maximum mobility sectors can hold.
+    pub sect_mob_max: i32,
+    /// Land unit mobility per ETU.
+    pub land_mob_scale: f32,
+    /// Maximum land unit mobility.
+    pub land_mob_max: i32,
+    /// Ship mobility per ETU.
+    pub ship_mob_scale: f32,
+    /// Maximum ship mobility.
+    pub ship_mob_max: i32,
+    /// Plane mobility per ETU.
+    pub plane_mob_scale: f32,
+    /// Maximum plane mobility.
+    pub plane_mob_max: i32,
+
+    // ── Money ─────────────────────────────────────────────────────────────────
+    /// Tax per civilian per ETU.
+    pub money_civ: f64,
+    /// Tax per uncompensated worker per ETU.
+    pub money_uw: f64,
+    /// Tax (negative) per active soldier per ETU.
+    pub money_mil: f64,
+    /// Tax (negative) per reserve soldier per ETU.
+    pub money_res: f64,
+    /// Fraction-of-price maintenance cost per ETU for planes.
+    pub money_plane: f64,
+    /// Fraction-of-price maintenance cost per ETU for ships.
+    pub money_ship: f64,
+    /// Fraction-of-price maintenance cost per ETU for land units.
+    pub money_land: f64,
+    /// Bank interest per bar per ETU.
+    pub bankint: f64,
+
+    // ── Populace ──────────────────────────────────────────────────────────────
+    /// Civilian birth rate.
+    pub obrate: f64,
+    /// Uncompensated worker birth rate.
+    pub uwbrate: f64,
+    /// Food eating rate per person per ETU.
+    pub eatrate: f64,
+    /// Food required to mature one baby.
+    pub babyeat: f64,
+    /// Food cultivation rate (* workforce).
+    pub fcrate: f64,
+    /// Food growth rate (* fertility).
+    pub fgrate: f64,
+
+    // ── Tech/Research/Education/Happiness ────────────────────────────────────
+    /// Amount of tech with no production penalty.
+    pub easy_tech: f32,
+    /// Log base for tech production penalty above easy_tech.
+    pub tech_log_base: f32,
+    /// Shared tech between allies = 1/ally_factor.
+    pub ally_factor: f32,
+    /// ETU rate at which tech/research decay (0 = no decay).
+    pub level_age_rate: f32,
+    /// ETUs happiness is averaged over.
+    pub hap_avg: f32,
+    /// ETUs education is averaged over.
+    pub edu_avg: f32,
+    /// Happiness consumption factor (hap_cons civs → 1 hap level).
+    pub hap_cons: f64,
+    /// Education consumption factor.
+    pub edu_cons: f64,
+
+    // ── Unit growth ───────────────────────────────────────────────────────────
+    /// Efficiency growth rate per ETU for land units.
+    pub land_grow_scale: f32,
+    /// Efficiency growth rate per ETU for ships.
+    pub ship_grow_scale: f32,
+    /// Efficiency growth rate per ETU for planes.
+    pub plane_grow_scale: f32,
 }
 
 /// Hard limits and caps.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LimitsConfig {
-    /// Maximum number of countries.  Hardcoded 99 in C (MAXNOC).
+    /// Maximum number of countries (MAXNOC).
     pub max_nations: usize,
     /// Maximum number of realms per nation.
     pub max_realms: usize,
     /// Maximum simultaneous player connections.
     pub max_connections: usize,
+    /// Max minutes a country may be logged in per day.
+    pub m_m_p_d: i32,
+    /// Minutes before an idle session is dropped.
+    pub max_idle: i32,
+    /// Minutes before an idle visitor session is dropped.
+    pub max_idle_visitor: i32,
+    /// Seconds a client has to complete login/logout handshake.
+    pub login_grace_time: i32,
 }
+
+// ── Default implementations (values from constants.c) ────────────────────────
 
 impl Default for Config {
     fn default() -> Self {
@@ -137,6 +221,7 @@ impl Default for Config {
             server: ServerConfig::default(),
             game: GameConfig::default(),
             update: UpdateConfig::default(),
+            rates: UpdateRates::default(),
             limits: LimitsConfig::default(),
         }
     }
@@ -151,7 +236,6 @@ impl Default for ServerConfig {
             info_dir: PathBuf::from("info"),
             schedule_file: PathBuf::from("schedule"),
             keep_journal: true,
-            journal_file: PathBuf::from("journal"),
             motd_file: PathBuf::from("motd"),
             down_file: PathBuf::from("down"),
             tel_dir: PathBuf::from("tele"),
@@ -163,16 +247,12 @@ impl Default for GameConfig {
     fn default() -> Self {
         GameConfig {
             etu_per_update: 60,
-            tech_pop: 1.0,
-            lcm_per_etu: 1.0,
-            hcm_per_etu: 1.0,
-            fallout_spread: 0.5,
-            mob_scale: 1.0,
-            mob_max: 127,
-            start_money: 20000,
-            ship_mineff: 20,
-            plane_mineff: 10,
-            land_mineff: 10,
+            start_cash: 20000,
+            startmob: 127,
+            rollover_avail_max: 50,
+            anno_keep_days: 7,
+            news_keep_days: 10,
+            lost_keep_hours: 48,
         }
     }
 }
@@ -181,7 +261,53 @@ impl Default for UpdateConfig {
     fn default() -> Self {
         UpdateConfig {
             update_interval_secs: 3600,
+            update_window: 0,
             allow_force: false,
+        }
+    }
+}
+
+impl Default for UpdateRates {
+    fn default() -> Self {
+        UpdateRates {
+            // Mobility (constants.c)
+            sect_mob_scale: 1.0,
+            sect_mob_max: 127,
+            land_mob_scale: 1.0,
+            land_mob_max: 127,
+            ship_mob_scale: 1.5,
+            ship_mob_max: 127,
+            plane_mob_scale: 1.0,
+            plane_mob_max: 127,
+            // Money
+            money_civ:   0.0083333,
+            money_uw:    0.0017777,
+            money_mil:  -0.0833333,
+            money_res:  -0.0083333,
+            money_plane:-0.001,
+            money_ship: -0.001,
+            money_land: -0.001,
+            bankint:     0.25,
+            // Populace
+            obrate:   0.005,
+            uwbrate:  0.0025,
+            eatrate:  0.0005,
+            babyeat:  0.0060,
+            fcrate:   0.0013,
+            fgrate:   0.0012,
+            // Tech/Res/Edu/Hap
+            easy_tech:       1.00,
+            tech_log_base:   2.0,
+            ally_factor:     2.0,
+            level_age_rate: 96.0,
+            hap_avg:         48.0,  // 16 * 3
+            edu_avg:        192.0,  // 16 * 12
+            hap_cons:   600_000.0,
+            edu_cons:   600_000.0,
+            // Unit growth
+            land_grow_scale:  2.0,
+            ship_grow_scale:  3.0,
+            plane_grow_scale: 2.0,
         }
     }
 }
@@ -192,6 +318,10 @@ impl Default for LimitsConfig {
             max_nations: 99,
             max_realms: 50,
             max_connections: 512,
+            m_m_p_d: 1440,
+            max_idle: 15,
+            max_idle_visitor: 5,
+            login_grace_time: 120,
         }
     }
 }

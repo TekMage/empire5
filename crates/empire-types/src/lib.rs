@@ -27,6 +27,8 @@ pub mod coords;
 pub mod commodity;
 pub mod nation;
 pub mod sector;
+pub mod sector_chr;
+pub mod product_chr;
 pub mod ship;
 pub mod plane;
 pub mod land;
