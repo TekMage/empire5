@@ -1,0 +1,11 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+Command : ENABLE
+Command : ENABLE
+Expert
+[##:##] Command : enable
+If updates have been disabled, then this will enable them again.
+See also : disable
+, show
+, force
+, Deity

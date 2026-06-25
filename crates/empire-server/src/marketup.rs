@@ -20,10 +20,8 @@
 //!
 //! Only active when `config.game.opt_market` is true (mirrors C's `opt_MARKET`).
 //!
-//! The actual market/trade logic (`check_market`, `check_trade`) lives with the
-//! `buy`/`sell`/`trade` commands, which are Phase 6+ scope.  Until those are
-//! implemented this task logs a no-op trace message each cycle so the
-//! infrastructure is in place and the log makes the cadence visible.
+//! `check_market` — expire stale bought lots and refund buyers after 24 h.
+//! `check_trade`  — detect and mark loans that have passed their due date.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,6 +29,8 @@ use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{debug, info};
 
+use empire_db::Db;
+use empire_types::loan::LoanStatus;
 use crate::state::GameState;
 
 /// Spawn the market update loop if `opt_market` is enabled.
@@ -51,27 +51,54 @@ pub async fn run_market_loop(state: Arc<RwLock<GameState>>, opt_market: bool) {
     loop {
         ticker.tick().await;
 
-        // Take a shared read lock — market checks read game state but do not
-        // modify it (commodity prices are aggregated from stored lot records).
-        let _gs = state.read().await;
-
-        check_market();
-        check_trade();
-
-        drop(_gs);
+        let gs = state.read().await;
+        check_market(&gs.db).await;
+        check_trade(&gs.db).await;
+        drop(gs);
     }
 }
 
-/// Expire stale commodity lots and recompute market prices.
+/// Expire stale bought lots: refund the buyer and delete the lot.
 ///
-/// Stub — full implementation requires `buy`/`sell` command tables (Phase 6+).
-fn check_market() {
-    debug!("check_market: stub (market commands not yet implemented)");
+/// A bought lot that is older than 24 hours is considered undeliverable
+/// (the C server would have performed the delivery already via check_market
+/// in buy.c; here we clean up any that slipped through or were manually
+/// marked bought=true without delivery completing).
+async fn check_market(db: &Db) {
+    let lots = empire_db::trades::get_all(db).await.unwrap_or_default();
+    let now = chrono::Utc::now().timestamp();
+
+    for lot in lots.iter().filter(|l| l.bought && (now - l.created) > 86400) {
+        // Refund buyer
+        if let Ok(Some(mut buyer_nat)) =
+            empire_db::nations::get_by_cnum(db, lot.buyer).await
+        {
+            let refund = lot.amount as f64 * lot.price;
+            buyer_nat.money += refund as i32;
+            let _ = empire_db::nations::put(db, &buyer_nat).await;
+            debug!(
+                "Expired trade lot #{}: refunded ${:.2} to buyer #{}",
+                lot.uid, refund, lot.buyer
+            );
+        }
+        let _ = empire_db::trades::delete(db, lot.uid).await;
+    }
 }
 
-/// Expire stale trade offers and settle completed trades.
-///
-/// Stub — full implementation requires `trade`/`loan` command tables (Phase 6+).
-fn check_trade() {
-    debug!("check_trade: stub (trade commands not yet implemented)");
+/// Detect loans that have passed their due date and mark them Defaulted.
+async fn check_trade(db: &Db) {
+    let loans = empire_db::loans::get_all(db).await.unwrap_or_default();
+    let now = chrono::Utc::now().timestamp();
+
+    for mut loan in loans
+        .into_iter()
+        .filter(|l| l.status == LoanStatus::Active && now > l.due)
+    {
+        loan.status = LoanStatus::Defaulted;
+        if let Err(e) = empire_db::loans::put(db, &loan).await {
+            debug!("Failed to mark loan #{} defaulted: {e}", loan.uid);
+        } else {
+            debug!("Loan #{} defaulted (due {})", loan.uid, loan.due);
+        }
+    }
 }

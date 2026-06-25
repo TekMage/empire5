@@ -35,63 +35,63 @@ use crate::commodity::Inventory;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i8)]
 pub enum SectorType {
-    Sea         = -1,  // .  — deep water
-    Land        = 0,   // -  — blank land
-    Mountain    = 1,   // ^  — mountains
-    Agri        = 2,   // g  — agriculture
+    Sea         = -1,  // .  — ocean / deep water
+    Land        = 0,   // -  — wilderness / unexplored land
+    Mountain    = 1,   // ^  — mountains (impassable)
+    Agri        = 2,   // a  — agribusiness (food production)
     Uranium     = 3,   // u  — uranium mine
-    Plain       = 4,   // p  — plains (population)
-    Park        = 5,   // P  — park
-    Urban       = 6,   // c  — urban/capital
+    Plain       = 4,   // p  — plains (population centre)
+    Park        = 5,   // P  — park (happiness)
+    Urban       = 6,   // c  — urban / capital
     Research    = 7,   // r  — research lab
-    Wasteland   = 8,   // w  — wasteland
-    Defense     = 9,   // d  — defensive position
+    Wasteland   = 8,   // %  — wasteland (nuclear result)
+    Defense     = 9,   // d  — defense plant (guns)
     Bank        = 10,  // b  — bank
     Engineer    = 11,  // e  — engineering works
-    Airfield    = 12,  // a  — airfield
-    Highway     = 13,  // h  — highway
+    Airfield    = 12,  // *  — airfield
+    Highway     = 13,  // +  — highway
     Radar       = 14,  // j  — radar installation
     Naval       = 15,  // n  — naval base
     Missile     = 16,  // m  — missile base
-    Harbor      = 17,  // *  — harbor
-    Fort        = 18,  // f  — fort
+    Harbor      = 17,  // h  — harbor
+    Fort        = 18,  // f  — fortress
     Tech        = 19,  // t  — tech center
-    Bravery     = 20,  // s  — shrine of bravery  (happiness)
+    Bravery     = 20,  // s  — shrine of bravery (happiness)
     LightIndus  = 21,  // l  — light industry (LCM)
     HeavyIndus  = 22,  // k  — heavy industry (HCM)
-    Gold        = 23,  // G  — gold mine
+    Gold        = 23,  // g  — gold mine
     Oil         = 24,  // o  — oil field
-    Unknown     = 25,  // ?  — occupied/uncharted
+    Unknown     = 25,  // ?  — occupied / uncharted
 }
 
 impl SectorType {
     pub fn mnemonic(self) -> char {
         match self {
-            SectorType::Sea        => '.',
-            SectorType::Land       => '-',
+            SectorType::Sea        => '.',   // ocean / deep water
+            SectorType::Land       => '-',   // wilderness / unexplored land
             SectorType::Mountain   => '^',
-            SectorType::Agri       => 'g',
+            SectorType::Agri       => 'a',   // agribusiness
             SectorType::Uranium    => 'u',
             SectorType::Plain      => 'p',
             SectorType::Park       => 'P',
             SectorType::Urban      => 'c',
             SectorType::Research   => 'r',
-            SectorType::Wasteland  => 'w',
+            SectorType::Wasteland  => '%',
             SectorType::Defense    => 'd',
             SectorType::Bank       => 'b',
             SectorType::Engineer   => 'e',
-            SectorType::Airfield   => 'a',
-            SectorType::Highway    => 'h',
+            SectorType::Airfield   => '*',   // standard Empire airfield char
+            SectorType::Highway    => '+',   // standard Empire highway char
             SectorType::Radar      => 'j',
             SectorType::Naval      => 'n',
             SectorType::Missile    => 'm',
-            SectorType::Harbor     => '*',
-            SectorType::Fort       => 'f',
+            SectorType::Harbor     => 'h',
+            SectorType::Fort       => 'f',   // standard Empire fortress char
             SectorType::Tech       => 't',
             SectorType::Bravery    => 's',
             SectorType::LightIndus => 'l',
             SectorType::HeavyIndus => 'k',
-            SectorType::Gold       => 'G',
+            SectorType::Gold       => 'g',
             SectorType::Oil        => 'o',
             SectorType::Unknown    => '?',
         }

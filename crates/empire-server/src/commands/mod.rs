@@ -14,7 +14,8 @@
 // Command dispatch table.
 // Replaces src/lib/commands/ (151 .c files) and the C cmndstr dispatch table.
 //
-// Phase 5: core info and economic commands implemented.
+// Phase 7: add, capital, newcap, enable, disable, shutdown, distribute,
+//           deliver, show, power commands.
 
 pub mod ctx;
 mod version;
@@ -27,6 +28,29 @@ mod designate;
 mod threshold;
 mod relations_cmd;
 mod declare;
+mod sector_sel;
+mod add;
+mod capital;
+mod enable;
+mod shutdown_cmd;
+mod distribute;
+mod deliver;
+mod show;
+mod power;
+mod build;
+mod march;
+mod navigate;
+mod attack;
+mod bomb;
+mod fly;
+mod launch;
+mod mission;
+mod sell;
+mod buy;
+mod trade;
+mod loan;
+mod explore;
+mod move_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -53,6 +77,8 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         nat,
         is_deity,
         db: &state.db,
+        state,
+        config: cfg,
         world_x: cfg.game.world_x,
         world_y: cfg.game.world_y,
         etu: cfg.game.etu_per_update,
@@ -73,6 +99,33 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "threshold" | "thre"        => threshold::run(args, &ctx).await,
         "relations" | "rela"        => relations_cmd::run(args, &ctx).await,
         "declare"   | "decl"        => declare::run(args, &ctx).await,
+
+        "add"                       => add::run(args, &ctx).await,
+        "capital"   | "capi"        => capital::run(args, &ctx).await,
+        "newcap"                    => capital::run_newcap(args, &ctx).await,
+        "enable"    | "enab"        => enable::run_enable(&ctx).await,
+        "disable"   | "disa"        => enable::run_disable(&ctx).await,
+        "shutdown"  | "shut"        => shutdown_cmd::run(args, &ctx).await,
+        "distribute"| "dist"        => distribute::run(args, &ctx).await,
+        "deliver"   | "deli"        => deliver::run(args, &ctx).await,
+        "show"                      => show::run(args, &ctx).await,
+        "power"     | "powe"        => power::run(args, &ctx).await,
+        "build"     | "buil"        => build::run(args, &ctx).await,
+        "march"                     => march::run(args, &ctx).await,
+        "navigate"  | "nav"         => navigate::run(args, &ctx).await,
+        "attack"    | "atta"        => attack::run(args, &ctx).await,
+        "bomb"                      => bomb::run(args, &ctx).await,
+        "fly"                       => fly::run(args, &ctx).await,
+        "launch"    | "lnch"        => launch::run(args, &ctx).await,
+        "mission"   | "miss"        => mission::run(args, &ctx).await,
+
+        "sell"              => sell::run(args, &ctx).await,
+        "buy"               => buy::run(args, &ctx).await,
+        "trade" | "trad"    => trade::run(args, &ctx).await,
+        "loan"              => loan::run(args, &ctx).await,
+
+        "explore" | "expl"  => explore::run(args, &ctx).await,
+        "move"    | "mov"   => move_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

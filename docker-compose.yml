@@ -1,0 +1,30 @@
+services:
+  empire:
+    build: .
+    image: empire5:latest
+    container_name: tekbot
+    ports:
+      - "6665:6665"
+    volumes:
+      - empire-data:/srv/empire/data
+    environment:
+      RUST_LOG: "empire_server=info,empire_db=warn"
+      # World generation parameters (used only on first start when empire.db
+      # does not yet exist).  Change before the very first `docker compose up`.
+      NC: "6"    # number of continents = number of player slots
+      SC: "40"   # continent size in sectors (6×40=240 land sectors, ~16% of 96×64 world)
+      NI: "12"   # exploration islands (double NC for interesting mid-game)
+      IS: "20"   # island size — large enough to settle and refuel
+      SP: "10"   # spike % — round continents (must be set before PM in positional list)
+      PM: "5"    # 5% mountains per landmass for gold/resource variety
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 6665 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  empire-data:
+    name: tekbot-empire-data

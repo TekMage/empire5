@@ -1,0 +1,11 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+Command : UPDATE
+Command : UPDATE
+Obsolete
+[##:##] Command : update
+The update command shows you when the next update will occur, and
+describes the current update policies.
+See also : show
+, zdone
+, Updates

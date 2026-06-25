@@ -30,7 +30,8 @@
 // Mirrors the Players queue (accept.c) and getplayer() (accept.c).
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 use empire_db::Db;
 
@@ -40,11 +41,20 @@ pub struct GameState {
     pub db: Db,
     /// Monotonically increasing update counter (ETU tick number).
     pub update_number: u64,
+    /// When false, the update loop skips ticks (set by disable/enable commands).
+    pub updates_enabled: Arc<AtomicBool>,
+    /// AbortHandle for a pending scheduled shutdown task (None when no shutdown pending).
+    pub shutdown_handle: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
 }
 
 impl GameState {
     pub fn new(db: Db) -> Self {
-        GameState { db, update_number: 0 }
+        GameState {
+            db,
+            update_number: 0,
+            updates_enabled: Arc::new(AtomicBool::new(true)),
+            shutdown_handle: Arc::new(Mutex::new(None)),
+        }
     }
 }
 

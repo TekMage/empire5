@@ -44,14 +44,15 @@ const DIR_FIRST: usize = DIR_UR;
 const DIR_LAST:  usize = DIR_UL;
 
 /// (dx, dy) for each direction.  Indexed by DIR_*.
+/// Must match dir.c diroff[] in Empire 4.
 const DIROFF: [(i32, i32); 7] = [
     ( 0,  0), // stop
-    ( 2, -2), // UR
-    ( 2,  2), // R
-    ( 0,  4), // DR
-    (-2,  2), // DL
-    (-2, -2), // L
-    ( 0, -4), // UL
+    ( 1, -1), // UR
+    ( 2,  0), // R
+    ( 1,  1), // DR
+    (-1,  1), // DL
+    (-2,  0), // L
+    (-1, -1), // UL
 ];
 
 fn dir_back(d: usize) -> usize {

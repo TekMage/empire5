@@ -122,8 +122,12 @@ async fn main() -> anyhow::Result<()> {
     let update_cfg = config.update.clone();
     let update_journal = Arc::clone(&journal);
     let update_config = Arc::new(config.clone());
+    let updates_enabled = {
+        let gs = state.read().await;
+        Arc::clone(&gs.updates_enabled)
+    };
     tokio::spawn(async move {
-        update::run_update_loop(update_state, update_cfg, update_journal, update_config).await;
+        update::run_update_loop(update_state, update_cfg, update_journal, update_config, updates_enabled).await;
     });
 
     // Spawn the market update task (runs every 5 minutes when opt_market is true)

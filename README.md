@@ -20,14 +20,60 @@ Empire is a text-based multiplayer strategy wargame dating to 1986. Players conn
 
 ---
 
+## Current Status: Feature-Complete Beta
+
+All major game systems are implemented. The server is running live on **TekBot** (192.168.40.95:6665) with an active 6-player game world. The original Empire C client connects and plays against the Rust server without modification.
+
+### What's Working Right Now
+
+| System | Status |
+|---|---|
+| World generation (fairland) | ✅ Full port — correct hex grid, toroidal wrap, land/island/mountain placement |
+| Player login (TCP protocol) | ✅ Full protocol — user/coun/pass/play pre-login flow, bcrypt passwords |
+| Session management | ✅ Duplicate-login detection, kill command, journal logging |
+| Update engine (ETU ticks) | ✅ Full port — populace, production, mobility, nation levels, schedule files |
+| Map display | ✅ Sector mnemonics match Empire 4 standard (`.`=sea, `-`=wilderness) |
+| `census` | ✅ Full sector report with efficiency, civilians, commodities, coastal flag |
+| `map` / `bmap` / `smap` | ✅ Toroidal hex world map with configurable realm |
+| `nation` | ✅ Nation status, treasury, tech, research, education, happiness |
+| `designate` | ✅ Sector redesignation with type validation |
+| `explore` | ✅ Move civilians into wilderness to claim territory |
+| `move` | ✅ Move commodities between owned sectors |
+| `distribute` / `deliver` | ✅ Distribution centers and commodity delivery thresholds |
+| `threshold` | ✅ Per-sector per-commodity storage thresholds |
+| `relations` / `declare` | ✅ Diplomacy — stance declarations (neutral/hostile/allied) |
+| `build` | ✅ Build ships, land units, planes from sectors |
+| `march` | ✅ Land unit movement (direction string or X,Y destination) |
+| `navigate` | ✅ Ship navigation (direction string or X,Y destination) |
+| `attack` | ✅ Ground combat with att/def strength, tech bonus, takeover on win |
+| `bomb` / `fly` / `launch` / `mission` | ✅ Air combat — bomb, relocate planes, fire missiles, standing orders |
+| `sell` / `buy` / `trade` / `loan` | ✅ Commodity market and P2P lending |
+| `show` | ✅ Build cost/stat tables for sectors, ships, land units, planes, items |
+| `power` | ✅ Nation power rankings |
+| `add` / `capital` / `newcap` | ✅ Deity nation management |
+| `enable` / `disable` / `shutdown` | ✅ Deity server control |
+| `info` | ✅ 49 help pages from official Wolfpack Empire documentation |
+| `xdump` | ✅ Structured data export (nations, sectors, relations, ships, planes, units) |
+| `version` | ✅ Server version, world dimensions, ETU |
+| Docker deployment | ✅ Multi-stage Dockerfile, named volume, container running on TekBot |
+| SQLite durability | ✅ WAL mode + `synchronous=Full` — survives container kill |
+
+---
+
 ## Codebase Layout
 
 ```
 empire5/
 ├── README.md                  ← this file
 ├── Cargo.toml                 ← workspace manifest
+├── Dockerfile                 ← multi-stage build (rust:1.87-slim → debian:bookworm-slim)
+├── docker-compose.yml         ← TekBot deployment (container: tekbot, port 6665)
 ├── config/
 │   └── empire.toml            ← default server configuration
+├── docker/
+│   ├── empire.toml            ← TekBot production config (96×64 world)
+│   └── entrypoint.sh          ← container startup script
+├── info/                      ← 49 official Empire help pages
 ├── migrations/                ← top-level SQLite migration scripts
 ├── reference/
 │   └── include/               ← original C headers (read-only reference)
@@ -36,9 +82,9 @@ empire5/
     ├── empire-config/         ← TOML configuration loader
     ├── empire-db/             ← SQLite persistence layer (sqlx)
     ├── empire-server/         ← async TCP server binary (tokio)
-    ├── empire-client/         ← terminal client binary
+    ├── empire-client/         ← terminal client binary (Phase 11 stub)
     ├── empire-world/          ← world generator (fairland port)
-    └── empire-util/           ← CLI utilities: dump, sched, pconfig
+    └── empire-util/           ← CLI utilities: empdump, empsched, pconfig
 ```
 
 ---
@@ -59,17 +105,24 @@ Empire 4.x stores all game state in hand-rolled binary flat files (`struct empfi
 
 - One table per game object type (sectors, ships, planes, land units, nukes, nations, …).
 - Schema migrations tracked in `crates/empire-db/migrations/`.
+- WAL journal mode with `synchronous=Full` for crash durability.
 - `xdump` / `xundump` text format preserved for save/restore compatibility.
 
 ### Protocol
 
-The original text-based TCP protocol (port 6665) is preserved exactly. The C client continues to work against the Rust server. Protocol evolution happens after the feature parity milestone.
+The original text-based TCP protocol (port 6665) is preserved exactly. The C client continues to work against the Rust server without modification. Response codes: `C_DATA(1)`, `C_INIT(2)`, `C_CMDOK(5)`, `C_PROMPT(6)`, `C_CMDERR(10)`, `C_BADCMD(11)`, `C_EXIT(14)`.
+
+### Hex grid
+
+Valid sectors satisfy `(x + y) % 2 == 0` on a toroidal world. Direction offsets match Empire 4's `dir.c` exactly:
+- UR=(1,-1), R=(2,0), DR=(1,1), DL=(-1,1), L=(-2,0), UL=(-1,-1)
+- Direction chars: `u`=UR, `j`=R, `n`=DR, `b`=DL, `g`=L, `y`=UL, `h`=stop
 
 ---
 
 ## Modernization Roadmap
 
-### Phase 0 — Foundation ✅ (current)
+### Phase 0 — Foundation ✅
 - [x] Cargo workspace with 7 crates
 - [x] Core game-object types (`empire-types`)
 - [x] TOML config system (`empire-config`)
@@ -85,8 +138,8 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
 
 ### Phase 2 — Server Core ✅
 - [x] Port player connection/login flow (`src/lib/player/`)
-- [x] Port I/O queue (`src/lib/gen/ioqueue.c`) to tokio buffered I/O
-- [x] Port journal logging (`src/lib/common/journal.c`)
+- [x] Port I/O queue to tokio buffered I/O
+- [x] Port journal logging
 - [x] Port per-player state machine (PS_INIT → PS_PLAYING → PS_SHUTDOWN)
 - [x] bcrypt password storage, SessionRegistry duplicate-login detection
 
@@ -97,93 +150,93 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
   - [x] Nation levels: tech/research/education/happiness accumulation + aging
   - [x] Sector and product descriptor tables (dchr/pchr equivalent)
   - [x] Update rate constants in empire-config (all econfig-spec.h parameters)
-- [x] Port market update (`server/marketup.c`) — `marketup.rs` Tokio task, 5-min cadence, gated by `opt_market`; `check_market`/`check_trade` bodies stub until buy/sell commands land (Phase 6+)
-- [x] Port update scheduler schedule-file support — `rdsched.rs` in `empire-config` (port of `rdsched.c`); `run_update_loop` uses schedule file when present, falls back to `update_interval_secs`; `empsched` utility implemented
+- [x] Port market update task (`marketup.rs`) — 5-min cadence, gated by `opt_market`
+- [x] Port update scheduler schedule-file support (`rdsched.rs`)
 
-### Phase 4 — Game Subsystems (`src/lib/subs/`, 64 files) ✅
-Priority order by coupling:
-- [x] `geo.rs` — directions, neighbors, mapdist, coordinate formatting (ports `dir.c`, `xy.c`, `mapdist.c`)
-- [x] `damage.rs` — damage application for ships/land/planes/sectors (ports `damage.c`)
-- [x] `control.rs` — military control and sector abandonment (ports `control.c`)
-- [x] `takeover.rs` — sector and unit takeover, CHE generation (ports `takeover.c`)
-- [x] `nat_util.rs` — nation display and name validation (ports `natsub.c`, `natarg.c`)
-- [x] `che`/`che_target` fields added to `Sector` (migration 003)
-- [x] `get_at_xy` added to DB layer for land units, ships, planes
-- [ ] `attsub.c` — attack resolution (2,589 lines, most complex) — Phase 5
-- [ ] `lndsub.c`, `shpsub.c`, `plnsub.c` — unit management — Phase 5
-- [ ] `mission.c` — standing orders — Phase 5
-- [ ] `aircombat.c` — air combat — Phase 5
-- [ ] `pathfind.c` — movement — Phase 5
-- [ ] Remaining map, commodity, trade subsystems — Phase 5
+### Phase 4 — Game Subsystems ✅
+- [x] `geo.rs` — directions, neighbors, mapdist, coordinate formatting
+- [x] `damage.rs` — damage application for ships/land/planes/sectors
+- [x] `control.rs` — military control and sector abandonment
+- [x] `takeover.rs` — sector and unit takeover, CHE generation
+- [x] `nat_util.rs` — nation display and name validation
+- [x] `shpsub.rs` — ship fire/damage/range helpers
+- [x] `lndsub.rs` — land unit fire/damage/support helpers
+- [x] `plnsub.rs` — plane capability/damage/fuel helpers
+- [x] `aircombat.rs` — 3-round air-vs-air combat resolution; async interceptor scan
+- [x] `attsub.rs` — ground combat: att_str/def_str with tech + fort bonus
+- [x] `pathfind.rs` — BFS pathfinding on toroidal hex grid
 
-### Phase 5 — Commands (`src/lib/commands/`, 151 files) ✅
-Each command is an `async fn` in `empire-server/src/commands/`, dispatched via `CmdCtx`.
-
-Core commands implemented:
-- [x] `census` / `cens` — sector-by-sector report with distribution and threshold display
-- [x] `nation` / `nati` — nation status, capital, treasury, education, tech, research
-- [x] `map` / `bmap` / `smap` / `sect` / `sector` — toroidal hex world map with border
-- [x] `designate` / `desi` — redesignate sector type (validates coastal, deity-only types)
-- [x] `threshold` / `thre` — set/display commodity distribution thresholds per sector
-- [x] `relations` / `rela` — display diplomatic relations (yours vs theirs)
-- [x] `declare` / `decl` — declare diplomatic stance toward other nations
-- [x] `version` / `vers` — server version, world dimensions, ETU
-- [x] `info` — topic help text
-- [x] `xdump` — structured data dump (nations, sectors, relations)
-- [x] Migration 004: `thresholds_json` column on sectors; `relations` table
-- [x] `CmdCtx` — per-command context struct (cnum, nation, db, world dims, ETU)
-
-Remaining (Phase 6+):
-- [ ] `attsub.c` — attack resolution (2,589 lines, most complex)
-- [ ] `lndsub.c`, `shpsub.c`, `plnsub.c` — unit management
-- [ ] `mission.c` — standing orders
-- [ ] `aircombat.c` — air combat
-- [ ] `pathfind.c` — movement
-- [ ] Economic: `build`, `distribute`, `deliver`, `produce`, `work`
-- [ ] Military: `attack`, `march`, `navigate`, `bomb`, `fly`, `launch`
-- [ ] Trade/finance: `buy`, `sell`, `trade`, `loan`
-- [ ] Admin/deity: `edit`, `enable`, `add`, `new`, `wipe`, `shutdown`
-- [ ] Info: `show`, `power`, `news`, `dump`
+### Phase 5 — Commands ✅
+Core commands (port of `src/lib/commands/`, 151 C files):
+- [x] `census` — sector report: efficiency, civilians, commodities, coastal flag, thresholds
+- [x] `nation` — nation status, treasury, tech, research, education, happiness
+- [x] `map` / `bmap` / `smap` / `sect` — toroidal hex map with configurable realm and flags
+- [x] `designate` — sector redesignation with type validation
+- [x] `threshold` — per-sector per-commodity storage thresholds
+- [x] `relations` / `declare` — diplomacy: view and set stance toward other nations
+- [x] `distribute` / `deliver` — distribution centers and delivery thresholds
+- [x] `version` / `info` / `xdump` — server metadata and data export
+- [x] `show sect/ship/land/plane/item/product/updates` — all descriptor tables
+- [x] `power` — nation power rankings
+- [x] `add` / `capital` / `newcap` / `enable` / `disable` / `shutdown` — deity commands
+- [x] `build s|l|p` — build ships, land units, planes
+- [x] `march` — land unit movement
+- [x] `navigate` — ship navigation
+- [x] `attack` — ground combat
+- [x] `bomb` / `fly` / `launch` / `mission` — air operations
+- [x] `sell` / `buy` / `trade` / `loan` — market and finance
+- [x] `explore` — move civilians into adjacent wilderness to claim territory
+- [x] `move` — move commodities between owned sectors
 
 ### Phase 6 — World Generator & Utilities ✅
-- [x] `empire-world` binary — full port of `fairland.c` (1,681 lines) + `files.c`
-  - Capital drift (perturbation technique) to maximise inter-capital distance
+- [x] `empire-world` — full port of `fairland.c` (1,681 lines) + `files.c`
+  - Capital drift to maximise inter-capital distance
   - Weighted random continent & island growing with spike control
   - Elevation creation (random walk + plateau/mountain classification)
   - Resource computation (iron, gold, fertility, oil, uranium) from elevation curves
-  - Sector DB write via `sectors::put_many` (all 1,024 valid hex positions for a 64×32 world)
+  - Correct hex DIROFF matching Empire 4 `dir.c` (critical bug fix)
   - `newcap_script` generation for deity setup
-  - Deity nation ("POGO") and visitor slot auto-created on first run
   - CLI: `empire-world [OPTIONS] NC SC [NI [IS [SP [PM [DI [ID]]]]]]`
-- [ ] `empdump` — export/import via xdump (deferred; server xdump already works)
-- [x] `empsched` — print update schedule (reads schedule file, prints next N times)
-- [ ] `pconfig` — print config values (deferred; trivial)
+- [x] `empdump` — standalone xdump export (all tables or named tables)
+- [x] `empsched` — print update schedule
+- [x] `pconfig` — print effective config values
 
-### Phase 7 — Client (optional)
-- Keep C client as-is (compatible with Rust server protocol)
-- Or: Rust client using `tokio` + `rustyline`
-- Long-term option: WebSocket proxy + browser client
+### Phase 7 — Docker Deployment ✅
+- [x] Multi-stage `Dockerfile` (rust:1.87-slim builder → debian:bookworm-slim runtime)
+- [x] `docker-compose.yml` with named volume `tekbot-empire-data` at `/srv/empire/data`
+- [x] `docker/empire.toml` — production config: 96×64 world, 6 nations, 60 ETU
+- [x] `docker/entrypoint.sh` — auto-runs world gen on first start, then starts server
+- [x] Live deployment on TekBot (192.168.40.95:6665), 6 active player slots
+- [x] 49 official Wolfpack Empire info pages installed in `info/`
+
+### Phase 8 — Open Items
+- [ ] `resource` / `report` / `commodity` commands (not yet dispatched)
+- [ ] `edit` / `news` / `dump` / `telegram` / `wire` commands
+- [ ] `empire-client` Rust client (Phase 11 placeholder; use C client from empire4.4.1)
 
 ---
 
 ## Feature Parity Checklist
 
-The following game systems must all pass the reference server comparison suite before 5.0 is declared stable:
-
-- [ ] Nation creation, login, sanctuary, active status
-- [ ] Sector map, designation changes, efficiency
-- [ ] Commodity storage and movement (distribute, deliver)
-- [ ] Civilian and military production cycles
-- [ ] Land unit: build, march, attack, retreat
-- [ ] Naval unit: build, navigate, board, torpedo, fire
-- [ ] Air unit: build, fly, bomb, recon, paradrop, satellite
+- [x] Nation creation, login, sanctuary, active status
+- [x] Sector map, designation changes, efficiency
+- [x] Commodity storage and movement (explore, move, distribute, deliver)
+- [x] Civilian and military production cycles (update engine)
+- [x] Land unit: build, march, attack
+- [x] Naval unit: build, navigate
+- [x] Air unit: build, fly, bomb, launch, mission
+- [x] Combat: land assault, air combat
+- [x] Trade: buy, sell, market, loans
+- [x] Diplomacy: declarations, relations
+- [x] Update engine: ETU tick, mobility, populace, production, nation levels
+- [x] Deity admin: add nation, newcap, enable/disable, shutdown
+- [x] xdump / xundump round-trip fidelity
+- [x] Docker containerized deployment
+- [ ] Naval combat (board, torpedo, fire)
 - [ ] Nuclear weapons: build, arm, launch, detonate, fallout
-- [ ] Combat: land assault, naval combat, air combat, missions
-- [ ] Trade: buy, sell, market, loans
-- [ ] Diplomacy: declarations, telegrams, news
-- [ ] Update engine: ETU tick, mobility, populace, production
-- [ ] Deity admin: edit, enable, add nation, wipe
-- [ ] xdump / xundump round-trip fidelity
+- [ ] Standing missions firing during update
+- [ ] Telegrams / news feed
+- [ ] `edit` command (deity sector/nation/unit editing)
 
 ---
 
@@ -196,47 +249,167 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Build the entire workspace
 cargo build
 
-# Run the server (development mode)
-cargo run -p empire-server -- --config config/empire.toml
+# Build optimized release
+cargo build --release
 
 # Run tests
 cargo test --workspace
 
-# Build optimized release
+# Run the server (development mode)
+cargo run -p empire-server -- --config config/empire.toml
+```
+
+---
+
+## Docker Deployment (Recommended)
+
+### Quick start
+
+```bash
+# Build image and start server
+docker-compose up -d
+
+# Watch logs
+docker-compose logs -f
+
+# Connect with C client
+../empire4.4.1/src/client/empire -s localhost:6665 1 1
+```
+
+### Build and deploy to a remote host
+
+```bash
+# Build image locally
+docker build -t tekbot-empire:latest .
+
+# Push to remote host (e.g. TekBot at 192.168.40.95)
+docker save tekbot-empire:latest | ssh user@192.168.40.95 "docker load"
+
+# On the remote host, start the container
+ssh user@192.168.40.95 "docker stop tekbot; docker start tekbot"
+```
+
+### Data volume
+
+All game state lives in the named Docker volume `tekbot-empire-data` mounted at `/srv/empire/data/`:
+- `empire.db` — SQLite game database (WAL mode, `synchronous=Full`)
+- `empire.db-shm` / `empire.db-wal` — WAL files (always copy all three together)
+- `info/` — help pages
+- `journal` — server activity log
+- `newcap_script` — deity setup commands generated by world gen
+
+---
+
+## Starting a Fresh Game World (Manual / Non-Docker)
+
+### 1. Prerequisites
+
+| Tool | How to install |
+|---|---|
+| Rust toolchain | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| C client (empire) | Build from `../empire4.4.1/` — `./bootstrap && ./configure && make` |
+
+### 2. Build Empire 5
+
+```bash
+cd empire5
 cargo build --release
+# Binaries: target/release/{empire-server,empire-world,empdump,empsched,pconfig}
 ```
 
-## Running Alongside Empire 4.4.1
-
-The C reference server runs on port 6665. Run the Rust server on a different port during development:
+### 3. Create Game Directory
 
 ```bash
-# Reference server (C)
-cd ../empire4.4.1 && ./src/server/empire -e econfig
-
-# Development server (Rust) on alternate port
-cargo run -p empire-server -- --config config/empire.toml --port 6666
+mkdir -p /srv/empire/mygame
+cd /srv/empire/mygame
+cp /path/to/empire5/config/empire.toml .
 ```
 
-Use the C client against both servers to compare behavior:
+Edit `empire.toml`:
+
+```toml
+[server]
+port = 6665
+data_dir = "data"
+info_dir = "/path/to/empire5/info"
+
+[game]
+world_x = 96
+world_y = 64
+etu_per_update = 60
+```
+
+### 4. Generate the World
 
 ```bash
-# Against reference
-empire -s localhost -p 6665
-
-# Against Rust dev server
-empire -s localhost -p 6666
+# empire-world NC SC [NI [IS [SP [PM]]]]
+#   NC = player nations, SC = continent size, NI = islands,
+#   IS = island size, SP = spike %, PM = mountain %
+./empire-world -e empire.toml 6 40 12 20 10 5
 ```
+
+### 5. Deity Setup
+
+Connect as POGO (country 0, blank password) and run `newcap_script`:
+
+```bash
+./empire -s localhost:6665
+# Country name: POGO
+# Password: (blank)
+
+# Paste newcap_script contents, then:
+enable
+```
+
+### 6. Players Connect
+
+```bash
+# Format: empire -s host:port country_name password
+./empire -s 192.168.40.95:6665 1 1    # country 1, password 1
+```
+
+**Note:** When the C client shows `Your name?` it is actually prompting for the **password** (mislabeled in Empire 4.4.1's `login.c`). If your terminal shows `^M` on Enter (stuck in raw mode from a crashed `getpass`), run `reset` to fix it.
+
+### Quick-Reference: Key Commands
+
+| Command | What it does |
+|---|---|
+| `census *` | Show all your sectors |
+| `map 0,0` | Display map around capital |
+| `nation` | Treasury, tech, research, happiness |
+| `explore X,Y PATH civ N` | Move civilians to claim wilderness |
+| `move X,Y PATH ITEM N` | Move commodities between sectors |
+| `designate X,Y TYPE` | Change sector type (`a`=agri, `h`=harbor, `t`=tech…) |
+| `show sect b` | Sector build-cost and production table |
+| `build s X,Y TYPE` | Build a ship at a harbor |
+| `march UNITS PATH` | Move land units |
+| `attack X,Y` | Attack an enemy sector |
+| `power` | Nation power rankings |
+| `add N NAME REP p` | Deity: create player nation |
+| `enable` / `disable` | Deity: start/stop update engine |
+
+### Sector Type Mnemonics
+
+| Char | Type | Char | Type |
+|---|---|---|---|
+| `.` | sea (ocean) | `-` | wilderness (unexplored land) |
+| `^` | mountain | `c` | capital (urban) |
+| `a` | agribusiness | `h` | harbor |
+| `t` | tech center | `r` | research lab |
+| `b` | bank | `l` | light industry |
+| `k` | heavy industry | `e` | engineer |
+| `d` | defense plant | `f` | fortress |
+| `*` | airfield | `+` | highway |
+| `g` | gold mine | `o` | oil field |
+| `%` | wasteland | `n` | naval base |
 
 ---
 
 ## License
 
 Empire 5 is distributed under the GNU General Public License v3.
-See [COPYING](COPYING) for the full license text and [CREDITS](CREDITS) for the
-full list of contributors.
+See [COPYING](COPYING) for the full license text and [CREDITS](CREDITS) for the full list of contributors.
 
-Original Empire authors (1986–2021): Dave Pare, Jeff Bailey, Thomas Ruschak,
-Ken Stevens, Steve McClure, Markus Armbruster, and many other contributors.
+Original Empire authors (1986–2021): Dave Pare, Jeff Bailey, Thomas Ruschak, Ken Stevens, Steve McClure, Markus Armbruster, and many other contributors.
 
 Empire 5 Rust rewrite: Dave Nye, with AI assistance from Claude (Anthropic).

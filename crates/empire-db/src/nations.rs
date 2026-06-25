@@ -211,8 +211,10 @@ pub async fn verify_passwd(db: &Db, cnum: u8, password: &str) -> DbResult<bool> 
     if n.status == NatStatus::Visitor {
         return Ok(true);
     }
+    // Empty hash means no password has been set yet — accept any password
+    // (mirrors original Empire 4.x nat.c behaviour: empty nat_cdes accepts all).
     if n.passwd_hash.is_empty() {
-        return Ok(password.is_empty());
+        return Ok(true);
     }
     Ok(bcrypt::verify(password, &n.passwd_hash).unwrap_or(false))
 }
@@ -323,11 +325,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verify_passwd_empty_hash_accepts_empty_password() {
+    async fn verify_passwd_empty_hash_accepts_any_password() {
+        // Empty hash means "no password set" — any password (including blank) is accepted.
         let db = test_db().await;
         put(&db, &make_nation(1, 1, NatStatus::Active, "X")).await.unwrap();
         assert!(verify_passwd(&db, 1, "").await.unwrap());
-        assert!(!verify_passwd(&db, 1, "wrong").await.unwrap());
+        assert!(verify_passwd(&db, 1, "anything").await.unwrap());
+        assert!(verify_passwd(&db, 1, "tekmage").await.unwrap());
     }
 
     #[tokio::test]

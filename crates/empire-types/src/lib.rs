@@ -29,12 +29,18 @@ pub mod nation;
 pub mod sector;
 pub mod sector_chr;
 pub mod product_chr;
+pub mod item_chr;
 pub mod ship;
+pub mod ship_chr;
 pub mod plane;
+pub mod plane_chr;
 pub mod land;
+pub mod land_chr;
 pub mod nuke;
 pub mod unit;
 pub mod selector;
+pub mod trade;
+pub mod loan;
 
 pub use coords::{Coord, NatId, XyOffset, Range};
 pub use commodity::{Item, Packaging};

@@ -1,0 +1,36 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+Command : SELL
+Command : SELL
+Expert
+[##:##] Command : sell <COMMODITY> <SECT> <AMOUNT> <PRICE>
+The sell command allows nations to sell commodities on the open market.
+Not all commodities can be traded --
+notably civilians and military.
+The <COMMODITY> is the type of commodity you are selling,
+<SECT> represents the sector which will be selling items.
+Only harbors and warehouses
+which are at least 60% efficient may sell goods.
+<AMOUNT>, if positive,
+reflects the amount of food to be taken from each sector.
+If negative,
+the amount shows the lower limit of food required to be
+present in that sector and will only sell food in excess of that limit.
+<PRICE> is the base price of the commodity per unit to the world.
+In addition, the sector selling needs to have at least 1 mobility to
+sell goods.
+Typical output looks like:
+[7:640] Command : sell food 4,-2 10 5
+Sold 10 food at 4,-2 (206 left)
+[7:639] Command : sell food 4,-2 -100 5
+Sold 106 food at 4,-2 (100 left)
+Only harbors and warehouses
+may sell items.  Also, note that due to the
+time delay market, you don't get any money until the goods are actually
+bidded upon and paid for once the bidding time is up.
+There is a certain overhead on selling items, based on the difficulty
+of moving the items in question.  This is based on the tax you pay
+which is set by the deity (see info version).
+See also : buy
+, reset
+, Commerce

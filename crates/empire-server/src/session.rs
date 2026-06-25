@@ -182,15 +182,16 @@ pub async fn handle(
             }
 
             "pass" => {
-                // pass <password>  — verify password for current cnum
-                match (ctx.cnum, parts.get(1).copied()) {
-                    (None, _) => {
+                // pass [<password>]  — verify password for current cnum.
+                // A missing argument is treated as an empty password so that
+                // clients which trim trailing whitespace from "pass " can
+                // still authenticate nations whose passwd_hash is unset.
+                let pw = parts.get(1).copied().unwrap_or("");
+                match ctx.cnum {
+                    None => {
                         send(&mut writer, code::CMDERR, "need country first").await?;
                     }
-                    (Some(_), None) => {
-                        send(&mut writer, code::BADCMD, "Usage: pass <password>").await?;
-                    }
-                    (Some(cnum), Some(pw)) => {
+                    Some(cnum) => {
                         let gs = state.read().await;
                         let ok = nations::verify_passwd(&gs.db, cnum, pw).await;
                         drop(gs);
@@ -463,9 +464,10 @@ where
         }
     }
 
-    // Initial prompt
+    // Initial prompt — format is "<minutes> <btus>" to satisfy the C client's
+    // sscanf("%d %d") in servcmd.c.  We don't track BTUs yet so send 0 0.
     writer.write_all(
-        protocol::response(code::PROMPT, "Command:").as_bytes()
+        protocol::response(code::PROMPT, "0 0").as_bytes()
     ).await?;
 
     // Command loop — mirrors player_main() / command() in player.c
@@ -506,7 +508,7 @@ where
                 drop(gs);
                 writer.write_all(output.as_bytes()).await?;
                 writer.write_all(
-                    protocol::response(code::PROMPT, "Command:").as_bytes()
+                    protocol::response(code::PROMPT, "0 0").as_bytes()
                 ).await?;
             }
         }

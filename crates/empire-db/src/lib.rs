@@ -44,6 +44,8 @@ pub mod relations;
 pub mod scan;
 pub mod xdump;
 pub mod xundump;
+pub mod trades;
+pub mod loans;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -70,6 +72,7 @@ impl Db {
         let opts = SqliteConnectOptions::from_str(&url)?
             .create_if_missing(true)
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Full)
             .foreign_keys(true);
 
         let pool = SqlitePool::connect_with(opts).await?;
@@ -114,6 +117,15 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 5 {
+            sqlx::raw_sql(include_str!("migrations/005_trade_loans.sql"))
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -132,6 +144,8 @@ pub(crate) async fn test_db() -> Db {
     sqlx::raw_sql(include_str!("migrations/003_che_fields.sql"))
         .execute(&pool).await.unwrap();
     sqlx::raw_sql(include_str!("migrations/004_thresholds_and_relations.sql"))
+        .execute(&pool).await.unwrap();
+    sqlx::raw_sql(include_str!("migrations/005_trade_loans.sql"))
         .execute(&pool).await.unwrap();
     Db { pool }
 }

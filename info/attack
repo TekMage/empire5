@@ -1,0 +1,11 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+Command : ATTACK
+Command : ATTACK
+Basic
+[##:##] Command : attack <SECT> [<forts?> <ships?> <arty?> <planes?>]
+The attack command is used to attack a sector from neighboring sectors.
+For more details, see "info Attacking".
+See also : Attacking
+, Combat
+, LandUnits

@@ -1,0 +1,15 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+Command : ADD
+Command : ADD
+Expert
+[##:##] Command : add <NAT> <NAME> <REP> <visitor|player|god|delete>
+[##:##] Command : add 1 bunky mypass p
+This adds a new player country to the game.  Use newcap to
+create its sanctuary.
+[##:##] Command : add 2 visitor visitor v
+This adds a visitor country to the game.
+[##:##] Command : add 1 bunky mypass d
+This removes bunky from the game.
+See also : newcap
+, Deity

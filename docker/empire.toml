@@ -1,0 +1,30 @@
+# Empire 5 — Docker container configuration
+# All paths are absolute and rooted under /srv/empire/data (the named volume).
+
+[server]
+listen_addr   = ""           # bind all interfaces inside the container
+port          = 6665
+data_dir      = "/srv/empire/data"
+info_dir      = "/srv/empire/info"
+schedule_file = "/srv/empire/data/schedule"
+keep_journal  = true
+motd_file     = "/srv/empire/data/motd"
+down_file     = "/srv/empire/data/down"
+tel_dir       = "/srv/empire/data/tele"
+
+[game]
+etu_per_update    = 60
+world_x           = 96
+world_y           = 64
+start_cash        = 20000
+startmob          = 127
+opt_market        = false
+
+[update]
+update_interval_secs = 3600   # fallback when no schedule file present
+allow_force          = false
+
+[limits]
+max_nations     = 99
+max_connections = 128
+max_idle        = 15

@@ -46,6 +46,7 @@
 //  10. mob_inc_all    (mobility accrual for all game objects)
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time;
@@ -102,6 +103,7 @@ pub async fn run_update_loop(
     cfg: UpdateConfig,
     journal: Arc<Journal>,
     config: Arc<Config>,
+    updates_enabled: Arc<AtomicBool>,
 ) {
     let fallback_secs = cfg.update_interval_secs.max(60);
     info!(fallback_secs, "Update engine started");
@@ -111,6 +113,12 @@ pub async fn run_update_loop(
         let sleep_dur = next_update_sleep(&config, fallback_secs);
         info!(sleep_secs = sleep_dur.as_secs(), "Next update scheduled");
         time::sleep(sleep_dur).await;
+
+        // ── Check if updates are enabled ─────────────────────────────────────
+        if !updates_enabled.load(Ordering::Relaxed) {
+            info!("Updates disabled — skipping tick");
+            continue;
+        }
 
         // ── Run the update under the exclusive write lock ────────────────────
         let mut gs = state.write().await;

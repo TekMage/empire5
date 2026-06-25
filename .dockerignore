@@ -1,0 +1,8 @@
+# Exclude from Docker build context — keeps image small and build fast
+target/
+.git/
+.gitignore
+data/
+*.md
+reference/
+empire4.4.1/

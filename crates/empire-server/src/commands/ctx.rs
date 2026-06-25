@@ -18,7 +18,9 @@
 use empire_types::Nation;
 use empire_types::coords::Coord;
 use empire_db::Db;
+use empire_config::Config;
 use crate::subs::geo;
+use crate::state::GameState;
 
 /// Context threaded through every command handler.
 pub struct CmdCtx<'a> {
@@ -28,8 +30,12 @@ pub struct CmdCtx<'a> {
     pub nat: Nation,
     /// True if the player has deity (administrator) privileges.
     pub is_deity: bool,
-    /// DB handle (read-only during a command; updates hold the write lock).
+    /// DB handle shortcut (same as &state.db; kept for ergonomics).
     pub db: &'a Db,
+    /// Full game state — needed by enable/disable/shutdown commands.
+    pub state: &'a GameState,
+    /// Server configuration — needed by show updates and other commands.
+    pub config: &'a Config,
     /// World width in sectors.
     pub world_x: i32,
     /// World height in sectors.
