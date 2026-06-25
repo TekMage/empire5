@@ -413,7 +413,10 @@ class cenWin:
                 "rdbe")
 
         def toggleStart(self, name):
-            if empDb.megaDB['SECTOR'][self.key].get('off') == 0:
+            DB = empDb.megaDB['SECTOR'].get(self.key)
+            if DB is None:
+                return
+            if DB.get('off') == 0:
                 cmd = "stop"
             else:
                 cmd = "start"
@@ -444,7 +447,9 @@ class cenWin:
                 "rdbe")
 
         def SetCurrent(self, comd):
-            DB = empDb.megaDB['SECTOR'][self.key]
+            DB = empDb.megaDB['SECTOR'].get(self.key)
+            if DB is None:
+                return
             dx = DB.get('dist_x'); dy = DB.get('dist_y')
             if dx is not None and dy is not None and (dx, dy) != self.key:
                 dist = (dx, dy)
