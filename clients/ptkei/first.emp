@@ -4,6 +4,5 @@
 
 ## Parse version to find the worldsize
 ## Parse nation for country identification
-## Enable inform
-## Get all the realms
-null burst version; nation; toggle inform on; toggle techlists on; realm; show sector stat; show sector build
+## Get sector stats
+null burst version; nation; show sect stat; show sect build

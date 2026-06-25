@@ -133,7 +133,7 @@ class dictDB:
                 'primary_headers' : headers,
                 'primary_values': totalList,
                 'timestamp': self.timestamp,
-                'secondary_keys': self.secondary.keys()}
+                'secondary_keys': list(self.secondary.keys())}
     def __setstate__(self, state):
         """Pickle module handler: restore a saved class."""
         pri_keytype = self.primary_keytype = state['primary_keytype']

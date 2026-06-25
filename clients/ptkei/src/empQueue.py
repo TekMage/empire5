@@ -763,6 +763,13 @@ class AsyncHandler:
             viewer.inform()
         elif proto == C_FLASH:
             viewer.flash(msg)
+        elif proto in (C_INIT, C_CMDOK):
+            if msg:
+                viewer.flash(msg)
+        elif proto in (C_CMDERR, C_BADCMD):
+            viewer.Error('PTkEI: %s' % (msg,))
+        elif proto == C_PROMPT:
+            pass  # stray prompt — ignore
         else:
             viewer.Error('PTkEI: Bad protocol "%s"' % (line,))
 
@@ -821,6 +828,15 @@ class NormalHandler:
         proto = parts[0] if parts else ""
         msg = parts[1].rstrip('\n') if len(parts) > 1 else ""
 
+        if proto in (C_CMDERR, C_BADCMD):
+            # Server rejected the command — display as error output.
+            self.out.data(msg)
+            return
+        if proto in (C_INIT, C_CMDOK):
+            # Server info/acknowledgement lines — display as normal data.
+            if msg:
+                self.out.data(msg)
+            return
         if proto not in (C_DATA, C_PROMPT, C_FLUSH):
             # Can't handle the proto - send to async class.
             empQueue.defParser.line(line)
