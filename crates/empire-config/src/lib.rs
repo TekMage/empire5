@@ -31,6 +31,8 @@
 // The original econfig key-value format is replaced by TOML.
 // Key names and default values are preserved from constants.c.
 
+pub mod rdsched;
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -101,6 +103,8 @@ pub struct GameConfig {
     pub world_x: i32,
     /// World height in sectors (must be even; default 32 matches fairland).
     pub world_y: i32,
+    /// Enable the market/trade system (mirrors opt_MARKET in C).
+    pub opt_market: bool,
 }
 
 /// Update schedule settings.
@@ -259,6 +263,7 @@ impl Default for GameConfig {
             lost_keep_hours: 48,
             world_x: 64,
             world_y: 32,
+            opt_market: false,
         }
     }
 }

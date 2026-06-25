@@ -51,6 +51,7 @@ use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{info, warn};
 
+use chrono::{Local, Duration as ChronoDuration};
 use empire_config::{Config, UpdateConfig, UpdateRates};
 use empire_types::commodity::Item;
 use empire_types::nation::NatStatus;
@@ -92,21 +93,26 @@ pub struct Budget {
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// Run the update loop indefinitely.  Called as a Tokio task from main.
+///
+/// If `config.server.schedule_file` exists, update times are read from it
+/// (port of `rdsched.c` via `empire_config::rdsched`).  Otherwise the loop
+/// falls back to the fixed `update_interval_secs` interval.
 pub async fn run_update_loop(
     state: Arc<RwLock<GameState>>,
     cfg: UpdateConfig,
     journal: Arc<Journal>,
     config: Arc<Config>,
 ) {
-    let interval_secs = cfg.update_interval_secs.max(60);
-    let mut ticker = time::interval(Duration::from_secs(interval_secs));
-    ticker.set_missed_tick_behavior(time::MissedTickBehavior::Delay);
-
-    info!(interval_secs, "Update engine started");
+    let fallback_secs = cfg.update_interval_secs.max(60);
+    info!(fallback_secs, "Update engine started");
 
     loop {
-        ticker.tick().await;
+        // ── Determine how long to sleep until the next update ────────────────
+        let sleep_dur = next_update_sleep(&config, fallback_secs);
+        info!(sleep_secs = sleep_dur.as_secs(), "Next update scheduled");
+        time::sleep(sleep_dur).await;
 
+        // ── Run the update under the exclusive write lock ────────────────────
         let mut gs = state.write().await;
         gs.update_number += 1;
         let tick = gs.update_number;
@@ -121,6 +127,51 @@ pub async fn run_update_loop(
 
         info!(tick, "Update tick complete");
         drop(gs);
+    }
+}
+
+/// Return how long to sleep before the next update.
+///
+/// Reads the schedule file if it exists and is parseable.  Falls back to
+/// `fallback_secs` when the file is absent, empty, or cannot be parsed.
+fn next_update_sleep(config: &Config, fallback_secs: u64) -> Duration {
+    let sched_path = &config.server.schedule_file;
+    if sched_path.as_os_str().is_empty() || !sched_path.exists() {
+        return Duration::from_secs(fallback_secs);
+    }
+
+    // Need at least 30 s lead time so we don't race the previous update tick.
+    let now   = Local::now();
+    let after = now + ChronoDuration::seconds(30);
+    // anchor: current time rounded up to the next minute (C convention)
+    let anchor = {
+        let secs = now.timestamp();
+        let rounded = (secs + 59) / 60 * 60;
+        match chrono::DateTime::from_timestamp(rounded, 0) {
+            Some(utc) => utc.with_timezone(&Local),
+            None => now,
+        }
+    };
+
+    match empire_config::rdsched::read_schedule(sched_path, after, anchor, 16) {
+        Ok(sched) if !sched.is_empty() => {
+            let next = sched[0];
+            let remaining = (next - now).to_std().unwrap_or(Duration::from_secs(fallback_secs));
+            info!(
+                next_update = %next.format("%Y-%m-%d %H:%M:%S"),
+                secs = remaining.as_secs(),
+                "Schedule file: next update"
+            );
+            remaining
+        }
+        Ok(_) => {
+            warn!(path = %sched_path.display(), "Schedule file has no upcoming updates — using fallback interval");
+            Duration::from_secs(fallback_secs)
+        }
+        Err(e) => {
+            warn!(path = %sched_path.display(), error = %e, "Cannot read schedule file — using fallback interval");
+            Duration::from_secs(fallback_secs)
+        }
     }
 }
 

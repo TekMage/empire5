@@ -38,6 +38,7 @@
 mod session;
 mod commands;
 mod update;
+mod marketup;
 mod state;
 mod error;
 mod protocol;
@@ -123,6 +124,13 @@ async fn main() -> anyhow::Result<()> {
     let update_config = Arc::new(config.clone());
     tokio::spawn(async move {
         update::run_update_loop(update_state, update_cfg, update_journal, update_config).await;
+    });
+
+    // Spawn the market update task (runs every 5 minutes when opt_market is true)
+    let market_state = Arc::clone(&state);
+    let opt_market = config.game.opt_market;
+    tokio::spawn(async move {
+        marketup::run_market_loop(market_state, opt_market).await;
     });
 
     // Bind TCP listener (replaces tcp_listen.c + player_accept thread)

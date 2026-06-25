@@ -97,8 +97,8 @@ The original text-based TCP protocol (port 6665) is preserved exactly. The C cli
   - [x] Nation levels: tech/research/education/happiness accumulation + aging
   - [x] Sector and product descriptor tables (dchr/pchr equivalent)
   - [x] Update rate constants in empire-config (all econfig-spec.h parameters)
-- [ ] Port market update (`server/marketup.c`) — deferred to Phase 4
-- [ ] Port update scheduler schedule-file support — deferred to Phase 4
+- [x] Port market update (`server/marketup.c`) — `marketup.rs` Tokio task, 5-min cadence, gated by `opt_market`; `check_market`/`check_trade` bodies stub until buy/sell commands land (Phase 6+)
+- [x] Port update scheduler schedule-file support — `rdsched.rs` in `empire-config` (port of `rdsched.c`); `run_update_loop` uses schedule file when present, falls back to `update_interval_secs`; `empsched` utility implemented
 
 ### Phase 4 — Game Subsystems (`src/lib/subs/`, 64 files) ✅
 Priority order by coupling:
@@ -156,7 +156,7 @@ Remaining (Phase 6+):
   - Deity nation ("POGO") and visitor slot auto-created on first run
   - CLI: `empire-world [OPTIONS] NC SC [NI [IS [SP [PM [DI [ID]]]]]]`
 - [ ] `empdump` — export/import via xdump (deferred; server xdump already works)
-- [ ] `empsched` — update scheduler (deferred; schedule built into server loop)
+- [x] `empsched` — print update schedule (reads schedule file, prints next N times)
 - [ ] `pconfig` — print config values (deferred; trivial)
 
 ### Phase 7 — Client (optional)
