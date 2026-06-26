@@ -17,6 +17,11 @@
 // Unlike explore, move only succeeds if EVERY sector along the path is
 // already owned by the player.  It will not claim wilderness.
 // Mobility cost: 1 mob per step, deducted from the source sector.
+//
+// TODO: warehouse discount — when a step passes through (or terminates at)
+// a SectorType::Warehouse at >= 60% efficiency, apply ~1/3 normal mobility
+// cost for that leg.  Same discount should apply in the distribution update
+// tick (update.rs) when routing through a warehouse node.
 
 use empire_db::sectors;
 use empire_types::commodity::Item;

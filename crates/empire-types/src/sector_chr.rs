@@ -208,6 +208,12 @@ const DCHR: &[SectorChr] = &[
                 maxpop: 0, is_water: false, is_sanct: false, is_deity: true,
                 is_enlist: false, name: "unknown" },
     // Warehouse (26 → index 27): "w" — warehouse (storage hub, no production)
+    // TODO: move.rs and the distribution update tick should give a ~1/3 mobility
+    // cost discount on transfers into/out of a warehouse at >= 60% efficiency.
+    // A warehouse at 100% efficiency is the intended replacement for the capital
+    // as the central distribution node once a player has explored a good central
+    // location.  Until that discount logic is added the sector is functional as
+    // storage but provides no movement-cost benefit.
     SectorChr { prd: PRD_NONE, peff: 0, bwork: 100, cost: 1000, maint: 0,
                 maxpop: 999, is_water: false, is_sanct: false, is_deity: false,
                 is_enlist: false, name: "warehouse" },
