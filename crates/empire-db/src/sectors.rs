@@ -67,6 +67,7 @@ fn sect_type(v: i64) -> SectorType {
         19 => SectorType::Tech,      20 => SectorType::Bravery,
         21 => SectorType::LightIndus, 22 => SectorType::HeavyIndus,
         23 => SectorType::Gold,      24 => SectorType::Oil,
+        25 => SectorType::Unknown,   26 => SectorType::Warehouse,
         _  => SectorType::Unknown,
     }
 }
