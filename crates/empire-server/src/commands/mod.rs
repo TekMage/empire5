@@ -95,7 +95,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "map"                       => map_cmd::run(args, &ctx).await,
         "bmap"                      => map_cmd::run(args, &ctx).await,
         "smap" | "sector" | "sect"  => map_cmd::run(args, &ctx).await,
-        "designate" | "desi"        => designate::run(args, &ctx).await,
+        "designate" | "desi" | "des" => designate::run(args, &ctx).await,
         "threshold" | "thre"        => threshold::run(args, &ctx).await,
         "relations" | "rela"        => relations_cmd::run(args, &ctx).await,
         "declare"   | "decl"        => declare::run(args, &ctx).await,

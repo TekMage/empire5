@@ -161,6 +161,7 @@ fn parse_sector_type(s: &str) -> Option<SectorType> {
         'k' => SectorType::HeavyIndus,
         'g' => SectorType::Gold,
         'o' => SectorType::Oil,
+        'w' => SectorType::Warehouse,
         _   => return None,
     })
 }

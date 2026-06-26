@@ -62,6 +62,7 @@ pub enum SectorType {
     Gold        = 23,  // g  — gold mine
     Oil         = 24,  // o  — oil field
     Unknown     = 25,  // ?  — occupied / uncharted
+    Warehouse   = 26,  // w  — warehouse (storage)
 }
 
 impl SectorType {
@@ -94,6 +95,7 @@ impl SectorType {
             SectorType::Gold       => 'g',
             SectorType::Oil        => 'o',
             SectorType::Unknown    => '?',
+            SectorType::Warehouse  => 'w',
         }
     }
 }

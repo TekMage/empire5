@@ -93,7 +93,7 @@ pub const PRD_HAP:    i8 = 14;  // happiness (strollers)
 //        Bank(10), Engineer(11), Airfield(12), Highway(13), Radar(14),
 //        Naval(15), Missile(16), Harbor(17), Fort(18), Tech(19),
 //        Bravery(20), LightIndus(21), HeavyIndus(22), Gold(23), Oil(24),
-//        Unknown(25)
+//        Unknown(25), Warehouse(26)
 //
 // Characteristics from sect.config; matched by semantic meaning (mnemonic
 // may differ between Rust enum and C config).
@@ -207,6 +207,10 @@ const DCHR: &[SectorChr] = &[
     SectorChr { prd: PRD_NONE, peff: 0, bwork: 100, cost: 0, maint: 0,
                 maxpop: 0, is_water: false, is_sanct: false, is_deity: true,
                 is_enlist: false, name: "unknown" },
+    // Warehouse (26 → index 27): "w" — warehouse (storage hub, no production)
+    SectorChr { prd: PRD_NONE, peff: 0, bwork: 100, cost: 1000, maint: 0,
+                maxpop: 999, is_water: false, is_sanct: false, is_deity: false,
+                is_enlist: false, name: "warehouse" },
 ];
 
 impl SectorChr {
