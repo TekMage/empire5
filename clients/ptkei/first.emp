@@ -5,4 +5,4 @@
 ## Parse version to find the worldsize
 ## Parse nation for country identification
 ## Get sector stats
-null burst version; nation; show sect stat; show sect build
+null burst version; nation; show sect s; show sect b

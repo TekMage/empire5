@@ -27,7 +27,7 @@ alias clear burst picky;rdbPe;clear_one i ir;clear_one l lc;clear_one h hc;clear
 alias newland burst des $1 ?ne=+&go>5 g;des $1 ?ne=+&oc>10 o;thr d $1 ?ne=g 1;thr o $1 ?ne=o 1;rdbe
 
 ## Macro to refresh the map display
-alias maps null eval version burst map *;radar [-xmax/2]:[xmax/2-1],[-ymax/2]:[ymax/2-1]
+alias maps null eval version burst map *;radar [-xmax//2]:[xmax//2-1],[-ymax//2]:[ymax//2-1]
 
 ## Macros for use with the mmove tool:
 ## civmvr <from realm> <to realm>
@@ -41,5 +41,5 @@ alias R read y
 ## server time and local time.  Therefore, at least one command that
 ## receives the server time should be sent to ensure the update timer is
 ## accurate.  The command "update" is as good as any..
-null show sect stat
+null show sect s
 null update

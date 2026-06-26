@@ -1633,7 +1633,10 @@ class ParseVersion(baseDisp):
         r"^Fire ranges are scaled by (?P<fire>"+ss_flt+r")$|"
 
         r"^(?P<goOptions>)Options enabled in this game:$|"
-        r"^(?P<goNoOptions>)Options disabled in this game:$"
+        r"^(?P<goNoOptions>)Options disabled in this game:$|"
+
+        # Empire 5 format: "World: 96 x 64  ETU: 60"
+        r"^World: (?P<e5worldX>\d+) x (?P<e5worldY>\d+)\s+ETU:\s*(?P<e5etu>\d+)$"
         )
     def data(self, msg):
         self.out.data(msg)
@@ -1643,8 +1646,7 @@ class ParseVersion(baseDisp):
                 self.opts.sort()
                 checkUpdated('version', name, self.opts)
                 self.pos = 0
-            self.opts[:0] = filter(
-                [x.strip() for x in msg.split(',') if x.strip()])
+            self.opts[:0] = [x.strip() for x in msg.split(',') if x.strip()]
             return
         mm = self.versionVars.match(msg)
         if mm is None:
@@ -1654,13 +1656,15 @@ class ParseVersion(baseDisp):
          grow, harv, birth, ubirth, eat, baby,
          interest, tax, utax, milcost, rescost, stroll,
          grad, havg, eavg, boost, decline, tbase, tafter,
-         Omax, Omob, Oeff, fire, goOptions, goNoOptions) = mm.group(
+         Omax, Omob, Oeff, fire, goOptions, goNoOptions,
+         e5worldX, e5worldY, e5etu) = mm.group(
              'maxX', 'maxY', 'coun',
              'etu', 'date', 'updt', 'minutes', 'btu',
              'grow', 'harv', 'birth', 'ubirth', 'eat', 'baby',
              'interest', 'tax', 'utax', 'milcost', 'rescost', 'stroll',
              'grad', 'havg', 'eavg', 'boost', 'decline', 'tbase', 'tafter',
-             'Omax', 'Omob', 'Oeff', 'fire', 'goOptions', 'goNoOptions')
+             'Omax', 'Omob', 'Oeff', 'fire', 'goOptions', 'goNoOptions',
+             'e5worldX', 'e5worldY', 'e5etu')
         if maxX is not None:
             checkUpdated('version', 'worldsize',
                          (int(maxX), int(maxY)))
@@ -1741,6 +1745,9 @@ class ParseVersion(baseDisp):
         elif goNoOptions is not None:
             self.opts = []
             self.pos = 2
+        elif e5worldX is not None:
+            checkUpdated('version', 'worldsize', (int(e5worldX), int(e5worldY)))
+            checkUpdated('version', 'ETUSeconds', int(e5etu))
 
 class ParseNation(baseDisp):
     """Parse nation command."""
@@ -2126,6 +2133,7 @@ class ParseShow(baseDisp):
         self.out.Begin(cmd)
         self.what = ''
     def data(self,msg):
+        global sectorDesignationConvert, sectorNameConvert, s_sectorName, look_info
         self.out.data(msg)
         if 'sector type                 $   lcm  hcm     $      $' in msg:
             self.what = 'sebu'
@@ -2145,6 +2153,50 @@ class ParseShow(baseDisp):
         if 'lcm hcm guns' in msg:
             self.what = 'labu'
             return
+        # Empire 5 format: "sect              maint  maxpop  bwork"
+        if msg.startswith('sect') and 'maint' in msg and 'maxpop' in msg and 'bwork' in msg:
+            self.what = 'e5stat'
+            return
+        # Empire 5 build format: "sector type  bld mob cost  bld name"
+        if msg.startswith('sector type') and 'bld' in msg and 'bld name' in msg:
+            self.what = 'e5build'
+            return
+        if self.what == 'e5stat':
+            # "-   (Land             )     0   65535  100"
+            if len(msg) < 2 or msg[0] == ' ':
+                return
+            des = msg[0]
+            paren_start = msg.find('(')
+            paren_end = msg.find(')')
+            if paren_start >= 0 and paren_end > paren_start:
+                name = msg[paren_start+1:paren_end].strip()
+                nums = msg[paren_end+1:].split()
+                maxpop = int(nums[1]) if len(nums) >= 2 else 9999
+            else:
+                name = des
+                maxpop = 9999
+            empDb.megaDB['sectortype'][des] = {
+                'zmcost': 0.0, 'mcost': 0.0, 'name': name,
+                'pack_mil': 1, 'pack_uw': 1, 'pack_civ': 10,
+                'pack_bar': 1, 'pack_other': 1, 'maxpop': maxpop}
+            if des not in sectorDesignationConvert or sectorDesignationConvert[des] != name:
+                sectorDesignationConvert[des] = name
+                sectorNameConvert = {v: k for k, v in sectorDesignationConvert.items()}
+                s_sectorName = (r"(?P<sectorName>"+
+                                '|'.join(sectorDesignationConvert.values())+")")
+            return
+        if self.what == 'e5build':
+            # "-           100   0      0   Land"
+            if len(msg) < 2 or msg[0] == ' ':
+                return
+            parts = msg.split()
+            if len(parts) >= 4:
+                des = parts[0]
+                build_cost = int(parts[3]) if parts[3].lstrip('-').isdigit() else 0
+                name = ' '.join(parts[4:]) if len(parts) >= 5 else ''
+                if des in empDb.megaDB['sectortype']:
+                    empDb.megaDB['sectortype'][des]['cost_to_des'] = build_cost
+            return
         if self.what == 'sebu':
             if len(msg) < 2 or msg[0] == ' ' or msg[1] != ' ':
                 return
@@ -2155,8 +2207,6 @@ class ParseShow(baseDisp):
             empDb.megaDB['sectortype'][item[0]]['hcm_eff'] =  int(item[4])/100
             return
         if self.what == 'sest':
-#wmf
-            global sectorDesignationConvert, sectorNameConvert, s_sectorName, look_info
             item = msg.split()
             type = item[0]
             item[0:1] = []
