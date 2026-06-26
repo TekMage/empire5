@@ -749,7 +749,7 @@ class CmdEval(baseCommand):
                 type, db),
                       self.out, 1)
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
 
 class CmdForEach(baseCommand):
 
@@ -772,7 +772,7 @@ class CmdForEach(baseCommand):
                 empEval.estrToExpr(mm.group('command')),
                 'SECTOR')
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
         else:
             for i in list:
                 self.Send(i, self.out, 1)
@@ -854,7 +854,7 @@ class CmdMMove(baseCommand):
                 "(xloc+0,yloc+0), __db[1], int(("+dlevel+")-"+commodity+")",
                 'SECTOR')
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
             return
         
         # Create usable dictionaries from the returned list.
@@ -928,7 +928,7 @@ class CmdEMove(baseCommand):
                 'SECTOR')
 
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
             return
 
         # Create usable dictionaries from the returned list.
@@ -1352,7 +1352,7 @@ class CmdRemove(baseCommand):
                     mm.group('selectors')),
                 db)
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
         else:
             for unit in list:
                 id = unit[0]
@@ -1541,7 +1541,7 @@ class CmdDmove(baseCommand):
                 "(xloc+0,yloc+0), __db[1], int(("+commodity[0]+"_dist)-"+commodity+")",
                 'SECTOR')
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
             return
 
         # Create usable dictionaries from the returned list.
@@ -1593,7 +1593,7 @@ class CmdSetFood(baseCommand):
                 mm.group('selectors')),
                 'SECTOR')
         except empEval.error as e:
-            viewer.Error(e)
+            viewer.Error(str(e))
             return
 
         if mm.group('local'):

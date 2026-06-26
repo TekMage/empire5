@@ -77,6 +77,7 @@ class delayedBinding:
     for i, j in [
         ('__add__', 'self.operator.add'), ('__sub__', 'self.operator.sub'),
         ('__mul__', 'self.operator.mul'), ('__truediv__', 'self.operator.truediv'),
+        ('__floordiv__', 'self.operator.floordiv'),
         ('__mod__', 'self.operator.mod'),
         ('__lshift__', 'self.operator.lshift'),
         ('__rshift__', 'self.operator.__rshift__'),
@@ -91,6 +92,7 @@ class delayedBinding:
     for i, j in [
         ('__radd__', 'self.operator.add'), ('__rsub__', 'self.operator.sub'),
         ('__rmul__', 'self.operator.mul'), ('__rtruediv__', 'self.operator.truediv'),
+        ('__rfloordiv__', 'self.operator.floordiv'),
         ('__rmod__', 'self.operator.mod'),
         ('__rlshift__', 'self.operator.lshift'),
         ('__rrshift__', 'self.operator.__rshift__'),
@@ -285,7 +287,8 @@ def initializeSelectors():
 initializeSelectors()
 
 
-error = "empEval error"
+class error(Exception):
+    pass
 
 
 ###########################################################################
