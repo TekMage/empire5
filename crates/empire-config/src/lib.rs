@@ -105,6 +105,10 @@ pub struct GameConfig {
     pub world_y: i32,
     /// Enable the market/trade system (mirrors opt_MARKET in C).
     pub opt_market: bool,
+    /// Starting civilians placed in a new capital by newcap.
+    pub newcap_start_civ: i16,
+    /// Starting food placed in a new capital by newcap.
+    pub newcap_start_food: i16,
 }
 
 /// Update schedule settings.
@@ -264,6 +268,8 @@ impl Default for GameConfig {
             world_x: 64,
             world_y: 32,
             opt_market: false,
+            newcap_start_civ: 500,
+            newcap_start_food: 5000,
         }
     }
 }

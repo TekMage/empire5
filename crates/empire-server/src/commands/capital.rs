@@ -164,7 +164,8 @@ pub async fn run_newcap(args: &str, ctx: &CmdCtx<'_>) -> String {
         sect.new_type = SectorType::Urban;
         sect.effic = 60;
         let mut inv = Inventory::zero();
-        inv.set(Item::Civil, 500);
+        inv.set(Item::Civil, ctx.config.game.newcap_start_civ);
+        inv.set(Item::Food,  ctx.config.game.newcap_start_food);
         sect.items = inv;
     }
 
