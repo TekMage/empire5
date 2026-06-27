@@ -66,7 +66,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let can_land = matches!(
         dest.sector_type,
-        SectorType::Airfield | SectorType::Naval | SectorType::Harbor | SectorType::Missile
+        SectorType::Airfield | SectorType::Harbor
     );
     if !can_land {
         return format!(

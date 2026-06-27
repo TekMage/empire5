@@ -158,15 +158,24 @@ fn nat_status(v: i64) -> NatStatus {
 }
 fn sect_type(v: i64) -> SectorType {
     match v {
-        -1=>SectorType::Sea, 0=>SectorType::Land, 1=>SectorType::Mountain,
-        2=>SectorType::Agri, 3=>SectorType::Uranium, 4=>SectorType::Plain,
-        5=>SectorType::Park, 6=>SectorType::Urban, 7=>SectorType::Research,
-        8=>SectorType::Wasteland, 9=>SectorType::Defense, 10=>SectorType::Bank,
-        11=>SectorType::Engineer, 12=>SectorType::Airfield, 13=>SectorType::Highway,
-        14=>SectorType::Radar, 15=>SectorType::Naval, 16=>SectorType::Missile,
-        17=>SectorType::Harbor, 18=>SectorType::Fort, 19=>SectorType::Tech,
-        20=>SectorType::Bravery, 21=>SectorType::LightIndus, 22=>SectorType::HeavyIndus,
-        23=>SectorType::Gold, 24=>SectorType::Oil, _=>SectorType::Unknown,
+        0 =>SectorType::Sea,          1 =>SectorType::Mountain,
+        2 =>SectorType::Sanctuary,    3 =>SectorType::Wasteland,
+        4 =>SectorType::Wilderness,   5 =>SectorType::Capital,
+        6 =>SectorType::UraniumMine,  7 =>SectorType::Park,
+        8 =>SectorType::DefensePlant, 9 =>SectorType::ShellIndus,
+        10=>SectorType::Mine,         11=>SectorType::GoldMine,
+        12=>SectorType::Harbor,       13=>SectorType::Warehouse,
+        14=>SectorType::Airfield,     15=>SectorType::Agri,
+        16=>SectorType::OilField,     17=>SectorType::LightManuf,
+        18=>SectorType::HeavyManuf,   19=>SectorType::Fortress,
+        20=>SectorType::TechCenter,   21=>SectorType::ResearchLab,
+        22=>SectorType::NuclearPlant, 23=>SectorType::Library,
+        24=>SectorType::Highway,      25=>SectorType::Radar,
+        26=>SectorType::Headquarters, 27=>SectorType::BridgeHead,
+        28=>SectorType::BridgeSpan,   29=>SectorType::Bank,
+        30=>SectorType::Refinery,     31=>SectorType::Enlist,
+        32=>SectorType::Plains,       33=>SectorType::BridgeTower,
+        _ =>SectorType::Wilderness,
     }
 }
 

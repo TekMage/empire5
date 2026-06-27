@@ -152,7 +152,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
 /// True if ships can navigate through this sector type.
 fn is_navigable(st: SectorType) -> bool {
-    matches!(st, SectorType::Sea | SectorType::Harbor | SectorType::Naval)
+    matches!(st, SectorType::Sea | SectorType::Harbor)
 }
 
 /// Determine if a ship uid matches the spec.

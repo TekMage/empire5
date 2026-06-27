@@ -266,10 +266,10 @@ mod tests {
     fn sector_dump_format() {
         let s = Sector {
             uid: 0, own: 1, x: 0, y: 0,
-            sector_type: SectorType::Urban, effic: 100, mobil: 60,
+            sector_type: SectorType::Capital, effic: 100, mobil: 60,
             off: false, loyal: 0, terr: [0;4], dterr: 0,
             dist_x: 0, dist_y: 0, avail: 0, flags: 0, elev: 0,
-            work: 100, coastal: false, new_type: SectorType::Urban,
+            work: 100, coastal: false, new_type: SectorType::Capital,
             min: 0, gmin: 0, fertil: 80, oil: 0, uran: 0, old_own: 0,
             che: 0, che_target: 0,
             items: Inventory::zero(), del: [DistEntry::default(); 26],

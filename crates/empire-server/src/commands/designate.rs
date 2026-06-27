@@ -39,10 +39,10 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         None => return format!("10 Unknown sector type: '{type_str}'\n"),
     };
 
-    // Validate: cannot redesignate to water, mountain, or deity-only
+    // Validate: cannot redesignate to water, mountain, or any deity-only type
     {
         let dchr = SectorChr::for_type(new_type);
-        if new_type == SectorType::Sea || new_type == SectorType::Mountain {
+        if dchr.is_water {
             return format!("10 Bad sector type '{}'\n", type_str);
         }
         if dchr.is_deity && !ctx.is_deity {
@@ -76,9 +76,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             continue; // already correct type
         }
 
-        // Check: cannot redesignate water or mountain sectors
-        if s.sector_type == SectorType::Sea || s.sector_type == SectorType::Mountain {
-            out.push_str(&format!("1 {xy}: cannot redesignate water/mountain\n"));
+        // Check: cannot redesignate deity-only sectors (water, mountain, sanctuary, wasteland)
+        if SectorChr::for_type(s.sector_type).is_deity && !ctx.is_deity {
+            out.push_str(&format!("1 {xy}: cannot redesignate that sector type\n"));
             continue;
         }
 
@@ -136,32 +136,39 @@ fn parse_sector_type(s: &str) -> Option<SectorType> {
     let ch = s.chars().next()?;
     Some(match ch {
         '.' => SectorType::Sea,
-        '-' => SectorType::Land,
         '^' => SectorType::Mountain,
-        'a' => SectorType::Agri,
-        'u' => SectorType::Uranium,
-        'p' => SectorType::Plain,
-        'P' => SectorType::Park,
-        'c' => SectorType::Urban,
-        'r' => SectorType::Research,
-        '%' => SectorType::Wasteland,
-        'd' => SectorType::Defense,
-        'b' => SectorType::Bank,
-        'e' => SectorType::Engineer,
-        '*' => SectorType::Airfield,
-        '+' => SectorType::Highway,
-        'j' => SectorType::Radar,
-        'n' => SectorType::Naval,
-        'm' => SectorType::Missile,
+        's' => SectorType::Sanctuary,
+        '\\' => SectorType::Wasteland,
+        '-' => SectorType::Wilderness,
+        'c' => SectorType::Capital,
+        'u' => SectorType::UraniumMine,
+        'p' => SectorType::Park,
+        'd' => SectorType::DefensePlant,
+        'i' => SectorType::ShellIndus,
+        'm' => SectorType::Mine,
+        'g' => SectorType::GoldMine,
         'h' => SectorType::Harbor,
-        'f' => SectorType::Fort,
-        't' => SectorType::Tech,
-        's' => SectorType::Bravery,
-        'l' => SectorType::LightIndus,
-        'k' => SectorType::HeavyIndus,
-        'g' => SectorType::Gold,
-        'o' => SectorType::Oil,
         'w' => SectorType::Warehouse,
+        '*' => SectorType::Airfield,
+        'a' => SectorType::Agri,
+        'o' => SectorType::OilField,
+        'j' => SectorType::LightManuf,
+        'k' => SectorType::HeavyManuf,
+        'f' => SectorType::Fortress,
+        't' => SectorType::TechCenter,
+        'r' => SectorType::ResearchLab,
+        'n' => SectorType::NuclearPlant,
+        'l' => SectorType::Library,
+        '+' => SectorType::Highway,
+        ')' => SectorType::Radar,
+        '!' => SectorType::Headquarters,
+        '#' => SectorType::BridgeHead,
+        '=' => SectorType::BridgeSpan,
+        'b' => SectorType::Bank,
+        '%' => SectorType::Refinery,
+        'e' => SectorType::Enlist,
+        '~' => SectorType::Plains,
+        '@' => SectorType::BridgeTower,
         _   => return None,
     })
 }

@@ -104,13 +104,12 @@ async fn build_ships(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: 
                 continue;
             }
 
-            // Ships must be built in harbor or naval base (unless deity)
+            // Ships must be built in a harbor (unless deity)
             if !ctx.is_deity
                 && sect.sector_type != SectorType::Harbor
-                && sect.sector_type != SectorType::Naval
             {
                 let xy = ctx.format_xy(sect.x, sect.y);
-                out.push_str(&format!("1 {xy}: ships must be built in harbor or naval base\n"));
+                out.push_str(&format!("1 {xy}: ships must be built in a harbor\n"));
                 continue;
             }
 

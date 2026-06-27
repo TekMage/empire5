@@ -10,28 +10,116 @@
 
 // "move" command — move commodities between owned sectors.
 //
-// Usage: move <x,y> <path> <commodity> <amount>
-//   e.g. move 0,0 j food 100
-//        move 2,0 ggn iron 50
+// Accepts two formats:
+//
+//   Classic ptkei format:  move <comm> <x,y> <amount> <x,y>
+//     e.g.  move civ 9,-1 95 8,-2
+//     The server auto-finds the shortest land path (BFS) and applies the move.
+//
+//   Path format:  move <x,y> <path> <comm> <amount>
+//     e.g.  move 0,0 j food 100
+//     The server walks the explicit path step by step.
 //
 // Unlike explore, move only succeeds if EVERY sector along the path is
 // already owned by the player.  It will not claim wilderness.
 // Mobility cost: 1 mob per step, deducted from the source sector.
-//
-// TODO: warehouse discount — when a step passes through (or terminates at)
-// a SectorType::Warehouse at >= 60% efficiency, apply ~1/3 normal mobility
-// cost for that leg.  Same discount should apply in the distribution update
-// tick (update.rs) when routing through a warehouse node.
 
+use std::collections::HashMap;
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use empire_types::sector::SectorType;
-use crate::subs::geo;
+use empire_types::coords::Coord;
+use crate::subs::geo::{self, DIRCH};
+use crate::subs::pathfind;
 use super::ctx::CmdCtx;
 
-// move and explore share identical logic; move just refuses to claim new sectors.
-// We delegate to a shared helper rather than duplicating parse code.
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
+    // Detect format by checking whether the first token contains a comma.
+    // Classic format:  first token is a commodity name (no comma).
+    // Path format:     first token is a coordinate like "9,-1" (has comma).
+    let first = args.splitn(2, ' ').next().unwrap_or("");
+    if !first.contains(',') && !first.is_empty() {
+        return run_classic(args, ctx).await;
+    }
+    run_path(args, ctx).await
+}
+
+// Classic ptkei format: move <comm> <from-x,y> <amount> <to-x,y>
+async fn run_classic(args: &str, ctx: &CmdCtx<'_>) -> String {
+    let parts: Vec<&str> = args.splitn(4, ' ').collect();
+    if parts.len() < 4 {
+        return "10 Usage: move <comm> <x,y> <amount> <x,y>\n".to_string();
+    }
+    let comm_str = parts[0];
+    let from_str = parts[1];
+    let amt_str  = parts[2];
+    let to_str   = parts[3].trim();
+
+    let item = match item_from_str(comm_str) {
+        Some(i) => i,
+        None    => return format!("10 Unknown commodity: {comm_str}\n"),
+    };
+    let (from_rx, from_ry) = match parse_xy(from_str) {
+        Some(v) => v,
+        None    => return format!("10 Bad sector: {from_str}\n"),
+    };
+    let amount: i16 = match amt_str.parse() {
+        Ok(n) if n > 0 => n,
+        _ => return format!("10 Bad amount: {amt_str}\n"),
+    };
+    let (to_rx, to_ry) = match parse_xy(to_str) {
+        Some(v) => v,
+        None    => return format!("10 Bad sector: {to_str}\n"),
+    };
+
+    let from_ax = ctx.x_abs(from_rx);
+    let from_ay = ctx.y_abs(from_ry);
+    let to_ax   = ctx.x_abs(to_rx);
+    let to_ay   = ctx.y_abs(to_ry);
+
+    // Same sector — trivial no-op
+    if from_ax == to_ax && from_ay == to_ay {
+        let mut out = String::new();
+        out.push_str("1 Nothing moved.\n");
+        out.push_str("0 move\n");
+        return out;
+    }
+
+    // Load all sectors to build an owned-land lookup for BFS
+    let all = match sectors::get_all(ctx.db).await {
+        Ok(v)  => v,
+        Err(e) => return format!("10 Database error: {e}\n"),
+    };
+    let sec_map: HashMap<(Coord, Coord), _> = all.iter()
+        .map(|s| ((s.x, s.y), s))
+        .collect();
+
+    let cnum = ctx.cnum;
+    let path_dirs = pathfind::find_path(
+        from_ax, from_ay, to_ax, to_ay,
+        ctx.world_x, ctx.world_y,
+        |nx, ny| {
+            sec_map.get(&(nx, ny)).map_or(false, |s| {
+                s.own == cnum
+                    && s.sector_type != SectorType::Sea
+                    && s.sector_type != SectorType::Mountain
+            })
+        },
+    );
+
+    if path_dirs.is_empty() {
+        return format!(
+            "10 No path from {from_rx},{from_ry} to {to_rx},{to_ry}\n"
+        );
+    }
+
+    // Convert direction indices to a path string and delegate to path executor
+    let path_str: String = path_dirs.iter().map(|&d| DIRCH[d as usize]).collect();
+    execute_move(from_ax, from_ay, &path_str, item, amount, ctx).await
+}
+
+// Path format: move <x,y> <path> <comm> <amount>
+async fn run_path(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.splitn(4, ' ').collect();
     if parts.len() < 4 {
         return "10 Usage: move <x,y> <path> <comm> <amount>\n".to_string();
@@ -43,40 +131,50 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let (rel_x, rel_y) = match parse_xy(xy_str) {
         Some(v) => v,
-        None => return format!("10 Bad sector: {xy_str}\n"),
+        None    => return format!("10 Bad sector: {xy_str}\n"),
     };
-    let abs_x = ctx.x_abs(rel_x);
-    let abs_y = ctx.y_abs(rel_y);
-
     let item = match item_from_str(comm_str) {
         Some(i) => i,
-        None => return format!("10 Unknown commodity: {comm_str}\n"),
+        None    => return format!("10 Unknown commodity: {comm_str}\n"),
     };
-
     let amount: i16 = match amt_str.parse() {
         Ok(n) if n > 0 => n,
         _ => return format!("10 Bad amount: {amt_str}\n"),
     };
 
-    let mut src = match sectors::get_at(ctx.db, abs_x, abs_y).await {
+    execute_move(ctx.x_abs(rel_x), ctx.y_abs(rel_y), path_str, item, amount, ctx).await
+}
+
+// Shared move executor: walks <path_str> from (src_ax, src_ay), moves <amount> of <item>.
+async fn execute_move(
+    src_ax: Coord,
+    src_ay: Coord,
+    path_str: &str,
+    item: Item,
+    amount: i16,
+    ctx: &CmdCtx<'_>,
+) -> String {
+    let rel_src = ctx.format_xy(src_ax, src_ay);
+
+    let mut src = match sectors::get_at(ctx.db, src_ax, src_ay).await {
         Ok(Some(s)) => s,
-        Ok(None)    => return format!("10 Sector {rel_x},{rel_y} does not exist\n"),
+        Ok(None)    => return format!("10 Sector {rel_src} does not exist\n"),
         Err(e)      => return format!("10 DB error: {e}\n"),
     };
     if src.own != ctx.cnum {
-        return format!("10 You don't own {rel_x},{rel_y}\n");
+        return format!("10 You don't own {rel_src}\n");
     }
     let have = src.items.get(item);
     if have < amount {
         return format!(
-            "10 {rel_x},{rel_y} has only {have} {}, need {amount}\n",
+            "10 {rel_src} has only {have} {}, need {amount}\n",
             item.name()
         );
     }
 
     let mut out = String::new();
-    let mut cur_x = abs_x;
-    let mut cur_y = abs_y;
+    let mut cur_x = src_ax;
+    let mut cur_y = src_ay;
     let mut steps = 0i8;
 
     for ch in path_str.chars() {

@@ -13,16 +13,19 @@ down_file     = "/srv/empire/data/down"
 tel_dir       = "/srv/empire/data/tele"
 
 [game]
-etu_per_update    = 60
+etu_per_update    = 60        # ETU per tick (60 = standard; lower = faster testing)
 world_x           = 96
 world_y           = 64
 start_cash        = 20000
 startmob          = 127
 opt_market        = false
+newcap_start_civ  = 500
+newcap_start_food = 5000
 
 [update]
-update_interval_secs = 3600   # fallback when no schedule file present
-allow_force          = false
+update_interval_secs = 3600   # fallback when no schedule file; use 'force' for manual
+allow_force          = true   # allow deity to trigger update with 'force' command
+verbose_update       = false  # set true to emit per-sector debug logs during updates
 
 [limits]
 max_nations     = 99

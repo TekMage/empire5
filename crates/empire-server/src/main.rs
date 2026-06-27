@@ -55,6 +55,8 @@ use tracing_subscriber::EnvFilter;
 
 use empire_config::{Config, load_or_default};
 use empire_db::Db;
+use empire_db::nations;
+use empire_types::nation::{Nation, NatFlags, NatStatus};
 use journal::Journal;
 use state::{GameState, SessionRegistry};
 
@@ -105,6 +107,9 @@ async fn main() -> anyhow::Result<()> {
     let db = Db::open(&db_path).await?;
     info!(path = %db_path.display(), "Database ready");
 
+    // Bootstrap deity nation if this world was generated without one
+    ensure_deity(&db).await?;
+
     // Open the journal (append-only event log at data/journal)
     let journal = Arc::new(Journal::open(&config.server.data_dir)?);
     journal.startup();
@@ -122,12 +127,12 @@ async fn main() -> anyhow::Result<()> {
     let update_cfg = config.update.clone();
     let update_journal = Arc::clone(&journal);
     let update_config = Arc::new(config.clone());
-    let updates_enabled = {
+    let (updates_enabled, force_update, next_update_at) = {
         let gs = state.read().await;
-        Arc::clone(&gs.updates_enabled)
+        (Arc::clone(&gs.updates_enabled), Arc::clone(&gs.force_update), Arc::clone(&gs.next_update_at))
     };
     tokio::spawn(async move {
-        update::run_update_loop(update_state, update_cfg, update_journal, update_config, updates_enabled).await;
+        update::run_update_loop(update_state, update_cfg, update_journal, update_config, updates_enabled, force_update, next_update_at).await;
     });
 
     // Spawn the market update task (runs every 5 minutes when opt_market is true)
@@ -172,4 +177,32 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
+}
+
+// Create country 0 (POGO deity) if it doesn't exist yet.
+// The world generator calls this too, but existing worlds generated before
+// deity bootstrap was added need the server to fill the gap at startup.
+async fn ensure_deity(db: &Db) -> anyhow::Result<()> {
+    if nations::get_by_cnum(db, 0).await?.is_some() {
+        return Ok(());
+    }
+    let deity = Nation {
+        uid: 0, cnum: 0,
+        status: NatStatus::Deity,
+        flags: NatFlags::empty(),
+        name: "POGO".to_string(),
+        representative: "peter".to_string(),
+        host_addr: String::new(),
+        user_id: String::new(),
+        xcap: 0, ycap: 0,
+        xorg: 0, yorg: 0,
+        money: 0, reserve: 0,
+        tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
+        login_count: 0, tele_cnt: 0,
+        passwd_hash: String::new(),
+        last_login: 0, last_logout: 0,
+    };
+    nations::put(db, &deity).await?;
+    info!("Bootstrapped deity nation POGO (country 0, no password required)");
+    Ok(())
 }

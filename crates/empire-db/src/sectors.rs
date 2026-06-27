@@ -54,21 +54,24 @@ struct SectorRow {
 
 fn sect_type(v: i64) -> SectorType {
     match v {
-        -1 => SectorType::Sea,       0 => SectorType::Land,
-        1  => SectorType::Mountain,  2 => SectorType::Agri,
-        3  => SectorType::Uranium,   4 => SectorType::Plain,
-        5  => SectorType::Park,      6 => SectorType::Urban,
-        7  => SectorType::Research,  8 => SectorType::Wasteland,
-        9  => SectorType::Defense,   10 => SectorType::Bank,
-        11 => SectorType::Engineer,  12 => SectorType::Airfield,
-        13 => SectorType::Highway,   14 => SectorType::Radar,
-        15 => SectorType::Naval,     16 => SectorType::Missile,
-        17 => SectorType::Harbor,    18 => SectorType::Fort,
-        19 => SectorType::Tech,      20 => SectorType::Bravery,
-        21 => SectorType::LightIndus, 22 => SectorType::HeavyIndus,
-        23 => SectorType::Gold,      24 => SectorType::Oil,
-        25 => SectorType::Unknown,   26 => SectorType::Warehouse,
-        _  => SectorType::Unknown,
+        0  => SectorType::Sea,          1  => SectorType::Mountain,
+        2  => SectorType::Sanctuary,    3  => SectorType::Wasteland,
+        4  => SectorType::Wilderness,   5  => SectorType::Capital,
+        6  => SectorType::UraniumMine,  7  => SectorType::Park,
+        8  => SectorType::DefensePlant, 9  => SectorType::ShellIndus,
+        10 => SectorType::Mine,         11 => SectorType::GoldMine,
+        12 => SectorType::Harbor,       13 => SectorType::Warehouse,
+        14 => SectorType::Airfield,     15 => SectorType::Agri,
+        16 => SectorType::OilField,     17 => SectorType::LightManuf,
+        18 => SectorType::HeavyManuf,   19 => SectorType::Fortress,
+        20 => SectorType::TechCenter,   21 => SectorType::ResearchLab,
+        22 => SectorType::NuclearPlant, 23 => SectorType::Library,
+        24 => SectorType::Highway,      25 => SectorType::Radar,
+        26 => SectorType::Headquarters, 27 => SectorType::BridgeHead,
+        28 => SectorType::BridgeSpan,   29 => SectorType::Bank,
+        30 => SectorType::Refinery,     31 => SectorType::Enlist,
+        32 => SectorType::Plains,       33 => SectorType::BridgeTower,
+        _  => SectorType::Wilderness,
     }
 }
 
@@ -85,18 +88,34 @@ fn items_to_json(inv: &Inventory) -> String {
     serde_json::to_string(&inv.0.as_slice()).unwrap_or_else(|_| "[]".to_string())
 }
 
-fn thresholds_from_json(s: &str) -> [i16; 14] {
-    let vals: Vec<i16> = serde_json::from_str(s).unwrap_or_default();
-    let mut out = [0i16; 14];
-    for (i, v) in vals.iter().enumerate().take(14) {
-        out[i] = *v;
+// New format: array of [thresh, path] pairs — [[50, 0], [0, 0], ...]
+// Old format (flat packed i16: thresh | path) is still accepted for backward compat;
+// the old scheme silently truncated non-multiple-of-8 thresholds via v & !7,
+// which is why any threshold value got rounded down to the nearest 8.
+fn thresholds_from_json(s: &str) -> [(i16, u8); 14] {
+    let mut out = [(0i16, 0u8); 14];
+    if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(s) {
+        for (i, val) in arr.iter().enumerate().take(14) {
+            if let Some(pair) = val.as_array() {
+                // New format: [thresh, path]
+                let thresh = pair.first().and_then(|v| v.as_i64()).unwrap_or(0) as i16;
+                let path   = pair.get(1).and_then(|v| v.as_i64()).unwrap_or(0) as u8;
+                out[i] = (thresh, path);
+            } else if let Some(packed) = val.as_i64() {
+                // Old packed format: low 3 bits = path, upper bits = threshold
+                let packed = packed as i16;
+                out[i] = (packed & !7, (packed & 7) as u8);
+            }
+        }
     }
     out
 }
 
 fn thresholds_to_json(del: &[DistEntry; 26]) -> String {
-    let vals: Vec<i16> = (0..14).map(|i| del[i].threshold).collect();
-    serde_json::to_string(&vals).unwrap_or_else(|_| "[]".to_string())
+    let pairs: Vec<[i16; 2]> = (0..14)
+        .map(|i| [del[i].threshold, del[i].path as i16])
+        .collect();
+    serde_json::to_string(&pairs).unwrap_or_else(|_| "[]".to_string())
 }
 
 impl From<SectorRow> for Sector {
@@ -122,10 +141,11 @@ impl From<SectorRow> for Sector {
             che: r.che as u8, che_target: r.che_target as NatId,
             items: items_from_json(&r.items),
             del: {
-                let thresholds = thresholds_from_json(&r.thresholds_json);
+                let packed = thresholds_from_json(&r.thresholds_json);
                 let mut del = [DistEntry::default(); 26];
-                for (i, t) in thresholds.iter().enumerate() {
-                    del[i].threshold = *t;
+                for (i, (thresh, path)) in packed.iter().enumerate() {
+                    del[i].threshold = *thresh;
+                    del[i].path      = *path;
                 }
                 del
             },
@@ -259,10 +279,10 @@ mod tests {
     fn make_sector(uid: i32, x: i16, y: i16, own: u8) -> Sector {
         let mut s = Sector {
             uid, own, x, y,
-            sector_type: SectorType::Urban, effic: 100, mobil: 127,
+            sector_type: SectorType::Capital, effic: 100, mobil: 127,
             off: false, loyal: 0, terr: [0;4], dterr: 0,
             dist_x: 0, dist_y: 0, avail: 50, flags: 0, elev: 0,
-            work: 100, coastal: false, new_type: SectorType::Urban,
+            work: 100, coastal: false, new_type: SectorType::Capital,
             min: 0, gmin: 0, fertil: 80, oil: 0, uran: 0, old_own: 0,
             che: 0, che_target: 0,
             items: Inventory::zero(), del: [DistEntry::default();26],

@@ -208,10 +208,10 @@ mod tests {
     fn make_sector(own: u8, old_own: u8, loyal: u8, civs: i16) -> Sector {
         let mut s = Sector {
             uid: 0, own, x: 4, y: 4,
-            sector_type: SectorType::Urban, effic: 80, mobil: 0,
+            sector_type: SectorType::Capital, effic: 80, mobil: 0,
             off: false, loyal, terr: [0; 4], dterr: 0,
             dist_x: 10, dist_y: 10, avail: 50, flags: 0, elev: 0,
-            work: 100, coastal: false, new_type: SectorType::Urban,
+            work: 100, coastal: false, new_type: SectorType::Capital,
             min: 0, gmin: 0, fertil: 0, oil: 0, uran: 0,
             old_own, che: 0, che_target: 0,
             items: Inventory::zero(),

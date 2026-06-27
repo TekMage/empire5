@@ -31,71 +31,84 @@ use serde::{Deserialize, Serialize};
 use crate::coords::{Coord, NatId};
 use crate::commodity::Inventory;
 
-/// Sector designation types.  The mnemonic chars must match sect.config.
+/// Sector designation types.  UIDs and mnemonics match Empire 4.4.1 sect.config exactly.
+/// The repr(u8) values are the sect.config uid column and are stored in the database.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(i8)]
+#[repr(u8)]
 pub enum SectorType {
-    Sea         = -1,  // .  — ocean / deep water
-    Land        = 0,   // -  — wilderness / unexplored land
-    Mountain    = 1,   // ^  — mountains (impassable)
-    Agri        = 2,   // a  — agribusiness (food production)
-    Uranium     = 3,   // u  — uranium mine
-    Plain       = 4,   // p  — plains (population centre)
-    Park        = 5,   // P  — park (happiness)
-    Urban       = 6,   // c  — urban / capital
-    Research    = 7,   // r  — research lab
-    Wasteland   = 8,   // %  — wasteland (nuclear result)
-    Defense     = 9,   // d  — defense plant (guns)
-    Bank        = 10,  // b  — bank
-    Engineer    = 11,  // e  — engineering works
-    Airfield    = 12,  // *  — airfield
-    Highway     = 13,  // +  — highway
-    Radar       = 14,  // j  — radar installation
-    Naval       = 15,  // n  — naval base
-    Missile     = 16,  // m  — missile base
-    Harbor      = 17,  // h  — harbor
-    Fort        = 18,  // f  — fortress
-    Tech        = 19,  // t  — tech center
-    Bravery     = 20,  // s  — shrine of bravery (happiness)
-    LightIndus  = 21,  // l  — light industry (LCM)
-    HeavyIndus  = 22,  // k  — heavy industry (HCM)
-    Gold        = 23,  // g  — gold mine
-    Oil         = 24,  // o  — oil field
-    Unknown     = 25,  // ?  — occupied / uncharted
-    Warehouse   = 26,  // w  — warehouse (storage)
+    Sea          =  0,  // .  — deep water
+    Mountain     =  1,  // ^  — mountain (impassable, produces gold dust)
+    Sanctuary    =  2,  // s  — sanctuary (deity-only; new player start zone)
+    Wasteland    =  3,  // \  — nuclear wasteland (deity-only)
+    Wilderness   =  4,  // -  — unexplored land
+    Capital      =  5,  // c  — capital / city
+    UraniumMine  =  6,  // u  — uranium mine
+    Park         =  7,  // p  — park (happiness)
+    DefensePlant =  8,  // d  — defense plant (guns)
+    ShellIndus   =  9,  // i  — shell industry
+    Mine         = 10,  // m  — mine (iron ore)
+    GoldMine     = 11,  // g  — gold mine
+    Harbor       = 12,  // h  — harbor (WPKG packing)
+    Warehouse    = 13,  // w  — warehouse (WPKG packing)
+    Airfield     = 14,  // *  — airfield
+    Agri         = 15,  // a  — agribusiness (food)
+    OilField     = 16,  // o  — oil field
+    LightManuf   = 17,  // j  — light manufacturing (LCM)
+    HeavyManuf   = 18,  // k  — heavy manufacturing (HCM)
+    Fortress     = 19,  // f  — fortress
+    TechCenter   = 20,  // t  — technical center
+    ResearchLab  = 21,  // r  — research lab
+    NuclearPlant = 22,  // n  — nuclear plant
+    Library      = 23,  // l  — library / school (education)
+    Highway      = 24,  // +  — highway
+    Radar        = 25,  // )  — radar installation
+    Headquarters = 26,  // !  — headquarters
+    BridgeHead   = 27,  // #  — bridge head
+    BridgeSpan   = 28,  // =  — bridge span
+    Bank         = 29,  // b  — bank
+    Refinery     = 30,  // %  — refinery (petrol)
+    Enlist       = 31,  // e  — enlistment center
+    Plains       = 32,  // ~  — plains
+    BridgeTower  = 33,  // @  — bridge tower
 }
 
 impl SectorType {
     pub fn mnemonic(self) -> char {
         match self {
-            SectorType::Sea        => '.',   // ocean / deep water
-            SectorType::Land       => '-',   // wilderness / unexplored land
-            SectorType::Mountain   => '^',
-            SectorType::Agri       => 'a',   // agribusiness
-            SectorType::Uranium    => 'u',
-            SectorType::Plain      => 'p',
-            SectorType::Park       => 'P',
-            SectorType::Urban      => 'c',
-            SectorType::Research   => 'r',
-            SectorType::Wasteland  => '%',
-            SectorType::Defense    => 'd',
-            SectorType::Bank       => 'b',
-            SectorType::Engineer   => 'e',
-            SectorType::Airfield   => '*',   // standard Empire airfield char
-            SectorType::Highway    => '+',   // standard Empire highway char
-            SectorType::Radar      => 'j',
-            SectorType::Naval      => 'n',
-            SectorType::Missile    => 'm',
-            SectorType::Harbor     => 'h',
-            SectorType::Fort       => 'f',   // standard Empire fortress char
-            SectorType::Tech       => 't',
-            SectorType::Bravery    => 's',
-            SectorType::LightIndus => 'l',
-            SectorType::HeavyIndus => 'k',
-            SectorType::Gold       => 'g',
-            SectorType::Oil        => 'o',
-            SectorType::Unknown    => '?',
-            SectorType::Warehouse  => 'w',
+            SectorType::Sea          => '.',
+            SectorType::Mountain     => '^',
+            SectorType::Sanctuary    => 's',
+            SectorType::Wasteland    => '\\',
+            SectorType::Wilderness   => '-',
+            SectorType::Capital      => 'c',
+            SectorType::UraniumMine  => 'u',
+            SectorType::Park         => 'p',
+            SectorType::DefensePlant => 'd',
+            SectorType::ShellIndus   => 'i',
+            SectorType::Mine         => 'm',
+            SectorType::GoldMine     => 'g',
+            SectorType::Harbor       => 'h',
+            SectorType::Warehouse    => 'w',
+            SectorType::Airfield     => '*',
+            SectorType::Agri         => 'a',
+            SectorType::OilField     => 'o',
+            SectorType::LightManuf   => 'j',
+            SectorType::HeavyManuf   => 'k',
+            SectorType::Fortress     => 'f',
+            SectorType::TechCenter   => 't',
+            SectorType::ResearchLab  => 'r',
+            SectorType::NuclearPlant => 'n',
+            SectorType::Library      => 'l',
+            SectorType::Highway      => '+',
+            SectorType::Radar        => ')',
+            SectorType::Headquarters => '!',
+            SectorType::BridgeHead   => '#',
+            SectorType::BridgeSpan   => '=',
+            SectorType::Bank         => 'b',
+            SectorType::Refinery     => '%',
+            SectorType::Enlist       => 'e',
+            SectorType::Plains       => '~',
+            SectorType::BridgeTower  => '@',
         }
     }
 }

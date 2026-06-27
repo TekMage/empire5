@@ -107,7 +107,7 @@ pub fn att_resolve(
     let mut def_str = def_mil as f64 * tech_def * sector_eff_factor + unit_def;
 
     // 3. Fort bonus
-    if defender.sector_type == SectorType::Fort {
+    if defender.sector_type == SectorType::Fortress {
         def_str *= FORT_BONUS;
         log.push("Defender has fort bonus (x1.5).".to_string());
     }
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn overwhelming_attack_wins() {
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-        let defender = make_sector(SectorType::Urban, 100);
+        let defender = make_sector(SectorType::Capital, 100);
         // Attacker: 5000 mil, tech_att 2.0 → str 10_000
         // Defender: 100 mil, tech_def 1.0 → str 100
         let result = att_resolve(
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn weak_attack_fails() {
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-        let defender = make_sector(SectorType::Urban, 100);
+        let defender = make_sector(SectorType::Capital, 100);
         // Attacker: 10 mil vs Defender: 1000 mil
         let result = att_resolve(
             &[], LandChr::all(),

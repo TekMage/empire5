@@ -21,7 +21,7 @@
 // columns are spaces (invalid positions), giving the visual hex stagger.
 
 use std::collections::HashMap;
-use empire_db::sectors;
+use empire_db::{sectors, nations};
 use empire_types::coords::Coord;
 use empire_types::sector::{Sector, SectorType};
 use crate::subs::geo;
@@ -33,9 +33,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         Err(e) => return format!("10 database error: {e}\n"),
     };
 
-    // Determine display center and radius from args.
-    // Supported: *, empty → full world; x,y → 11x11 view; x,y:dist
-    let (center_abs, radius) = parse_map_arg(args.trim(), ctx);
+    let arg = args.trim();
+    let wx = ctx.world_x;
+    let wy = ctx.world_y;
 
     // Build lookup: (abs_x, abs_y) → char
     let mut lookup: HashMap<(Coord, Coord), char> = HashMap::new();
@@ -43,26 +43,38 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         lookup.insert((s.x, s.y), map_char(s, ctx.cnum, ctx.is_deity));
     }
 
-    let wx = ctx.world_x;
-    let wy = ctx.world_y;
-
-    // Compute absolute display range.
-    let (abs_lx, display_width) = if radius < 0 {
-        // Full world: lx=0, width=world_x (all x positions, incl. invalid)
-        (0i16, wx as usize)
-    } else {
-        let lx = geo::x_norm(center_abs.0 - (2 * radius) as Coord, wx);
-        let width = (4 * radius + 1).min(wx) as usize;
-        (lx, width)
-    };
-
-    let (abs_ly, display_height) = if radius < 0 {
-        (0i16, wy as usize)
-    } else {
-        let ly = geo::y_norm(center_abs.1 - radius as Coord, wy);
-        let height = (2 * radius + 1).min(wy) as usize;
-        (ly, height)
-    };
+    // Compute absolute display bounds from arg.
+    // Supported: *, empty → full world; x,y → 11×11; x,y:dist; #N → realm bounding box
+    let (abs_lx, display_width, abs_ly, display_height) =
+        if let Some(n_str) = arg.strip_prefix('#') {
+            let n: u16 = n_str.trim().parse().unwrap_or(0);
+            let realms = nations::get_realms(ctx.db, ctx.cnum).await.unwrap_or_default();
+            if let Some(r) = realms.iter().find(|rr| rr.realm == n) {
+                // Use modular subtraction so realms that wrap across the world edge
+                // still yield a positive width/height.
+                let w = (((r.xh as i32 - r.xl as i32 + wx as i32) % wx as i32 + 1) as usize)
+                    .min(wx as usize);
+                let h = (((r.yh as i32 - r.yl as i32 + wy as i32) % wy as i32 + 1) as usize)
+                    .min(wy as usize);
+                (r.xl, w, r.yl, h)
+            } else {
+                // Unset realm — small view around capital
+                let lx = geo::x_norm(ctx.x_abs(-10), wx);
+                let ly = geo::y_norm(ctx.y_abs(-5), wy);
+                (lx, 21usize, ly, 11usize)
+            }
+        } else {
+            let (center_abs, radius) = parse_map_arg(arg, ctx);
+            if radius < 0 {
+                (0i16, wx as usize, 0i16, wy as usize)
+            } else {
+                let lx = geo::x_norm(center_abs.0 - (2 * radius) as Coord, wx);
+                let width = (4 * radius + 1).min(wx) as usize;
+                let ly = geo::y_norm(center_abs.1 - radius as Coord, wy);
+                let height = (2 * radius + 1).min(wy) as usize;
+                (lx, width, ly, height)
+            }
+        };
 
     // Player-relative x for the leftmost column
     let rel_lx = ctx.x_rel(abs_lx) as i32;
@@ -106,7 +118,7 @@ fn map_char(s: &Sector, player_cnum: u8, is_deity: bool) -> char {
         || t == SectorType::Sea
         || t == SectorType::Mountain
         || t == SectorType::Wasteland
-        || (s.own == 0 && (t == SectorType::Land || t == SectorType::Plain))
+        || (s.own == 0 && (t == SectorType::Wilderness || t == SectorType::Plains))
     {
         t.mnemonic()
     } else {

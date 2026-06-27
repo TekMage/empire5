@@ -30,7 +30,7 @@
 // Mirrors the Players queue (accept.c) and getplayer() (accept.c).
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use empire_db::Db;
@@ -45,6 +45,10 @@ pub struct GameState {
     pub updates_enabled: Arc<AtomicBool>,
     /// AbortHandle for a pending scheduled shutdown task (None when no shutdown pending).
     pub shutdown_handle: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
+    /// Signal the update loop to fire immediately (used by the `force` command).
+    pub force_update: Arc<tokio::sync::Notify>,
+    /// Unix timestamp (seconds) when the next update is scheduled; 0 = unknown.
+    pub next_update_at: Arc<AtomicU64>,
 }
 
 impl GameState {
@@ -54,6 +58,8 @@ impl GameState {
             update_number: 0,
             updates_enabled: Arc::new(AtomicBool::new(true)),
             shutdown_handle: Arc::new(Mutex::new(None)),
+            force_update: Arc::new(tokio::sync::Notify::new()),
+            next_update_at: Arc::new(AtomicU64::new(0)),
         }
     }
 }

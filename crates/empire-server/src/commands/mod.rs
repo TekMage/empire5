@@ -21,6 +21,7 @@ pub mod ctx;
 mod version;
 mod info;
 mod xdump;
+mod dump;
 mod census;
 mod nation_cmd;
 mod map_cmd;
@@ -51,6 +52,13 @@ mod trade;
 mod loan;
 mod explore;
 mod move_cmd;
+mod realm;
+mod report;
+mod resource;
+mod commodity;
+mod change;
+mod force;
+mod update_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -89,6 +97,10 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "info"                      => info::run(args, &ctx).await,
         "echo"                      => echo_cmd(args),
         "xdump"                     => xdump::run(args, &ctx).await,
+        "dump"                      => dump::run("dump",  &ctx).await,
+        "sdump"                     => dump::run("sdump", &ctx).await,
+        "ldump"                     => dump::run("ldump", &ctx).await,
+        "pdump"                     => dump::run("pdump", &ctx).await,
 
         "census" | "cens"           => census::run(args, &ctx).await,
         "nation" | "nati"           => nation_cmd::run(args, &ctx).await,
@@ -96,7 +108,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "bmap"                      => map_cmd::run(args, &ctx).await,
         "smap" | "sector" | "sect"  => map_cmd::run(args, &ctx).await,
         "designate" | "desi" | "des" => designate::run(args, &ctx).await,
-        "threshold" | "thre"        => threshold::run(args, &ctx).await,
+        "threshold" | "thre" | "thresh" => threshold::run(args, &ctx).await,
         "relations" | "rela"        => relations_cmd::run(args, &ctx).await,
         "declare"   | "decl"        => declare::run(args, &ctx).await,
 
@@ -126,6 +138,14 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
 
         "explore" | "expl"  => explore::run(args, &ctx).await,
         "move"    | "mov"   => move_cmd::run(args, &ctx).await,
+
+        "realm"   | "real"  => realm::run(args, &ctx).await,
+        "report"  | "repo"  => report::run(args, &ctx).await,
+        "resource"| "reso"  => resource::run(args, &ctx).await,
+        "commodity"| "comm" => commodity::run(args, &ctx).await,
+        "change"  | "chan"  => change::run(args, &ctx).await,
+        "force"   | "forc"  => force::run(args, &ctx).await,
+        "update"  | "upda"  => update_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

@@ -839,7 +839,7 @@ impl Fairland {
 
     fn elev_to_sct_type(e: i32) -> SectorType {
         if e < LANDMIN { SectorType::Sea }
-        else if e < HIGHMIN { SectorType::Land }
+        else if e < HIGHMIN { SectorType::Wilderness }
         else { SectorType::Mountain }
     }
 

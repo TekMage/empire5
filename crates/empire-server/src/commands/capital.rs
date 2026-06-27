@@ -83,7 +83,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     // Type check: only urban (c) or mountain (^) can be capitals (non-deity)
     if !ctx.is_deity
-        && sect.sector_type != SectorType::Urban
+        && sect.sector_type != SectorType::Capital
         && sect.sector_type != SectorType::Mountain
     {
         return format!(
@@ -158,10 +158,10 @@ pub async fn run_newcap(args: &str, ctx: &CmdCtx<'_>) -> String {
         Err(e) => return format!("10 Database error: {e}\n"),
     };
 
-    // If blank (unowned) land, convert to Urban and give starting population
-    if sect.own == 0 && sect.sector_type == SectorType::Land {
-        sect.sector_type = SectorType::Urban;
-        sect.new_type = SectorType::Urban;
+    // If blank (unowned) wilderness, convert to Capital and give starting population
+    if sect.own == 0 && sect.sector_type == SectorType::Wilderness {
+        sect.sector_type = SectorType::Capital;
+        sect.new_type = SectorType::Capital;
         sect.effic = 60;
         let mut inv = Inventory::zero();
         inv.set(Item::Civil, ctx.config.game.newcap_start_civ);

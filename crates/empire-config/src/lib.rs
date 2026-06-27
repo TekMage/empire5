@@ -121,6 +121,8 @@ pub struct UpdateConfig {
     pub update_window: i32,
     /// Allow players to force an update (deity only).
     pub allow_force: bool,
+    /// Emit per-sector debug logs during update ticks (toggle off in production).
+    pub verbose_update: bool,
 }
 
 /// Tunable rates used during the update cycle.
@@ -280,6 +282,7 @@ impl Default for UpdateConfig {
             update_interval_secs: 3600,
             update_window: 0,
             allow_force: false,
+            verbose_update: false,
         }
     }
 }

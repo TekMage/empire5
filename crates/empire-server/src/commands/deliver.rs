@@ -53,17 +53,24 @@ fn parse_item(s: &str) -> Option<Item> {
     None
 }
 
-/// Return the direction code (0-7) from a direction char, or None if unknown.
-fn parse_dir(c: char) -> Option<u8> {
-    match c {
-        '.' => Some(0), // DIR_STOP
-        'u' => Some(1), // DIR_UR
-        'j' => Some(2), // DIR_R
-        'n' => Some(3), // DIR_DR
-        'b' => Some(4), // DIR_DL
-        'g' => Some(5), // DIR_L
-        'y' => Some(6), // DIR_UL
-        '$' => Some(7), // DIR_DIST
+/// Parse direction from either a char ('u','j','n','b','g','y','$','.') or
+/// a numeric string optionally prefixed with '+' (ptkei format: +0..+6, +$).
+fn parse_dir_str(s: &str) -> Option<u8> {
+    let s = s.trim_start_matches('+');
+    // Numeric form: 0=stop, 1=UR, 2=R, 3=DR, 4=DL, 5=L, 6=UL, 7=dist
+    if let Ok(n) = s.parse::<u8>() {
+        if n <= 7 { return Some(n); }
+    }
+    // Single-char form
+    match s.chars().next()? {
+        '.' => Some(0),
+        'u' => Some(1),
+        'j' => Some(2),
+        'n' => Some(3),
+        'b' => Some(4),
+        'g' => Some(5),
+        'y' => Some(6),
+        '$' => Some(7),
         _ => None,
     }
 }
@@ -77,10 +84,13 @@ fn dir_char(d: u8) -> char {
 }
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
-    // Expected: <item> <sect-spec> <threshold> <dir>
+    // Accepts two forms:
+    //   4-arg: <item> <sect-spec> <threshold> <direction>
+    //   3-arg: <item> <sect-spec> <direction>   (ptkei SetDel form; keeps current threshold)
+    // Direction may be a char (u j n b g y $ .) or +N numeric (ptkei: +0..+6, +$).
     let parts: Vec<&str> = args.splitn(4, ' ').collect();
-    if parts.len() < 4 {
-        return "10 Usage: deliver <item> <sect-spec> <threshold> <direction>\n".to_string();
+    if parts.len() < 3 {
+        return "10 Usage: deliver <item> <sect-spec> [threshold] <direction>\n".to_string();
     }
 
     let item = match parse_item(parts[0].trim()) {
@@ -88,21 +98,24 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         None => return format!("10 Unknown commodity: '{}'\n", parts[0]),
     };
 
-    let area_spec  = parts[1].trim();
-    let threshold_str = parts[2].trim();
-    let dir_str    = parts[3].trim();
+    let area_spec = parts[1].trim();
 
-    let raw_thresh: i16 = match threshold_str.parse() {
-        Ok(v) => v,
-        Err(_) => return format!("10 Invalid threshold '{}'\n", threshold_str),
+    // Determine whether we have a threshold arg or just a direction.
+    // If parts[2] starts with '+' or is a known direction char it's the direction.
+    let (set_threshold, threshold_val, dir_str) = if parts.len() == 4 {
+        let t: i16 = match parts[2].trim().parse() {
+            Ok(v) => v,
+            Err(_) => return format!("10 Invalid threshold '{}'\n", parts[2]),
+        };
+        (true, t, parts[3].trim())
+    } else {
+        // 3-arg: no threshold provided — only change direction
+        (false, 0i16, parts[2].trim())
     };
-    // Round threshold down to multiple of 8
-    let threshold: i16 = raw_thresh & !7;
 
-    let dir_char_input = dir_str.chars().next().unwrap_or(' ');
-    let dir: u8 = match parse_dir(dir_char_input) {
+    let dir: u8 = match parse_dir_str(dir_str) {
         Some(d) => d,
-        None => return format!("10 Unknown direction '{}'; use: . u j n b g y $\n", dir_char_input),
+        None => return format!("10 Unknown direction '{}'; use: . u j n b g y $ or +0..+7\n", dir_str),
     };
 
     let all_sectors = match sectors::get_all(ctx.db).await {
@@ -129,16 +142,17 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         let old_thresh = s.del[item_idx].threshold;
         let old_dir    = s.del[item_idx].path;
 
-        s.del[item_idx].threshold = threshold;
-        s.del[item_idx].path      = dir;
+        if set_threshold { s.del[item_idx].threshold = threshold_val; }
+        s.del[item_idx].path = dir;
 
         match sectors::put(ctx.db, &s).await {
             Ok(_) => {
+                let new_thresh = if set_threshold { threshold_val } else { old_thresh };
                 out.push_str(&format!(
                     "1 {} {} delivery: was thresh={} dir='{}', now thresh={} dir='{}'\n",
                     xy, item.name(),
                     old_thresh, dir_char(old_dir),
-                    threshold, dir_char(dir)
+                    new_thresh, dir_char(dir)
                 ));
                 count += 1;
             }

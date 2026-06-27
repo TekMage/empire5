@@ -45,16 +45,20 @@
 //   9. age_levels     (tech/res decay, best-tech floor)
 //  10. mob_inc_all    (mobility accrual for all game objects)
 
+use std::collections::{BinaryHeap, HashMap};
+use std::cmp::Reverse;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
-use tokio::sync::RwLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::sync::{Notify, RwLock};
 use tokio::time;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use chrono::{Local, Duration as ChronoDuration};
 use empire_config::{Config, UpdateConfig, UpdateRates};
 use empire_types::commodity::Item;
+use empire_types::coords::Coord;
+use empire_types::item_chr::ItemChr;
 use empire_types::nation::NatStatus;
 use empire_types::product_chr::{NatLevel, ProductChr, Resource};
 use empire_types::sector::SectorType;
@@ -63,6 +67,44 @@ use empire_types::MAX_NATIONS;
 
 use crate::journal::Journal;
 use crate::state::GameState;
+
+// ── Item iteration helper ─────────────────────────────────────────────────────
+
+const ALL_ITEMS: [Item; Item::COUNT] = [
+    Item::Civil, Item::Milit, Item::Shell, Item::Gun,   Item::Petrol,
+    Item::Iron,  Item::Dust,  Item::Bar,   Item::Food,  Item::Oil,
+    Item::Lcm,   Item::Hcm,   Item::Uw,    Item::Rad,
+];
+
+// ── Direction table & coordinate helpers ─────────────────────────────────────
+//
+// Mirrors diroff[] in include/dir.h.  Index = direction (0=center, 1-6=hex
+// neighbors, 7=dist-center marker for delivery/distribution).
+
+const DIROFF: [(Coord, Coord); 8] = [
+    (0, 0),   // 0 — stop / no-move
+    (1, -1),  // 1 — NE
+    (2, 0),   // 2 — E
+    (1, 1),   // 3 — SE
+    (-1, 1),  // 4 — SW
+    (-2, 0),  // 5 — W
+    (-1, -1), // 6 — NW
+    (0, 0),   // 7 — distribute-center (not a hex direction)
+];
+
+fn wrap_coord(v: i16, max: i32) -> i16 {
+    ((v as i32).rem_euclid(max)) as i16
+}
+
+fn neighbor_xy(x: Coord, y: Coord, dir: u8, wx: i32, wy: i32) -> (Coord, Coord) {
+    let (dx, dy) = DIROFF[dir as usize & 7];
+    (wrap_coord(x + dx, wx), wrap_coord(y + dy, wy))
+}
+
+// ── Delivery/distribution movement constants ──────────────────────────────────
+const DELIVER_BONUS: f64 = 4.0;
+const DIST_BONUS: f64    = 10.0;
+const ITEM_MAX: i16      = 9999;
 
 // ── Budget (per-nation accounting for one tick) ───────────────────────────────
 //
@@ -104,6 +146,8 @@ pub async fn run_update_loop(
     journal: Arc<Journal>,
     config: Arc<Config>,
     updates_enabled: Arc<AtomicBool>,
+    force_update: Arc<Notify>,
+    next_update_at: Arc<AtomicU64>,
 ) {
     let fallback_secs = cfg.update_interval_secs.max(60);
     info!(fallback_secs, "Update engine started");
@@ -111,8 +155,19 @@ pub async fn run_update_loop(
     loop {
         // ── Determine how long to sleep until the next update ────────────────
         let sleep_dur = next_update_sleep(&config, fallback_secs);
+        let wake_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
+            .as_secs() + sleep_dur.as_secs();
+        next_update_at.store(wake_at, Ordering::Relaxed);
         info!(sleep_secs = sleep_dur.as_secs(), "Next update scheduled");
-        time::sleep(sleep_dur).await;
+
+        // Sleep until the scheduled time OR a force-update signal arrives.
+        tokio::select! {
+            _ = time::sleep(sleep_dur) => {}
+            _ = force_update.notified() => {
+                info!("Force-update requested — running tick now");
+            }
+        }
 
         // ── Check if updates are enabled ─────────────────────────────────────
         if !updates_enabled.load(Ordering::Relaxed) {
@@ -129,7 +184,7 @@ pub async fn run_update_loop(
         info!(tick, etu, "Update tick starting");
         journal.update(tick);
 
-        if let Err(e) = update_main(&mut gs, etu, &config.rates).await {
+        if let Err(e) = update_main(&mut gs, etu, &config).await {
             warn!(tick, error = %e, "Update tick error");
         }
 
@@ -186,8 +241,13 @@ fn next_update_sleep(config: &Config, fallback_secs: u64) -> Duration {
 async fn update_main(
     gs: &mut GameState,
     etu: i32,
-    rates: &UpdateRates,
+    config: &Config,
 ) -> Result<(), empire_db::DbError> {
+    let rates   = &config.rates;
+    let world_x = config.game.world_x;
+    let world_y = config.game.world_y;
+    let verbose = config.update.verbose_update;
+
     // 1. Load all active nations into local budget array
     let nations = empire_db::nations::get_all(&gs.db).await?;
     let mut budgets: Vec<Budget> = vec![Budget::default(); MAX_NATIONS + 1];
@@ -199,34 +259,41 @@ async fn update_main(
         b.money       = nat.money as f64;
     }
 
-    // 2. prepare_sects — tax, bank income, pay reserve, populace
+    // 2. prepare_sects — tax, bank income, pay reserve, feed population
     let mut sectors = empire_db::sectors::get_all(&gs.db).await?;
-    prepare_sects(&mut sectors, &mut budgets, &nations, etu, rates);
+    prepare_sects(&mut sectors, &mut budgets, &nations, etu, rates, verbose);
     for nat in &nations {
         if nat.status < NatStatus::Active { continue; }
         pay_reserve(nat, &mut budgets[nat.cnum as usize], etu, rates);
     }
 
-    // 3. produce_sect — sector production cycle
-    produce_sects(&mut sectors, &mut budgets, &nations, etu, rates);
+    // 3. produce_sects — sector production cycle
+    produce_sects(&mut sectors, &mut budgets, &nations, etu, rates, verbose);
 
-    // 4. finish_sects — avail rollover clamp
+    // 4. finish: deliver items to neighbors, then distribute via dist centers
+    let coord_map: HashMap<(Coord, Coord), usize> = sectors.iter().enumerate()
+        .map(|(i, s)| ((s.x, s.y), i))
+        .collect();
+    do_deliver(&mut sectors, &coord_map, world_x, world_y, verbose);
+    do_distribute(&mut sectors, &coord_map, world_x, world_y, verbose);
+
+    // 5. finish_sects — avail rollover clamp
     finish_sects(&mut sectors, rates);
 
-    // 5. prod_nat — accumulate tech/res/edu/hap levels
+    // 6. prod_nat — accumulate tech/res/edu/hap levels
     let mut nations_mut = nations.clone();
     prod_nat(&mut nations_mut, &mut budgets, etu, rates);
 
-    // 6. age_levels — tech/res decay + best-tech floor
+    // 7. age_levels — tech/res decay + best-tech floor
     age_levels(&mut nations_mut, etu, rates);
 
-    // 7. mob_inc_all — mobility accrual
+    // 8. mob_inc_all — mobility accrual
     let mut ships      = empire_db::ships::get_all(&gs.db).await?;
     let mut planes     = empire_db::planes::get_all(&gs.db).await?;
     let mut land_units = empire_db::land_units::get_all(&gs.db).await?;
     mob_inc_all(&mut sectors, &mut ships, &mut planes, &mut land_units, etu, rates);
 
-    // 8. Persist everything back to DB
+    // 9. Persist everything back to DB
     for nat in &nations_mut {
         empire_db::nations::put(&gs.db, nat).await?;
     }
@@ -325,6 +392,7 @@ fn prepare_sects(
     nations: &[empire_types::nation::Nation],
     etu: i32,
     rates: &UpdateRates,
+    verbose: bool,
 ) {
     for s in sectors.iter_mut() {
         let dchr = SectorChr::for_type(s.sector_type);
@@ -377,12 +445,11 @@ fn prepare_sects(
             budgets[own].money      += income;
         }
 
-        // Feed the sector (simplified: no starvation; Phase 4 subs will add this)
-        // Full do_feed() port deferred to Phase 4.
+        // Feed population — starvation, growth, and work improvement
+        do_feed(s, etu, rates, verbose);
 
         check_pop_loss(s);
     }
-    // Nations parameter currently unused (future: guerrilla, plague)
     let _ = nations;
 }
 
@@ -405,7 +472,9 @@ fn produce_sects(
     nations:  &[empire_types::nation::Nation],
     etu: i32,
     rates: &UpdateRates,
+    verbose: bool,
 ) {
+    let _ = verbose;
     // Build a nation-level lookup (cnum → tech level for produce())
     let mut nat_tech  = [0.0f64; MAX_NATIONS + 1];
     let mut nat_edu   = [0.0f64; MAX_NATIONS + 1];
@@ -652,6 +721,324 @@ fn deplete_resource(
         Resource::Fert   => s.fertil = (s.fertil as i32 - depletion).max(0) as u8,
         Resource::OilRes => s.oil    = (s.oil    as i32 - depletion).max(0) as u8,
         Resource::Uran   => s.uran   = (s.uran   as i32 - depletion).max(0) as u8,
+    }
+}
+
+// ── Feed population (populace.c — do_feed) ───────────────────────────────────
+//
+// Called per owned sector during prepare_sects.
+// Mirrors do_feed() in src/lib/update/populace.c.
+
+fn do_feed(
+    s: &mut empire_types::sector::Sector,
+    etu: i32,
+    rates: &UpdateRates,
+    verbose: bool,
+) {
+    let civ  = s.items.get(Item::Civil)  as f64;
+    let mil  = s.items.get(Item::Milit)  as f64;
+    let uw   = s.items.get(Item::Uw)     as f64;
+    let food = s.items.get(Item::Food)   as f64;
+
+    if (civ + mil + uw) == 0.0 { return; }
+
+    // Births — computed before eating so babies also eat this ETU
+    let new_civ = (civ * etu as f64 * rates.obrate).floor();
+    let new_uw  = (uw  * etu as f64 * rates.uwbrate).floor();
+
+    // Food needed: everyone eats + food to grow babies to maturity
+    let eat_need  = (civ + new_civ + mil + uw + new_uw) * rates.eatrate * etu as f64;
+    let grow_need = (new_civ + new_uw) * rates.babyeat;
+    let total_need = eat_need + grow_need;
+
+    if total_need <= 0.0 { return; }
+
+    if food >= total_need {
+        s.items.set(Item::Food, (food - total_need).floor() as i16);
+        // Babies arrive
+        let nc = round_avg(new_civ) as i16;
+        let nu = round_avg(new_uw)  as i16;
+        s.items.add(Item::Civil, nc);
+        s.items.add(Item::Uw,    nu);
+        // Workers improve with a full belly (cap 100)
+        let bump = (etu as f64 * 0.5).round() as i32;
+        s.work = (s.work as i32 + bump).min(100) as u8;
+        if verbose && (nc > 0 || nu > 0) {
+            debug!(x = s.x, y = s.y, ate = total_need as i32, civ = nc, uw = nu, "feed: growth");
+        }
+    } else {
+        // Starvation — kill up to half of civs and uw proportionally
+        let frac = if food > 0.0 { 1.0 - food / total_need } else { 1.0 };
+        let dead_civ = round_avg(civ * frac * 0.5) as i16;
+        let dead_uw  = round_avg(uw  * frac * 0.5) as i16;
+        s.items.add(Item::Civil, -dead_civ);
+        s.items.add(Item::Uw,   -dead_uw);
+        s.items.set(Item::Food, 0);
+        if verbose || dead_civ > 0 || dead_uw > 0 {
+            debug!(x = s.x, y = s.y, dead_civ, dead_uw, "feed: STARVATION");
+        }
+    }
+}
+
+// ── Delivery (finish.c — dodeliver) ──────────────────────────────────────────
+//
+// Deliver items above threshold to a direct hex neighbor.
+// Handles del[item].path values 1-6.  Path 7 is handled by do_distribute.
+// Mobility cost = (amount * weight) / packing / DELIVER_BONUS.
+
+fn do_deliver(
+    sectors: &mut Vec<empire_types::sector::Sector>,
+    coord_map: &HashMap<(Coord, Coord), usize>,
+    world_x: i32,
+    world_y: i32,
+    verbose: bool,
+) {
+    for i in 0..sectors.len() {
+        if sectors[i].own == 0 { continue; }
+        let dchr = SectorChr::for_type(sectors[i].sector_type);
+        if dchr.is_water || dchr.is_sanct { continue; }
+
+        let (x, y, own, st, effic) = (
+            sectors[i].x, sectors[i].y, sectors[i].own,
+            sectors[i].sector_type, sectors[i].effic,
+        );
+
+        for &item in &ALL_ITEMS {
+            let dir = sectors[i].del[item as usize].path & 7;
+            if dir == 0 || dir == 7 { continue; }
+
+            let threshold = sectors[i].del[item as usize].threshold;
+            let have = sectors[i].items.get(item);
+            if have <= threshold { continue; }
+
+            let surplus = (have - threshold) as f64;
+            let ichr = ItemChr::for_item(item);
+            let pack = dchr.pack_mult(&ichr.packing, effic) as f64;
+
+            // How much can we move with current mobility?
+            let mob_avail = sectors[i].mobil.max(0) as f64;
+            let full_cost = surplus * ichr.weight as f64 / pack / DELIVER_BONUS;
+            let (amount, mob_cost) = if full_cost <= mob_avail {
+                (surplus, full_cost)
+            } else {
+                let a = (mob_avail * pack * DELIVER_BONUS / ichr.weight as f64).floor();
+                (a, mob_avail)
+            };
+            let amount = amount as i16;
+            if amount <= 0 { continue; }
+
+            // Find destination neighbor
+            let (nx, ny) = neighbor_xy(x, y, dir, world_x, world_y);
+            let Some(&j) = coord_map.get(&(nx, ny)) else { continue };
+            if sectors[j].own != own { continue; }
+
+            let room = ITEM_MAX - sectors[j].items.get(item);
+            let actual = amount.min(room.max(0));
+            if actual <= 0 { continue; }
+
+            sectors[i].items.add(item, -actual);
+            sectors[i].mobil -= mob_cost as i8;
+            sectors[j].items.add(item, actual);
+
+            if verbose {
+                debug!(
+                    from_x = x, from_y = y, to_x = nx, to_y = ny,
+                    item = %item.mnemonic(), amount = actual,
+                    "deliver"
+                );
+            }
+        }
+    }
+}
+
+// ── Distribution (finish.c — dodistribute / assemble_dist_paths) ─────────────
+//
+// Two-pass export/import:
+//   EXPORT: sectors with surplus move items toward their dist center.
+//   IMPORT: sectors with deficit pull items from their dist center.
+// Path cost computed by Dijkstra from each unique dist center.
+
+/// Dijkstra from `(cx, cy)` through sectors owned by `own`.
+/// Returns a map (x, y) → minimum mob cost to reach that sector from center.
+fn dijkstra_dist(
+    center_x: Coord,
+    center_y: Coord,
+    own: u8,
+    sectors: &[empire_types::sector::Sector],
+    coord_map: &HashMap<(Coord, Coord), usize>,
+    world_x: i32,
+    world_y: i32,
+) -> HashMap<(Coord, Coord), f64> {
+    // Priority queue: (Reverse(cost), x, y)
+    let mut heap: BinaryHeap<(Reverse<u64>, Coord, Coord)> = BinaryHeap::new();
+    let mut dist: HashMap<(Coord, Coord), f64> = HashMap::new();
+
+    let cost_to_u64 = |c: f64| (c * 1_000_000.0) as u64;
+
+    let start = coord_map.get(&(center_x, center_y)).copied();
+    if let Some(start_idx) = start {
+        if sectors[start_idx].own == own {
+            dist.insert((center_x, center_y), 0.0);
+            heap.push((Reverse(0), center_x, center_y));
+        }
+    }
+
+    while let Some((Reverse(_), x, y)) = heap.pop() {
+        let cur_cost = match dist.get(&(x, y)) { Some(&c) => c, None => continue };
+
+        for dir in 1u8..=6 {
+            let (nx, ny) = neighbor_xy(x, y, dir, world_x, world_y);
+            let Some(&ni) = coord_map.get(&(nx, ny)) else { continue };
+            let ns = &sectors[ni];
+            if ns.own != own { continue; }
+
+            let dchr = SectorChr::for_type(ns.sector_type);
+            let edge = dchr.mcost(ns.effic);
+            if edge < 0.0 { continue; } // impassable
+
+            let new_cost = cur_cost + edge;
+            if new_cost < *dist.get(&(nx, ny)).unwrap_or(&f64::MAX) {
+                dist.insert((nx, ny), new_cost);
+                heap.push((Reverse(cost_to_u64(new_cost)), nx, ny));
+            }
+        }
+    }
+
+    dist
+}
+
+fn do_distribute(
+    sectors: &mut Vec<empire_types::sector::Sector>,
+    coord_map: &HashMap<(Coord, Coord), usize>,
+    world_x: i32,
+    world_y: i32,
+    verbose: bool,
+) {
+    // Collect the set of unique (own, dist_x, dist_y) groups
+    let mut groups: HashMap<(u8, Coord, Coord), Vec<usize>> = HashMap::new();
+    for (i, s) in sectors.iter().enumerate() {
+        if s.own == 0 { continue; }
+        let dchr = SectorChr::for_type(s.sector_type);
+        if dchr.is_water || dchr.is_sanct { continue; }
+        // Only include sectors that have at least one item set to distribute (path==7)
+        let has_dist = ALL_ITEMS.iter().any(|&it| s.del[it as usize].path & 7 == 7);
+        if !has_dist { continue; }
+        groups.entry((s.own, s.dist_x, s.dist_y)).or_default().push(i);
+    }
+
+    // For each group, compute Dijkstra costs then run export+import
+    for ((own, cx, cy), member_idxs) in &groups {
+        let path_cost = dijkstra_dist(*cx, *cy, *own, sectors, coord_map, world_x, world_y);
+
+        // Find the dist center sector index
+        let Some(&center_idx) = coord_map.get(&(*cx, *cy)) else { continue };
+        if sectors[center_idx].own != *own { continue; }
+
+        // ── EXPORT pass ──────────────────────────────────────────────────────
+        for &si in member_idxs {
+            if si == center_idx { continue; } // center doesn't export to itself
+            let cost = match path_cost.get(&(sectors[si].x, sectors[si].y)) {
+                Some(&c) if c > 0.0 => c,
+                _ => continue,
+            };
+            let (sx, sy, st, effic) = (
+                sectors[si].x, sectors[si].y,
+                sectors[si].sector_type, sectors[si].effic,
+            );
+            for &item in &ALL_ITEMS {
+                if sectors[si].del[item as usize].path & 7 != 7 { continue; }
+                let threshold = sectors[si].del[item as usize].threshold;
+                let have = sectors[si].items.get(item);
+                if have <= threshold { continue; }
+
+                let surplus = (have - threshold) as f64;
+                let ichr = ItemChr::for_item(item);
+                let dchr = SectorChr::for_type(st);
+                let pack = dchr.pack_mult(&ichr.packing, effic) as f64;
+
+                let mob_avail = sectors[si].mobil.max(0) as f64;
+                let full_mob  = surplus * ichr.weight as f64 * cost / pack / DIST_BONUS;
+                let (amount, mob_cost) = if full_mob <= mob_avail {
+                    (surplus, full_mob)
+                } else {
+                    let a = (mob_avail * pack * DIST_BONUS / (ichr.weight as f64 * cost)).floor();
+                    (a, mob_avail)
+                };
+                let amount = amount as i16;
+                if amount <= 0 { continue; }
+
+                let center_room = ITEM_MAX - sectors[center_idx].items.get(item);
+                let actual = amount.min(center_room.max(0));
+                if actual <= 0 { continue; }
+
+                sectors[si].items.add(item, -actual);
+                sectors[si].mobil -= mob_cost as i8;
+                sectors[center_idx].items.add(item, actual);
+
+                if verbose {
+                    debug!(
+                        x = sx, y = sy, cx = *cx, cy = *cy,
+                        item = %item.mnemonic(), amount = actual,
+                        "dist EXPORT"
+                    );
+                }
+            }
+        }
+
+        // ── IMPORT pass ──────────────────────────────────────────────────────
+        for &si in member_idxs {
+            if si == center_idx { continue; }
+            let cost = match path_cost.get(&(sectors[si].x, sectors[si].y)) {
+                Some(&c) if c > 0.0 => c,
+                _ => continue,
+            };
+            let (sx, sy, st, effic) = (
+                sectors[si].x, sectors[si].y,
+                sectors[si].sector_type, sectors[si].effic,
+            );
+            for &item in &ALL_ITEMS {
+                if sectors[si].del[item as usize].path & 7 != 7 { continue; }
+                let threshold = sectors[si].del[item as usize].threshold;
+                let have = sectors[si].items.get(item);
+                if have >= threshold { continue; }
+
+                let deficit = (threshold - have) as f64;
+                let available = sectors[center_idx].items.get(item);
+                if available <= 0 { continue; }
+
+                let want = deficit.min(available as f64);
+                let ichr = ItemChr::for_item(item);
+                let dchr = SectorChr::for_type(st);
+                let pack = dchr.pack_mult(&ichr.packing, effic) as f64;
+
+                let mob_avail = sectors[si].mobil.max(0) as f64;
+                let full_mob  = want * ichr.weight as f64 * cost / pack / DIST_BONUS;
+                let (amount, mob_cost) = if full_mob <= mob_avail {
+                    (want, full_mob)
+                } else {
+                    let a = (mob_avail * pack * DIST_BONUS / (ichr.weight as f64 * cost)).floor();
+                    (a, mob_avail)
+                };
+                let amount = amount as i16;
+                if amount <= 0 { continue; }
+
+                let dest_room = ITEM_MAX - sectors[si].items.get(item);
+                let actual = amount.min(dest_room.max(0));
+                if actual <= 0 { continue; }
+
+                sectors[center_idx].items.add(item, -actual);
+                sectors[si].items.add(item, actual);
+                sectors[si].mobil -= mob_cost as i8;
+
+                if verbose {
+                    debug!(
+                        cx = *cx, cy = *cy, x = sx, y = sy,
+                        item = %item.mnemonic(), amount = actual,
+                        "dist IMPORT"
+                    );
+                }
+            }
+        }
     }
 }
 
