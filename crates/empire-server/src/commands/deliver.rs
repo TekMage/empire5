@@ -40,11 +40,17 @@ const ALL_ITEMS: [Item; 14] = [
 fn parse_item(s: &str) -> Option<Item> {
     if s.is_empty() { return None; }
     if s.len() == 1 {
-        if let Some(i) = Item::from_mnemonic(s.chars().next()?) {
-            return Some(i);
-        }
+        return Item::from_mnemonic(s.chars().next()?);
     }
     let s_lc = s.to_lowercase();
+    match s_lc.as_str() {
+        "dust" | "gold dust"                    => return Some(Item::Dust),
+        "bar"  | "bars" | "gold bars"           => return Some(Item::Bar),
+        "lcm"  | "light"                        => return Some(Item::Lcm),
+        "hcm"  | "heavy"                        => return Some(Item::Hcm),
+        "uw"   | "undesirable" | "undesirables" => return Some(Item::Uw),
+        _ => {}
+    }
     for &item in &ALL_ITEMS {
         if item.name().starts_with(s_lc.as_str()) {
             return Some(item);

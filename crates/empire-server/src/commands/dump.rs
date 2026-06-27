@@ -14,18 +14,32 @@
 // "dump" / "sdump" / "ldump" / "pdump" commands — dump game state in
 // the classic Empire 4 format that ptkei's ParseDump parser expects.
 //
-// Format:
-//   DUMP <TYPE> <timestamp>
-//   <field-names>
-//   <values...>
-//   N <unit>s
-//
-// Coordinates are player-relative. Only the requesting player's own
-// records are returned (matching Empire 4 behavior).
+// Field order matches what ptkei's CenWin expects (from its comment block):
+//   x y des sdes eff mob * off min gold fert ocontent uran work avail terr
+//   civ mil uw food shell gun pet iron dust bar oil lcm hcm rad
+//   u_del f_del s_del g_del p_del i_del d_del b_del o_del l_del h_del r_del
+//   u_cut f_cut s_cut g_cut p_cut i_cut d_cut b_cut o_cut l_cut h_cut r_cut
+//   dist_x dist_y
+//   c_dist m_dist u_dist f_dist s_dist g_dist p_dist i_dist d_dist b_dist
+//   o_dist l_dist h_dist r_dist
+//   road rail defense fallout coast
+//   c_del m_del c_cut m_cut
 
 use super::ctx::CmdCtx;
 use empire_db::sectors;
 use empire_types::commodity::Item;
+
+// Item enum indices used to index del[] array:
+//   Civil=0, Milit=1, Shell=2, Gun=3, Petrol=4, Iron=5, Dust=6, Bar=7,
+//   Food=8, Oil=9, Lcm=10, Hcm=11, Uw=12, Rad=13
+
+fn dir_char(d: u8) -> char {
+    match d {
+        0 => '.', 1 => 'u', 2 => 'j', 3 => 'n',
+        4 => 'b', 5 => 'g', 6 => 'y', 7 => '$',
+        _ => '.',
+    }
+}
 
 pub async fn run(subcmd: &str, ctx: &CmdCtx<'_>) -> String {
     let ts = std::time::SystemTime::now()
@@ -38,7 +52,7 @@ pub async fn run(subcmd: &str, ctx: &CmdCtx<'_>) -> String {
         "sdump" => empty_dump("SHIPS",      "ships",  "sdump", ts),
         "ldump" => empty_dump("LAND UNITS", "units",  "ldump", ts),
         "pdump" => empty_dump("PLANES",     "planes", "pdump", ts),
-        _       => format!("10 Unknown dump subcommand\n"),
+        _       => "10 Unknown dump subcommand\n".to_string(),
     }
 }
 
@@ -54,15 +68,67 @@ async fn dump_sectors(ts: i64, ctx: &CmdCtx<'_>) -> String {
 
     let mut out = String::new();
     out.push_str(&format!("1 DUMP SECTOR {ts}\n"));
-    out.push_str("1 x y des sdes eff mob * off min gold fert ocontent uran work avail terr civ mil uw food shell gun pet iron dust bar oil lcm hcm rad\n");
+    out.push_str("1 x y des sdes eff mob * off min gold fert ocontent uran work avail terr \
+civ mil uw food shell gun pet iron dust bar oil lcm hcm rad \
+u_del f_del s_del g_del p_del i_del d_del b_del o_del l_del h_del r_del \
+u_cut f_cut s_cut g_cut p_cut i_cut d_cut b_cut o_cut l_cut h_cut r_cut \
+dist_x dist_y \
+c_dist m_dist u_dist f_dist s_dist g_dist p_dist i_dist d_dist b_dist o_dist l_dist h_dist r_dist \
+road rail defense fallout coast \
+c_del m_del c_cut m_cut\n");
 
     for s in &mine {
-        let des    = s.sector_type.mnemonic();
-        let rx     = ctx.x_rel(s.x);
-        let ry     = ctx.y_rel(s.y);
-        let inv    = &s.items;
+        let des = s.sector_type.mnemonic();
+        let rx  = ctx.x_rel(s.x);
+        let ry  = ctx.y_rel(s.y);
+        let inv = &s.items;
+        let del = &s.del;
+
+        // Delivery directions for uw,food,shell,gun,pet,iron,dust,bar,oil,lcm,hcm,rad
+        let ud = dir_char(del[Item::Uw    as usize].path);
+        let fd = dir_char(del[Item::Food  as usize].path);
+        let sd = dir_char(del[Item::Shell as usize].path);
+        let gd = dir_char(del[Item::Gun   as usize].path);
+        let pd = dir_char(del[Item::Petrol as usize].path);
+        let id = dir_char(del[Item::Iron  as usize].path);
+        let dd = dir_char(del[Item::Dust  as usize].path);
+        let bd = dir_char(del[Item::Bar   as usize].path);
+        let od = dir_char(del[Item::Oil   as usize].path);
+        let ld = dir_char(del[Item::Lcm   as usize].path);
+        let hd = dir_char(del[Item::Hcm   as usize].path);
+        let rd = dir_char(del[Item::Rad   as usize].path);
+        let cd = dir_char(del[Item::Civil as usize].path);
+        let md = dir_char(del[Item::Milit as usize].path);
+
+        // Delivery cutoffs (thresholds) for same items
+        let uc = del[Item::Uw     as usize].threshold;
+        let fc = del[Item::Food   as usize].threshold;
+        let sc = del[Item::Shell  as usize].threshold;
+        let gc = del[Item::Gun    as usize].threshold;
+        let pc = del[Item::Petrol as usize].threshold;
+        let ic = del[Item::Iron   as usize].threshold;
+        let dc = del[Item::Dust   as usize].threshold;
+        let bc = del[Item::Bar    as usize].threshold;
+        let oc = del[Item::Oil    as usize].threshold;
+        let lc = del[Item::Lcm    as usize].threshold;
+        let hc = del[Item::Hcm    as usize].threshold;
+        let rc = del[Item::Rad    as usize].threshold;
+        let cc = del[Item::Civil  as usize].threshold;
+        let mc = del[Item::Milit  as usize].threshold;
+
+        // Distribution center (player-relative)
+        let dx = ctx.x_rel(s.dist_x);
+        let dy = ctx.y_rel(s.dist_y);
+
         out.push_str(&format!(
-            "1 {rx} {ry} {des} _ {eff} {mob} . 0 {min} 0 {fert} {ocont} {uran} {work} 0 0 {civ} {mil} {uw} {food} {shell} {gun} {pet} {iron} {dust} {bar} {oil} {lcm} {hcm} {rad}\n",
+            "1 {rx} {ry} {des} _ {eff} {mob} . 0 {min} 0 {fert} {ocont} {uran} {work} 0 0 \
+{civ} {mil} {uw} {food} {shell} {gun} {pet} {iron} {dust} {bar} {oil} {lcm} {hcm} {rad} \
+{ud} {fd} {sd} {gd} {pd} {id} {dd} {bd} {od} {ld} {hd} {rd} \
+{uc} {fc} {sc} {gc} {pc} {ic} {dc} {bc} {oc} {lc} {hc} {rc} \
+{dx} {dy} \
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
+0 0 0 0 0 \
+{cd} {md} {cc} {mc}\n",
             eff   = s.effic,
             mob   = s.mobil,
             min   = s.mines,
