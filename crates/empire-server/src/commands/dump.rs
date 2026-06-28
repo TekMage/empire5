@@ -124,11 +124,11 @@ c_del m_del c_cut m_cut\n");
             "1 {rx} {ry} {des} _ {eff} {mob} . 0 {min} 0 {fert} {ocont} {uran} {work} 0 0 \
 {civ} {mil} {uw} {food} {shell} {gun} {pet} {iron} {dust} {bar} {oil} {lcm} {hcm} {rad} \
 {ud} {fd} {sd} {gd} {pd} {id} {dd} {bd} {od} {ld} {hd} {rd} \
-{uc} {fc} {sc} {gc} {pc} {ic} {dc} {bc} {oc} {lc} {hc} {rc} \
+0 0 0 0 0 0 0 0 0 0 0 0 \
 {dx} {dy} \
-0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
+{cc} {mc} {uc} {fc} {sc} {gc} {pc} {ic} {dc} {bc} {oc} {lc} {hc} {rc} \
 0 0 0 0 0 \
-{cd} {md} {cc} {mc}\n",
+{cd} {md} 0 0\n",
             eff   = s.effic,
             mob   = s.mobil,
             min   = s.mines,
