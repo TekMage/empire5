@@ -45,6 +45,7 @@ struct NationRow {
     tech: f64, research: f64, education: f64, happiness: f64,
     login_count: i64, tele_cnt: i64, ann_cnt: i64, last_ann_read: i64,
     passwd_hash: String, last_login: i64, last_logout: i64,
+    news_time: i64,
 }
 
 #[derive(FromRow)]
@@ -78,6 +79,7 @@ impl From<NationRow> for Nation {
             passwd_hash: r.passwd_hash,
             last_login: r.last_login,
             last_logout: r.last_logout,
+            news_time: r.news_time,
         }
     }
 }
@@ -164,8 +166,8 @@ pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
          (uid,cnum,status,flags,name,representative,host_addr,user_id,\
           xcap,ycap,xorg,yorg,money,reserve,tech,research,education,\
           happiness,login_count,tele_cnt,ann_cnt,last_ann_read,passwd_hash,last_login,last_logout,\
-          updated_at) \
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+          news_time,updated_at) \
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
     .bind(n.uid).bind(n.cnum as i64).bind(n.status as i64)
     .bind(n.flags.bits() as i64)
@@ -177,6 +179,7 @@ pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
     .bind(n.login_count as i64).bind(n.tele_cnt as i64)
     .bind(n.ann_cnt as i64).bind(n.last_ann_read)
     .bind(&n.passwd_hash).bind(n.last_login).bind(n.last_logout)
+    .bind(n.news_time)
     .execute(db.pool()).await?;
     Ok(())
 }
@@ -270,7 +273,7 @@ mod tests {
             money: 0, reserve: 0,
             tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
             login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
-            passwd_hash: "".into(), last_login: 0, last_logout: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0, news_time: 0,
         }
     }
 
@@ -286,7 +289,7 @@ mod tests {
             money: 20_000, reserve: 0,
             tech: 10.5, research: 3.2, education: 1.0, happiness: 50.0,
             login_count: 1, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
-            passwd_hash: "".into(), last_login: 0, last_logout: 0,
+            passwd_hash: "".into(), last_login: 0, last_logout: 0, news_time: 0,
         };
         put(&db, &n).await.unwrap();
         let got = get(&db, 1).await.unwrap().unwrap();

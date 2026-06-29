@@ -132,6 +132,8 @@ pub struct Nation {
     pub last_login: i64,
     /// Unix timestamp of last logout (0 = never)
     pub last_logout: i64,
+    /// Unix timestamp of when player last read news (0 = never; nat_newstim in 4.4.1)
+    pub news_time: i64,
 }
 
 impl Nation {

@@ -1,0 +1,36 @@
+NEWS
+  Show empire news since your last login (or the last N days).
+
+SYNTAX
+  news
+  news <days>
+
+DESCRIPTION
+  Displays a log of events that have happened in the empire since the
+  last time you read the news.  Events include diplomatic declarations,
+  combat results, and sector captures.
+
+  With no argument, shows news since you last ran "news".
+  With a number, shows news from the last N days (e.g. "news 3" = last
+  3 days of events).
+
+  News is organized into sections:
+    Foreign Affairs   — diplomatic declarations, alliance/war changes
+    The Front Line    — land combat results, sector captures
+    The High Seas     — naval combat and assault landings
+    Sky Watch         — air combat (future)
+    Telecommunications — telegrams sent (not shown by default)
+
+  The Bottom Line section (at the end) shows a net summary of sectors
+  captured between pairs of nations.
+
+  Your news-read timestamp is updated each time you run "news", so the
+  next call will only show events since this call.
+
+EXAMPLE
+  news              show news since last read
+  news 1            show all news from the last day
+
+SEE ALSO
+  headlines  relations  declare
+

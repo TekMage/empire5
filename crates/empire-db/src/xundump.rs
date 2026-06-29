@@ -199,6 +199,7 @@ fn row_to_nation(row: &HashMap<String, String>) -> UndumpResult<Nation> {
         passwd_hash: row.get("passwd_hash").cloned().unwrap_or_default(),
         last_login: get_i64(row, "last_login").unwrap_or(0),
         last_logout: get_i64(row, "last_logout").unwrap_or(0),
+        news_time: 0,
     })
 }
 

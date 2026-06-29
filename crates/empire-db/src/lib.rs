@@ -47,6 +47,7 @@ pub mod xundump;
 pub mod trades;
 pub mod loans;
 pub mod telegrams;
+pub mod news;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -147,6 +148,31 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 7 {
+            let stmts = [
+                // Create news table (single statement — multi-stmt raw_sql is unreliable in SQLite)
+                "CREATE TABLE IF NOT EXISTS news (\
+                    id      INTEGER PRIMARY KEY AUTOINCREMENT,\
+                    actor   INTEGER NOT NULL,\
+                    verb    INTEGER NOT NULL,\
+                    victim  INTEGER NOT NULL DEFAULT 0,\
+                    times   INTEGER NOT NULL DEFAULT 1,\
+                    when_ts INTEGER NOT NULL\
+                )",
+                "CREATE INDEX IF NOT EXISTS news_when ON news(when_ts)",
+                "ALTER TABLE nations ADD COLUMN news_time INTEGER NOT NULL DEFAULT 0",
+            ];
+            for stmt in &stmts {
+                let _ = sqlx::raw_sql(stmt).execute(pool).await;
+            }
+            sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (7)")
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -176,6 +202,22 @@ pub(crate) async fn test_db() -> Db {
         let _ = sqlx::raw_sql(stmt).execute(&pool).await;
     }
     sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (6)")
+        .execute(&pool).await.unwrap();
+    for stmt in &[
+        "CREATE TABLE IF NOT EXISTS news (\
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,\
+            actor   INTEGER NOT NULL,\
+            verb    INTEGER NOT NULL,\
+            victim  INTEGER NOT NULL DEFAULT 0,\
+            times   INTEGER NOT NULL DEFAULT 1,\
+            when_ts INTEGER NOT NULL\
+        )",
+        "CREATE INDEX IF NOT EXISTS news_when ON news(when_ts)",
+        "ALTER TABLE nations ADD COLUMN news_time INTEGER NOT NULL DEFAULT 0",
+    ] {
+        let _ = sqlx::raw_sql(stmt).execute(&pool).await;
+    }
+    sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (7)")
         .execute(&pool).await.unwrap();
     Db { pool }
 }

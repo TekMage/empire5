@@ -68,6 +68,7 @@ mod enlist_cmd;
 mod demobilize_cmd;
 mod assault_cmd;
 mod execute_cmd;
+mod news_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -168,6 +169,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "demobilize" | "demo" => demobilize_cmd::run(args, &ctx).await,
         "assault" | "assa"  => assault_cmd::run(args, &ctx).await,
         "execute" | "exec"  => execute_cmd::run(args, &ctx).await,
+        "news"              => news_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

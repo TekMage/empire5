@@ -41,6 +41,7 @@ pub mod unit;
 pub mod selector;
 pub mod trade;
 pub mod loan;
+pub mod news;
 
 pub use coords::{Coord, NatId, XyOffset, Range};
 pub use commodity::{Item, Packaging};

@@ -19,8 +19,9 @@
 //   e.g. declare allied 2
 //   e.g. declare neutral *
 
-use empire_db::{nations, relations};
+use empire_db::{nations, relations, news};
 use empire_types::nation::NatStatus;
+use empire_types::news::NewsVerb;
 use super::ctx::CmdCtx;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -96,6 +97,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
                     "1 Declared {} toward {} (#{target_cnum})\n",
                     rel.name(), tgt_name
                 ));
+                // File news event for this relations change
+                let verb = relation_news_verb(current, rel);
+                let _ = news::add_news(ctx.db, as_cnum, verb as u8, target_cnum, 1).await;
             }
             Err(e) => {
                 out.push_str(&format!("1 Error updating relation: {e}\n"));
@@ -108,4 +112,22 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
     out.push_str("0 declare\n");
     out
+}
+
+/// Map old→new relation change to the appropriate news verb.
+fn relation_news_verb(old: relations::Relation, new: relations::Relation) -> NewsVerb {
+    use relations::Relation::*;
+    match new {
+        AtWar    => NewsVerb::DeclWar,
+        Allied   => NewsVerb::DeclAlly,
+        Neutral  => {
+            if old > Neutral { NewsVerb::DownNeutral } else { NewsVerb::UpNeutral }
+        }
+        Hostile  => {
+            if old > Hostile { NewsVerb::DownHostile } else { NewsVerb::UpHostile }
+        }
+        Friendly => {
+            if old > Friendly { NewsVerb::DownFriendly } else { NewsVerb::UpFriendly }
+        }
+    }
 }

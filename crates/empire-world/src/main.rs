@@ -271,7 +271,7 @@ async fn ensure_deity(db: &Db) -> Result<()> {
         tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
         login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
         passwd_hash: String::new(),
-        last_login: 0, last_logout: 0,
+        last_login: 0, last_logout: 0, news_time: 0,
     };
     nations::put(db, &deity).await.context("creating deity nation")?;
     println!("All praise to POGO!");
@@ -297,7 +297,7 @@ async fn ensure_visitor(db: &Db, nc: usize) -> Result<()> {
         tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
         login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
         passwd_hash: String::new(),
-        last_login: 0, last_logout: 0,
+        last_login: 0, last_logout: 0, news_time: 0,
     };
     nations::put(db, &visitor).await.context("creating visitor nation")?;
     Ok(())
