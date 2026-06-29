@@ -24,6 +24,7 @@ use empire_db::sectors;
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::SectorChr;
 use super::ctx::CmdCtx;
+use super::sector_sel::SectSpec;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.splitn(3, ' ').collect();
@@ -50,6 +51,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         }
     }
 
+    let filter = match SectSpec::parse(area_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -62,7 +68,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         // Only player's own sectors (or deity)
         if s.own != ctx.cnum && !ctx.is_deity { continue; }
         if s.own == 0 { continue; }
-        if !matches_area(&s, area_spec, ctx) { continue; }
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) { continue; }
 
         let xy = ctx.format_xy(s.x, s.y);
 
@@ -107,30 +113,6 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     out
 }
 
-fn matches_area(s: &empire_types::sector::Sector, spec: &str, ctx: &CmdCtx) -> bool {
-    if spec.is_empty() || spec == "*" {
-        return true;
-    }
-    if let Some((rx, ry)) = parse_rel_xy(spec) {
-        return s.x == ctx.x_abs(rx) && s.y == ctx.y_abs(ry);
-    }
-    if let Some(pos) = spec.find(':') {
-        let (coord_part, dist_part) = spec.split_at(pos);
-        let dist_part = &dist_part[1..];
-        if let (Some((rx, ry)), Ok(dist)) = (parse_rel_xy(coord_part), dist_part.trim().parse::<i32>()) {
-            let ax = ctx.x_abs(rx);
-            let ay = ctx.y_abs(ry);
-            let d = crate::subs::geo::map_dist(s.x, s.y, ax, ay, ctx.world_x, ctx.world_y);
-            return d <= dist;
-        }
-    }
-    true
-}
-
-fn parse_rel_xy(s: &str) -> Option<(i16, i16)> {
-    let (xs, ys) = s.split_once(',')?;
-    Some((xs.trim().parse().ok()?, ys.trim().parse().ok()?))
-}
 
 fn parse_sector_type(s: &str) -> Option<SectorType> {
     let ch = s.chars().next()?;

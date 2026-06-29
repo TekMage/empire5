@@ -19,8 +19,8 @@
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use empire_types::sector::Sector;
-use crate::subs::geo;
 use super::ctx::CmdCtx;
+use super::sector_sel::SectSpec;
 
 // Direction chars for del[].path & 0x7 display.
 // Index 0='.' (stop), 1-6=compass, 7='$' (distribute to dist center).
@@ -35,21 +35,29 @@ fn thresh_char(t: i16) -> char {
 }
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
+    let spec_str = args.trim();
+    let filter = match SectSpec::parse(if spec_str.is_empty() { "*" } else { spec_str }, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
     };
 
-    let spec = args.trim();
-
     let mut matching: Vec<&Sector> = sectors.iter()
-        .filter(|s| filter_sector(s, ctx, spec))
+        .filter(|s| {
+            if s.own == 0 { return false; }
+            if s.own != ctx.cnum && !ctx.is_deity { return false; }
+            filter.matches(s, ctx.world_x, ctx.world_y)
+        })
         .collect();
 
     matching.sort_by_key(|s| (s.y, s.x));
 
     if matching.is_empty() {
-        let arg = if spec.is_empty() { "*" } else { spec };
+        let arg = if spec_str.is_empty() { "*" } else { spec_str };
         return format!("1 {arg}: No sector(s)\n0 census\n");
     }
 
@@ -74,40 +82,6 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     out
 }
 
-fn filter_sector(s: &Sector, ctx: &CmdCtx, spec: &str) -> bool {
-    if s.own != ctx.cnum && !ctx.is_deity { return false; }
-    if s.own == 0 { return false; }
-
-    if spec.is_empty() || spec == "*" {
-        return true;
-    }
-
-    // Try parsing as x,y
-    if let Some((rx, ry)) = parse_rel_xy(spec) {
-        let ax = ctx.x_abs(rx);
-        let ay = ctx.y_abs(ry);
-        return s.x == ax && s.y == ay;
-    }
-
-    // Try parsing as x,y:dist
-    if let Some(pos) = spec.find(':') {
-        let (coord_part, dist_part) = spec.split_at(pos);
-        let dist_part = &dist_part[1..];
-        if let (Some((rx, ry)), Ok(dist)) = (parse_rel_xy(coord_part), dist_part.parse::<i32>()) {
-            let ax = ctx.x_abs(rx);
-            let ay = ctx.y_abs(ry);
-            let d = geo::map_dist(s.x, s.y, ax, ay, ctx.world_x, ctx.world_y);
-            return d <= dist;
-        }
-    }
-
-    true // default: show all
-}
-
-fn parse_rel_xy(s: &str) -> Option<(i16, i16)> {
-    let (xs, ys) = s.split_once(',')?;
-    Some((xs.trim().parse().ok()?, ys.trim().parse().ok()?))
-}
 
 fn format_census_row(s: &Sector, ctx: &CmdCtx) -> String {
     let xy = ctx.format_xy(s.x, s.y);

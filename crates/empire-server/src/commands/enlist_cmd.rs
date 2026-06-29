@@ -29,7 +29,7 @@
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use super::ctx::CmdCtx;
-use super::sector_sel::matches_area;
+use super::sector_sel::SectSpec;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -46,6 +46,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         return "10 Amount must be positive\n".to_string();
     }
 
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -57,7 +62,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     for mut s in all_sectors {
         if s.own != ctx.cnum && !ctx.is_deity { continue; }
         if s.own == 0 { continue; }
-        if !matches_area(&s, sect_spec, ctx) { continue; }
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) { continue; }
 
         if total_enlisted >= 10_000 {
             out.push_str("1 Rioting in induction center!\n");

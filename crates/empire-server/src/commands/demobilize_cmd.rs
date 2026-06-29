@@ -30,7 +30,7 @@
 use empire_db::{sectors, nations};
 use empire_types::commodity::Item;
 use super::ctx::CmdCtx;
-use super::sector_sel::matches_area;
+use super::sector_sel::SectSpec;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -46,6 +46,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     // Third arg: "civ" to convert to civilians; default is reserve
     let to_reserve = parts.get(2).map(|s| *s != "civ").unwrap_or(true);
+
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
 
     let mut nat = match nations::get_by_cnum(ctx.db, ctx.cnum).await {
         Ok(Some(n)) => n,
@@ -65,7 +70,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     for mut s in all_sectors {
         if s.own != ctx.cnum && !ctx.is_deity { continue; }
         if s.own == 0 { continue; }
-        if !matches_area(&s, sect_spec, ctx) { continue; }
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) { continue; }
 
         if s.effic < 60 && !ctx.is_deity { continue; }
 
