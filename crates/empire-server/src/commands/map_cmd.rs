@@ -20,12 +20,15 @@
 // Each column in the output corresponds to one absolute x position; alternate
 // columns are spaces (invalid positions), giving the visual hex stagger.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use empire_db::{sectors, nations, bmap};
 use empire_types::coords::Coord;
 use empire_types::sector::{Sector, SectorType};
 use crate::subs::geo;
 use super::ctx::CmdCtx;
+
+// Hex grid neighbor offsets (matches DIROFF in 4.4.1 dir.c).
+const DIROFF6: [(Coord, Coord); 6] = [(1,-1),(2,0),(1,1),(-1,1),(-2,0),(-1,-1)];
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let all_sectors = match sectors::get_all(ctx.db).await {
@@ -60,13 +63,33 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         }
     }
 
+    // Build set of coordinates adjacent to player's own sectors so that
+    // unseen non-wilderness sectors show '?' instead of blank space.
+    let adj_to_player: HashSet<(Coord, Coord)> = if ctx.is_deity {
+        HashSet::new()
+    } else {
+        let mut adj = HashSet::new();
+        for s in &all_sectors {
+            if s.own == ctx.cnum {
+                for &(dx, dy) in &DIROFF6 {
+                    let nx = geo::x_norm(s.x + dx, wx);
+                    let ny = geo::y_norm(s.y + dy, wy);
+                    adj.insert((nx, ny));
+                }
+            }
+        }
+        adj
+    };
+
     // Build lookup: (abs_x, abs_y) → char applying fog of war.
     let mut lookup: HashMap<(Coord, Coord), char> = HashMap::new();
     for s in &all_sectors {
         let ch = if ctx.is_deity {
             map_char(s, ctx.cnum, true)
         } else {
-            fog_map_char(s, ctx.cnum, bm.as_ref())
+            let c = fog_map_char(s, ctx.cnum, bm.as_ref());
+            // Blank but adjacent → '?' so player knows something is there.
+            if c == ' ' && adj_to_player.contains(&(s.x, s.y)) { '?' } else { c }
         };
         lookup.insert((s.x, s.y), ch);
 
