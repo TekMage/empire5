@@ -1,0 +1,43 @@
+EXECUTE
+  Run a script file through the client as a batch of commands.
+
+SYNTAX
+  execute <filename>
+  exec    <filename>
+
+DESCRIPTION
+  Tells the client to open <filename> on the LOCAL (client) machine
+  and feed each line back to the server as commands, one at a time.
+
+  This lets you pre-write sequences of empire commands in a text file
+  and run them all without typing each one interactively.
+
+  The script file is a plain text file with one command per line.
+  Blank lines and lines starting with '#' are ignored by the server
+  (sent but produce "Unknown command").
+
+  execute uses protocol message C_EXECUTE (id=12).  The C client
+  handles this by opening the named file and reading from it.
+  When the file ends, the client returns to normal interactive input.
+
+SCRIPT FILE FORMAT
+  One empire command per line, e.g.:
+
+    # Set up food thresholds
+    threshold food * 50
+    threshold food 0,0 2000
+    # Enlist some military
+    enlist * 100
+    census *
+
+EXAMPLE
+  execute /home/me/scripts/startup.emp
+  execute ./my_country_setup.emp
+
+NOTES
+  The filename must be accessible on the CLIENT machine, not the server.
+  Redirections inside scripts (>, >>) are not supported.
+  To abort a running execute, press interrupt (Ctrl-C or equivalent).
+
+SEE ALSO
+  syntax  info
