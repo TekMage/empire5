@@ -1155,8 +1155,8 @@ fn do_distribute(
         if s.own == 0 { continue; }
         let dchr = SectorChr::for_type(s.sector_type);
         if dchr.is_water || dchr.is_sanct { continue; }
-        // Only include sectors that have at least one item set to distribute (path==7)
-        let has_dist = ALL_ITEMS.iter().any(|&it| s.del[it as usize].path & 7 == 7);
+        // Include sectors with any non-zero distribution threshold
+        let has_dist = ALL_ITEMS.iter().any(|&it| s.del[it as usize].threshold != 0);
         if !has_dist { continue; }
         groups.entry((s.own, s.dist_x, s.dist_y)).or_default().push(i);
     }
@@ -1181,8 +1181,8 @@ fn do_distribute(
                 sectors[si].sector_type, sectors[si].effic,
             );
             for &item in &ALL_ITEMS {
-                if sectors[si].del[item as usize].path & 7 != 7 { continue; }
                 let threshold = sectors[si].del[item as usize].threshold;
+                if threshold == 0 { continue; }
                 let have = sectors[si].items.get(item);
                 if have <= threshold { continue; }
 
@@ -1232,8 +1232,8 @@ fn do_distribute(
                 sectors[si].sector_type, sectors[si].effic,
             );
             for &item in &ALL_ITEMS {
-                if sectors[si].del[item as usize].path & 7 != 7 { continue; }
                 let threshold = sectors[si].del[item as usize].threshold;
+                if threshold == 0 { continue; }
                 let have = sectors[si].items.get(item);
                 if have >= threshold { continue; }
 
