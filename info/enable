@@ -1,11 +1,26 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : ENABLE
-Command : ENABLE
-Expert
-[##:##] Command : enable
-If updates have been disabled, then this will enable them again.
-See also : disable
-, show
-, force
-, Deity
+ENABLE / DISABLE
+  Start or stop automatic game updates.  (Deity only.)
+
+SYNTAX
+  enable
+  disable
+  enab
+  disa
+
+DESCRIPTION
+  'enable'  - allows the update loop to run on its normal schedule.
+  'disable' - pauses the update loop.  No production, no population
+              change, no distribution.  The server keeps running but
+              time is frozen from a game perspective.
+
+  Only the deity can use these commands.
+  Useful when making major world changes or importing/exporting data.
+
+  Current update state is shown in the 'update' command output.
+
+EXAMPLE
+  disable                   pause the game clock
+  enable                    resume normal updates
+
+SEE ALSO
+  update  shutdown  force  add

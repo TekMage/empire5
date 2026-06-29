@@ -22,7 +22,7 @@
 use empire_db::sectors;
 use empire_types::coords::Coord;
 use super::ctx::CmdCtx;
-use super::sector_sel::{matches_area, parse_rel_xy};
+use super::sector_sel::{SectSpec, parse_rel_xy};
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.splitn(2, ' ').collect();
@@ -32,6 +32,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let area_spec = parts[0].trim();
     let dest_spec = parts.get(1).copied().unwrap_or("").trim();
+
+    let filter = match SectSpec::parse(area_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
 
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
@@ -48,7 +53,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if s.own == 0 {
             continue;
         }
-        if !matches_area(&s, area_spec, ctx) {
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) {
             continue;
         }
 

@@ -195,7 +195,7 @@ fn row_to_nation(row: &HashMap<String, String>) -> UndumpResult<Nation> {
         money: get_i32(row, "money")?, reserve: get_i32(row, "reserve")?,
         tech: get_f64(row, "tech")?, research: get_f64(row, "research")?,
         education: get_f64(row, "education")?, happiness: get_f64(row, "happiness")?,
-        login_count: get_i32(row, "login_count")?, tele_cnt: 0,
+        login_count: get_i32(row, "login_count")?, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
         passwd_hash: row.get("passwd_hash").cloned().unwrap_or_default(),
         last_login: get_i64(row, "last_login").unwrap_or(0),
         last_logout: get_i64(row, "last_logout").unwrap_or(0),

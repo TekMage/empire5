@@ -128,6 +128,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if dest.own == 0 {
             let mut claimed = dest.clone();
             claimed.own = ctx.cnum;
+            claimed.old_own = ctx.cnum;
             if let Err(e) = sectors::put(ctx.db, &claimed).await {
                 out.push_str(&format!("1 DB error claiming {dest_rel}: {e}\n"));
                 break;

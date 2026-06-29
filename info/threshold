@@ -1,46 +1,38 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : THRESHOLD
-Command : THRESHOLD
-Basic
-[##:##] Command : threshold <ITEM> <SECTS> <THRESH>
-The threshold command is used to specify the level
-of a given commodity which is to be maintained
-by the sector's distribution sector.
-These levels are maintained by either importing or exporting
-commodities.
-This importation and exportation is done automatically during
-an update.
-It uses much less mobility than manual moves.  See "info Mobility" for
-details.
-In the syntax,
-<SECTS> is the sector or sectors from which the deliveries are made,
-<ITEM> is one of the following:
-c	civilians
-m	military
-u	uncompensated workers
-f       food
-s       shells
-g       guns
-p       planes
-i       iron ore
-d       gold dust
-b       bars of gold
-o       oil
-l       light construction materials
-h       heavy construction materials
-r	radioactive materials
-and <THRESH> is a number specifying the level of commodity which
-is desired.
-The census and commodity reports will indicate distribution thresholds
-by the hundreds digit of the threshold level.
-In order to have a threshold take effect, it must be at least one.
-Sectors importing or exporting items can be seen by the route
-command (marked with a $) or by the sect command.
-Also, note that no distribution center will ship out its last civilian.
-See also : distribute
-, census
-, commodity
-, route
-, level
-, Distribution
+THRESHOLD
+  Set the minimum stockpile level maintained by distribution.
+
+SYNTAX
+  threshold <commodity> [<sects>] [<amount>]
+  thre      <commodity> [<sects>] [<amount>]
+
+DESCRIPTION
+  Sets the threshold for a commodity in a sector.  During each
+  update, the distribution system moves commodities so that each
+  sector maintains at least its threshold amount.
+
+  If <amount> is omitted, displays current thresholds.
+  If <amount> is 0, clears the threshold.
+
+  A sector will import from its distribution center if below
+  threshold, and export the surplus above threshold to the center.
+
+  <sects> accepts the full sector spec syntax including realm numbers
+  (#N) and designation conditions (?des=X).  The ?des=X condition must
+  be attached directly to the spec with no space.
+
+  Commodity mnemonics:
+    c=civ  m=mil  u=uw  f=food  s=shell  g=gun  p=petrol
+    i=iron  d=dust  b=bar  o=oil  l=lcm  h=hcm  r=rad
+
+EXAMPLE
+  threshold food * 30            keep 30 food in every sector
+  threshold food 0,0 2000        keep 2000 food in capital
+  threshold iron -4,2 50         mine keeps 50 iron
+  threshold dust *               show all dust thresholds
+  threshold food #1 100          keep 100 food in every realm 1 sector
+  threshold iron #1?des=m 200    keep 200 iron in realm 1 iron mines
+  threshold lcm *?des=k 500      keep 500 lcm in all lcm factories
+  threshold food *?des=a 50      keep 50 food in all agribusiness
+
+SEE ALSO
+  distribute  deliver  realm  syntax  commodity  census

@@ -1,79 +1,26 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : COMMODITY
-Command : COMMODITY
-Basic
-[##:##] Command : commodity <SECTS>
-The commodity report provides information
-pertaining to the various commodities
-in some or all of the sectors you occupy.
-In the syntax of the commodity command
-<SECTS> is the area on which you wish information,
-(see info syntax).
-A typical usage might be:
-[##:##] Command : commodity -6:6,-3:3
-which would list data for the area extending
-three sectors out from the capital in each direction.
-The commodity report lists each of your sectors
-with the following heading:
-COMMODITIES deliver-- distribute
- sect     sgpidbolhr sgpidbolhr  sh  gun  pet iron dust  bar  oil  lcm  hcm rad
-These columns represent:
-sect
-the x and y coordinates of the sector
-sgpidbolhr
-Ten delivery columns corresponding to:
-shells, guns, petroleum (refined), iron, dust (gold),
-bars of gold, oil, light construction materials,
-heavy construction materials, and radioactive materials.
-sgpidbolhr
-Ten distribute columns corresponding to:
-shells, guns, petroleum (refined), iron, dust (gold),
-bars of gold, oil, light construction materials,
-heavy construction materials, and radioactive materials.
-sh
-the number of shells in storage
-gun
-the number of guns in storage
-pet
-the number of units of refined petroleum
-iron
-the number of units of iron ore
-dust
-the number of units of gold dust
-bar
-the number of gold bars
-oil
-the amount of crude oil
-lcm
-the number of units of light construction materials
-hcm
-the number of units of heavy construction materials
-rad
-the number of units of radioactive materials
-For example:
-[##:##] Command : commodity -3:3,-2:2
-COMMODITIES deliver-- distribute
- sect     sgpidbolhr sgpidbolhr  sh  gun  pet iron dust  bar  oil  lcm  hcm rad
-  6,0   k .......... ...1....0.   0    0    0  100    0    0    0    0    1   0
- -1,1   j .......... .......0..   0    0    0   95    0    0    0    1    0   0
-  1,1   t .......... .......1..   0    0    0    0   50    0   54  100    0   0
- -3,3   g ....g..... ..........   0    0    0    0   43    0    0    0    0   0
- -6,4   m ...j...... ..........   0    0    0   65    0    0    0    0    0   0
- -4,4   m ...u...... ...0......   0    0    0  144    0    0    0    0    0   0
- -2,4   g .......... ..........   0    0    0    0   23    0    0    0    0   0
-  2,6   t .......... .......1..   0    0    0    0   38    0   53  130    0   0
-  4,6   l .......... ..........   0    0    0    0    0    0    0  100    0   0
-  4,8   t .......... .......1..   0    0    0    0   37    0   53   20    0   0
-  6,8   h .......... ..........   0    0    0    0    0    0    0   35   15   0
-11 sectors.
-The direction of delivery is indicated by the same characters
-, navigate,
-and other commands to indicate direction.
-The presence of a distribution threshold for a particular commodity
-is indicated by a digit in the appropriate column
-under distribute,
-representing the hundreds digit of the threshold value.
-See also : census
-, Commodities
-, Sectors
+COMMODITY
+  Show commodity stockpiles and delivery/distribution settings.
+
+SYNTAX
+  commodity [<sects>]
+  comm      [<sects>]
+
+DESCRIPTION
+  Lists every commodity held in each owned sector, plus delivery
+  and distribution direction settings for each item.
+
+  Delivery/distribution columns use one character per commodity:
+    s=shell  g=gun  p=petrol  i=iron  d=dust  b=bar
+    o=oil    l=lcm  h=hcm     r=rad
+  A dot (.) means no delivery set.  $ means deliver to dist center.
+
+  Commodity abbreviations:
+    c=civ  m=mil  u=uw   f=food  s=shell  g=gun  p=petrol
+    i=iron d=dust b=bar  o=oil   l=lcm    h=hcm  r=rad
+
+EXAMPLE
+  commodity *               all sectors
+  commodity 5,-1            just the LCM factory
+
+SEE ALSO
+  census  resource  threshold  deliver  distribute

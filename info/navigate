@@ -1,125 +1,32 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : NAVIGATE
-Command : NAVIGATE
-Basic
-[##:##] Command : navigate <SHIP/FLEET> <ROUTE|DESTINATION>
-The navigate command is the move command applied to the sea.
-You can control one ship or an entire fleet with it, but they must all
-start in the same sector.
-A ship must have at least one crew
-(which may be civilian or military,
-but not an uncompensated worker)
-to be navigated.
-When you navigate, you see the hex of sectors around the flagship.
-The program will prompt with the maximum and minimum mobility of the
-ships in the fleet, and its current position in the form:
-<57.0:23.5: -6,4>
-which means the ships have between 23.5 and 57 mobility units, and
-are in sector -6,4.
-You may indicate the direction you would like the fleet to move
-by typing a string of letters consisting of any combination of the
-following:
-y  for up-left
-u  for up-right               y    u
-g  for left                    \  /
-j  for right               g  --  --  j
-b  for down-left               /  \
-n  for down-right             b    n
-Other commands you may type while navigating are:
-M  for map
-B  for bmap
-f  to change flagship
-i  to list ships you are navigating
-v  to view oil content and fish
-r  for radar
-l  to look at land and nearby ships
-s  for sonar
-m  to sweep mines
-d  to drop mines
-h  for end of movement
-The radar command will cause the flagship to use it's radar, if any.
-You may also give a ship number or fleet or group of ships on the same
-line: r 12/13/14/73
- and sonar commands work in the same way as radar.
-The map command will give you a
-map surrounding the current position.
-By default, it will be around the flagship.
-You can also supply additional parameters:
-[##:##] Command : <32.3: g 6,2>M 3 ls
-is equivalent to a smap command. like
-this:
-[##:##] Command : map 3 ls
-The bmap command works in the same way, it is equivalent to a
-sbmap command.
-The flagship command will the change the flagship.
-By default, it will select next ship in the list, but you may also
-specify a flagship.
-The drop command will drop mines using ships
-with mine capability.
-You can specify the ship number or fleet or groups of ships
-and the number of sea mines on the same line: d 12/13 10.
-An omitted unit number defaults to the flagship,
-for example d 10 drops ten sea mines from the flagship.
-If you omit the number of sea mines as well, the flagship will drop one
-mine.
-The sweep command will have the minesweepers in the navigating
-group search for mines in the current sector.
-This costs them the equivalent of 1 sector's mobility.
-Note: the lookout, radar, sonar, drop and sweep commands use BTUs,
-just as if you'd typed them
-separately from the command line.
-Since the <ROUTE> can be specified in the command line,
-simple ship movements are often typed as a single line, such as:
-[##:##] Command : nav 19 jjjh
-Or some movements may be done partly on the command line and partly
-interactively:
-[##:##] Command : nav 18 jj
-Flagship is pt   patrol boat (#18)
- . . 
- . . 
-<112.7:112.7: -4,-2> v
-pt   patrol boat (#18) @ -4,-2 0% sea
- . . 
- . . 
-<112.7:112.7: -4,-2> gh
-pt   patrol boat (#18) stopped at -6,-2
-Path taken: jjg
-You may also simply specify the destination sector.  In this case, the
-ships will take a shortest known path to the destination sector.
-For example,
-[##:##] Command : nav 18 -6,-2
-Flagship is pt   patrol boat (#10)
- . . 
- . . 
-<104.2:104.2: -6,-2> h
-pt   patrol boat (#18) stopped at -6,-2
-Path taken: jjg
-The formula for the movement cost for 1 sector is:
-	480 / (( speed + speed * (50+tech)/(200+tech) ) * Efficiency/100)
-Moving a ship through a sector that has been mined risks hitting a
-mine (see info Hitchance).
-Minesweepers can remove up to five mines per pass through a
-sector (indicated by the message Sweep...).
-Minesweepers also take 1/2 normal damage from mines.
-Also, note that some things may affect you while you are moving. Forts
-belonging to hostile countries will fire at you when you come within
-range.  Hostile land/sea/air units may fire at/bomb your ships,
-if they're on interdiction missions (see info mission).
-The chance of bombs hitting your ships is determined by
-the ship that is easiest to hit (see bomb for the chance of
-hitting).  Any damage incurred is divided evenly among
-the navigating ships.
-If your enemy has a
-stack of missiles on interdiction mission, then they will
-automatically fire one after another until all of your valuable
-ships are sunk.
-NOTE
-While navigating, you cannot enter a sector that belongs to another
-country unless they have FRIENDLY relations with you. This includes bridges, and harbors.
-See also : mine
-, Ship-types
-, mission
-, Ships
-, Transportation
-, Moving
+NAVIGATE
+  Move ships along a path through sea sectors.
+
+SYNTAX
+  navigate <ship-spec> <path>
+  nav      <ship-spec> <path>
+
+DESCRIPTION
+  Moves one or more ships along a sequence of direction steps.
+  Ships consume mobility with each step.  A ship must have at least
+  1 mobility point to move.
+
+  <ship-spec>  - ship uid, range (0-5), or * for all
+  <path>       - string of hex direction letters
+
+  Direction letters:
+    u  upper-right      j  right
+    n  lower-right      b  lower-left
+    g  left             y  upper-left
+    h  stop (halt)      v  view (radar-like scan)
+
+  Ships can only pass through sea sectors or under bridges.
+  A ship at a harbor can load/unload using 'load' and 'unload'.
+  Ships at sea recover mobility slowly each update.
+
+EXAMPLE
+  navigate 0 jjjj           move ship 0 four sectors east
+  navigate * h              halt all ships (stop in place)
+  navigate 0 njjju          curved path south then northeast
+
+SEE ALSO
+  ship  load  unload  build  btu

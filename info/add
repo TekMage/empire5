@@ -1,15 +1,29 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : ADD
-Command : ADD
-Expert
-[##:##] Command : add <NAT> <NAME> <REP> <visitor|player|god|delete>
-[##:##] Command : add 1 bunky mypass p
-This adds a new player country to the game.  Use newcap to
-create its sanctuary.
-[##:##] Command : add 2 visitor visitor v
-This adds a visitor country to the game.
-[##:##] Command : add 1 bunky mypass d
-This removes bunky from the game.
-See also : newcap
-, Deity
+ADD
+  Create or reconfigure a nation slot.  (Deity only.)
+
+SYNTAX
+  add <cnum|?> <name> <representative> <status>
+
+DESCRIPTION
+  Creates a new nation or resets an existing slot.  Only the deity
+  (country 0) can use this command.
+
+  <cnum>          - country number (1-99), or '?' to auto-assign
+  <name>          - country name (max 20 characters)
+  <representative>- player's representative name (max 20 chars)
+  <status>        - one of:
+                     v  visitor    (read-only access)
+                     p  player     (full play access)
+                     g  god        (deity status)
+                     d  delete     (mark slot unused)
+
+  New nations start with no territory.  Use the world generator or
+  manual sector assignment to give them starting land.
+
+EXAMPLE
+  add ? Mordor Sauron p      create next free country as player
+  add 5 Gondor Aragorn p     set country 5 to active player
+  add 3 Ghost ghost d        delete/reset country 3
+
+SEE ALSO
+  nation  enable  shutdown  change

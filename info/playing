@@ -1,39 +1,45 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Subject : PLAYING
-Subject : PLAYING
-BTU   
-How BTUs are generated
-Selector * 
-Selectors you can use in Empire conditionals
-Sheep   
-Ovis aries
-Syntax * 
-The Empire command syntax
-Time   
-ETUs, BTUs and ETL
-apropos * 
-Searches info pages for information on a topic
-bye * 
-Log out of Empire
-country   
-Find out country status
-execute   
-Execute a batch file
-help * 
-Provide information on various topics
-info * 
-Provide information on various topics
-list   
-List commands which are currently legal
-players   
-List players currently connected to the game
-pray * 
-Interacting with the Deity
-quit * 
-Log out of Empire
-version   
-Display parameters of this world
-For info on a particular topic, type "info <topic>" where <topic> is
-one of the topics listed above.
-Topics marked by * are the most important and should be read by new players.
+PLAYING — Tips and Strategy
+
+ECONOMY BASICS
+  - Food is produced by agribusiness ('a') sectors with high fert.
+    Without food, civilians starve and productivity collapses.
+  - Iron comes from iron mines ('m') with high min resource.
+    Iron feeds LCM factories ('j') and HCM factories ('k').
+  - LCM (light construction materials) is needed for building
+    almost everything: ships, planes, land units, tech/research.
+  - Gold dust from gold mines ('g') contributes to treasury income.
+  - Oil from oil fields ('o') powers refineries and units.
+
+TECH AND RESEARCH
+  To advance your technology:
+    1. Build research labs ('r') — feed them lcm, oil, dust
+    2. Build tech centers ('t') — feed them lcm, oil, dust
+    3. Build libraries ('l') — feed them lcm for education
+  Higher tech unlocks better ships, planes, and units.
+
+PRODUCTION PIPELINE EXAMPLE
+  iron mine → (iron) → LCM factory → (lcm) → library → education
+  iron mine → (iron) → HCM factory → (hcm) → harbor → ships
+  gold mine → (dust) → capital treasury
+
+DISTRIBUTION SYSTEM
+  Set thresholds (info threshold) and distribution centers
+  (info distribute).  The update moves commodities automatically
+  so sectors stay stocked.  This is far more efficient than
+  manual 'move' commands.
+
+MILITARY PIPELINE
+  1. des X,Y e               enlistment center
+  2. (wait for >=60% eff)    auto-enlist runs each update
+  3. demobilize X,Y 500      move sector mil to nat_reserve
+  4. enlist target 100       deploy reserve to any sector
+  5. attack                  assault enemies with military
+
+COMMON MISTAKES
+  - Forgetting to set food thresholds: civilians starve!
+  - Exploring without food: new sectors run out quickly
+  - Building harbors inland: ships require coastal sectors (coa=1)
+  - Not setting distribution centers: goods pile up at source
+
+SEE ALSO
+  overview  basics  sector-types  threshold  enlist  demobilize

@@ -1,19 +1,25 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : UNLOAD
-Command : UNLOAD
-Basic
-[##:##] Command : unload <COMMODITY> <SHIPS> <AMOUNT>
-[##:##] Command : unload plane <SHIPS> <PLANES>
-[##:##] Command : unload land <SHIPS> <UNITS>
-The unload command is the opposite of load and follows the
-exact same syntax ...
-so why look here for documentation?
-The only thing to know is that unload won't unload more of a thing if the
-sector already has 999. For example, if a ship has 10 food, and the harbor
-has 994, you can only unload 5 of the 10 food.
-Also, you must have Friendly relations with the owner of the harbor
-in order to unload into it.
-See also : load
-, Ships
-, Moving
+UNLOAD
+  Move a commodity from a ship back into a harbor sector.
+
+SYNTAX
+  unload <commodity> <ship-spec> <amount>
+  unlo   <commodity> <ship-spec> <amount>
+
+DESCRIPTION
+  Transfers goods from a ship's hold into the harbor sector where
+  the ship is currently docked.  The ship must be in a harbor
+  sector (type 'h') that you own, at least 2% efficient.
+
+  <commodity>  - single letter: f=food c=civ m=mil l=lcm etc.
+  <ship-spec>  - ship uid, range (0-5), or * for all ships in harbor
+  <amount>     - how many units to unload
+
+  If the ship has fewer than <amount>, it unloads what it has.
+
+EXAMPLE
+  unload food 0 200         take 200 food off ship 0
+  unload civ 1 50           disembark 50 civilians from ship 1
+  unload oil * 100          unload up to 100 oil from every ship
+
+SEE ALSO
+  load  ship  navigate  build

@@ -59,6 +59,14 @@ mod commodity;
 mod change;
 mod force;
 mod update_cmd;
+mod telegram_cmd;
+mod read_cmd;
+mod announce_cmd;
+mod ship_cmd;
+mod load_cmd;
+mod enlist_cmd;
+mod demobilize_cmd;
+mod assault_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -146,6 +154,18 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "change"  | "chan"  => change::run(args, &ctx).await,
         "force"   | "forc"  => force::run(args, &ctx).await,
         "update"  | "upda"  => update_cmd::run(args, &ctx).await,
+
+        "telegram"| "tele"  => telegram_cmd::run(args, &ctx).await,
+        "read"    | "rea"   => read_cmd::run(args, &ctx).await,
+        "announce"| "anno"  => announce_cmd::run(args, &ctx).await,
+        "pray"              => telegram_cmd::run(&format!("0 {args}"), &ctx).await,
+
+        "ship"    | "shp"   => ship_cmd::run(args, &ctx).await,
+        "load"              => load_cmd::run(args, &ctx).await,
+        "unload"  | "unlo"  => load_cmd::run_unload(args, &ctx).await,
+        "enlist"  | "enli"  => enlist_cmd::run(args, &ctx).await,
+        "demobilize" | "demo" => demobilize_cmd::run(args, &ctx).await,
+        "assault" | "assa"  => assault_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

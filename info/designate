@@ -1,36 +1,36 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : DESIGNATE
-Command : DESIGNATE
-Basic
-[##:##] Command : designate <SECTS> <DESIGNATION>
-In Empire all sectors have a designation.
-The designation represents the principal industry or activity
-taking place in that area.
-When a sector is designated a harbor, for example,
-the civilians in the sector start building shipyards and docks,
-(with a little help from any military present).
-If the redesignated sector is already declared to be something else,
-and is efficient, then the workers will have to tear down the existing
-construction and then build the new sector.
-The workers dismantle existing sectors four times faster than they
-can build.
-As work progresses the efficiency will climb toward a maximum of 100%.
-If you don't specify the <DESIGNATION> argument
-in the command line as in:
-[##:##] Command : designate 1:3,2:5
-The program will ask for each sector specified
-what you want the new sector designation to be.
-However, if you wish to designate one or several
-sectors to be one particular thing and don't want to
-be asked on each one you can type something like:
-[##:##] Command : designate -6:6,-3:3 ?type=f +
-This will designate all fortresses that you own within
-three sectors of your capital to be highways.
-Note that you cannot re-designate bridge spans.
-Normally, each point of efficiency added costs you $1. Some sectors
-may cost more, and some may also require the expenditure of lcms and/or
-hcms from the sector. See the show command and info
-Sector-types for details.
-See also : Sector-types
-, Sectors
+DESIGNATE
+  Change what a sector produces by reassigning its type.
+
+SYNTAX
+  designate <sects> <type-letter>
+  desi      <sects> <type-letter>
+  des       <sects> <type-letter>
+
+DESCRIPTION
+  Sets the designation of one or more sectors.  After redesignation
+  the sector starts building toward 100% efficiency; productivity
+  requires >=60% efficiency, which takes several update cycles.
+
+  You can only designate sectors you own.  Designating a sector does
+  not affect its population or stockpiles.
+
+  Common designations:
+    c  capital           a  agribusiness (food)
+    g  gold mine         m  iron mine
+    o  oil field         j  light manufacturing (LCM)
+    k  heavy manuf (HCM) h  harbor (ships)
+    *  airfield          e  enlistment center
+    t  tech center       r  research lab
+    l  library (edu)     +  highway
+    -  wasteland
+
+  See 'info sector-types' for the full list.
+
+EXAMPLE
+  des 4,-2 a                grow food at 4,-2
+  des -4,2 m                mine iron at -4,2
+  des 6,0 h                 build a harbor at 6,0
+  des 1,-3 e                enlistment center for military
+
+SEE ALSO
+  sector-types  resource  census  show  build

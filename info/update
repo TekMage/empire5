@@ -1,11 +1,29 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : UPDATE
-Command : UPDATE
-Obsolete
-[##:##] Command : update
-The update command shows you when the next update will occur, and
-describes the current update policies.
-See also : show
-, zdone
-, Updates
+UPDATE
+  Show when the next game update runs.
+
+SYNTAX
+  update
+  upda
+
+DESCRIPTION
+  Displays the current server time, the scheduled time for the next
+  update, and a countdown.
+
+  The update is the heartbeat of the game.  Each update cycle:
+    - Sectors produce goods (food, iron, LCM, gold, etc.)
+    - Population grows or shrinks
+    - Efficiency builds toward 100% in designated sectors
+    - Distribution and delivery move commodities automatically
+    - Ships, planes, and land units regain mobility
+    - Tech, research, education, and happiness levels change
+    - Military reserve ages slightly (1% per 24 ETU)
+    - Enlistment centers auto-recruit civilians to military
+
+  Updates run on a fixed interval (shown by the 'update' command).
+  In a standard game this is 60 minutes / 60 ETU.
+
+EXAMPLE
+  update                    see next update time and countdown
+
+SEE ALSO
+  census  nation  threshold  distribute  deliver

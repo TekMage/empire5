@@ -46,6 +46,7 @@ pub mod xdump;
 pub mod xundump;
 pub mod trades;
 pub mod loans;
+pub mod telegrams;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -126,6 +127,26 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 6 {
+            // Multi-statement DDL migrations are unreliable with raw_sql in sqlx SQLite.
+            // Execute each ALTER TABLE individually, then bump the version.
+            let stmts = [
+                "ALTER TABLE telegrams ADD COLUMN tel_type INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE nations   ADD COLUMN ann_cnt       INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE nations   ADD COLUMN last_ann_read INTEGER NOT NULL DEFAULT 0",
+            ];
+            for stmt in &stmts {
+                // Ignore "duplicate column" errors from idempotent re-runs.
+                let _ = sqlx::raw_sql(stmt).execute(pool).await;
+            }
+            sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (6)")
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -146,6 +167,15 @@ pub(crate) async fn test_db() -> Db {
     sqlx::raw_sql(include_str!("migrations/004_thresholds_and_relations.sql"))
         .execute(&pool).await.unwrap();
     sqlx::raw_sql(include_str!("migrations/005_trade_loans.sql"))
+        .execute(&pool).await.unwrap();
+    for stmt in &[
+        "ALTER TABLE telegrams ADD COLUMN tel_type INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE nations   ADD COLUMN ann_cnt       INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE nations   ADD COLUMN last_ann_read INTEGER NOT NULL DEFAULT 0",
+    ] {
+        let _ = sqlx::raw_sql(stmt).execute(&pool).await;
+    }
+    sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (6)")
         .execute(&pool).await.unwrap();
     Db { pool }
 }

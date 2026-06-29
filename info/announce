@@ -1,0 +1,22 @@
+ANNOUNCE
+  Broadcast a message to all active countries.
+
+SYNTAX
+  announce <message>
+  anno     <message>
+
+DESCRIPTION
+  Sends a public announcement that all active players can read.
+  Announcements appear in the game news and are visible to everyone
+  when they log in and check announcements.
+
+  Use 'telegram' to send a private message to a specific country.
+  Use 'announce' for public declarations (war warnings, trade
+  offers, diplomatic statements).
+
+EXAMPLE
+  announce Beware: Country 3 is expanding west!
+  anno Selling 500 food at capital, contact me
+
+SEE ALSO
+  telegram  read  relations  declare

@@ -1,47 +1,29 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : SHOW
-Command : SHOW
-Basic
-[##:##] Command : show <land|nuke|plane|sector|ship> [b|s|c] [tech]
-[##:##] Command : show <bridge|item|news|product|tower>
-[##:##] Command : show <updates> [number]
-The show command shows characteristics of sectors, units (ships,
-planes, land units and nukes), bridges (spans and towers), items, news
-and products, as well as information on updates.
-Characteristics are more fully described in separate info
-pages (Ship-types, Nuke-types, etc.).
-For sectors and units, a
-further parameter is required to indicate whether you wish information
-about building (b), statistics (s) or capabilities (c) of the selected
-type.
-By default, unit characteristics are shown at 1.25 times your current
-technology level.  You can ask for a lower level with the optional
-tech parameter.  Units beyond that level are not shown; you can only
-get information on units that you are already or almost capable of
-building.
-So, for example
-[##:##] Command : show nuke capabilities
-will give something like
-Printing for tech level '325'
-              blst dam lbs tech res $        abilities
-10kt  fission    3  70   4  280  93 $  10000
-15kt  fission    3  90   5  290  96 $  15000
-50kt  fission    3 100   6  300 100 $  25000
-100kt fission    4 125   8  310 103 $  30000
-5kt   fusion     2  80   1  315 104 $  12500
-75kt  fusion     3  90   3  320 106 $  20000
-See also : Ship-types
-, Nuke-types
-, Plane-types
-, Unit-types
-, Sector-types
-, Ships
-, Planes
-, LandUnits
-, Nukes
-, Bridges
-, Item-types
-, Products
-, newspaper
-, Updates
+SHOW
+  Display statistics and build requirements for unit types.
+
+SYNTAX
+  show <type> [build|capability|stats]
+
+DESCRIPTION
+  Shows detailed information about ship, plane, land unit, or
+  sector types.
+
+  <type>:
+    s  ship        p  plane       l  land unit
+    b  bridge      n  nuke
+
+  Sub-commands:
+    build       - materials, cost, tech required to build
+    capability  - what the unit can do (flags like FISH, TORP, etc.)
+    stats       - combat and movement statistics
+
+  Use this before building to check requirements.
+
+EXAMPLE
+  show s b                  ship build requirements (all types)
+  show s c                  ship capabilities
+  show l b                  land unit build requirements
+  show p b                  plane build requirements
+
+SEE ALSO
+  build  designate  sector-types  census

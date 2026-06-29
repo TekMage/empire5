@@ -63,6 +63,7 @@ use empire_types::nation::NatStatus;
 use empire_types::product_chr::{NatLevel, ProductChr, Resource};
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::{SectorChr, PRD_NONE};
+use empire_types::ship_chr::ShipChr;
 use empire_types::MAX_NATIONS;
 
 use crate::journal::Journal;
@@ -287,13 +288,19 @@ async fn update_main(
     // 7. age_levels — tech/res decay + best-tech floor
     age_levels(&mut nations_mut, etu, rates);
 
-    // 8. mob_inc_all — mobility accrual
+    // 8. prod_ships — repair/build ships in harbors
     let mut ships      = empire_db::ships::get_all(&gs.db).await?;
     let mut planes     = empire_db::planes::get_all(&gs.db).await?;
     let mut land_units = empire_db::land_units::get_all(&gs.db).await?;
+    prod_ships(&mut ships, &mut sectors, &mut budgets, etu, rates);
+
+    // 9. mob_inc_all — mobility accrual
     mob_inc_all(&mut sectors, &mut ships, &mut planes, &mut land_units, etu, rates);
 
-    // 9. Persist everything back to DB
+    // 10. Send per-nation update reports as TEL_UPDATE telegrams
+    send_update_reports(&gs.db, &nations, &nations_mut, &budgets, &sectors, etu).await;
+
+    // 11. Persist everything back to DB
     for nat in &nations_mut {
         empire_db::nations::put(&gs.db, nat).await?;
     }
@@ -311,6 +318,223 @@ async fn update_main(
     }
 
     Ok(())
+}
+
+// ── Update reports (wu.c / nat.c) ────────────────────────────────────────────
+
+/// Generate and deliver per-nation update report telegrams.
+/// Mirrors the wu()/typed_wu() calls scattered through the original update code.
+async fn send_update_reports(
+    db:          &empire_db::Db,
+    old_nations: &[empire_types::nation::Nation],
+    new_nations: &[empire_types::nation::Nation],
+    budgets:     &[Budget],
+    sectors:     &[empire_types::sector::Sector],
+    etu:         i32,
+) {
+    use empire_db::telegrams;
+    use empire_types::nation::NatStatus;
+    use empire_types::commodity::Item;
+
+    for nat in new_nations {
+        if nat.status < NatStatus::Active { continue; }
+        let own = nat.cnum as usize;
+        let b   = &budgets[own];
+
+        let old = match old_nations.iter().find(|n| n.cnum == nat.cnum) {
+            Some(n) => n,
+            None    => continue,
+        };
+
+        // Count this nation's sectors
+        let my_sects: Vec<_> = sectors.iter().filter(|s| s.own == nat.cnum).collect();
+        let total_civs: i64  = my_sects.iter().map(|s| s.items.get(Item::Civil) as i64).sum();
+        let total_food: i64  = my_sects.iter().map(|s| s.items.get(Item::Food) as i64).sum();
+        let total_dust: i64  = my_sects.iter().map(|s| s.items.get(Item::Dust) as i64).sum();
+
+        // Money delta
+        let money_delta = nat.money - old.money;
+        let money_sign  = if money_delta >= 0 { "+" } else { "" };
+
+        // Level deltas
+        let dtech  = nat.tech     - old.tech;
+        let dres   = nat.research - old.research;
+        let dedu   = nat.education - old.education;
+        let dhap   = nat.happiness - old.happiness;
+
+        // Format the report
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default().as_secs() as i64;
+        let date_str = {
+            use chrono::{Local, TimeZone};
+            let dt = Local.timestamp_opt(now_ts, 0).single().unwrap_or_else(Local::now);
+            format!("{}", dt.format("%a %b %e %T %Y"))
+        };
+
+        let report = format!(
+            "Update Report for {} — {date_str}\n\
+             ETUs this update: {etu}\n\
+             \n\
+             Population:    {total_civs:>8} civilians  ({nsect} sectors)\n\
+             Food reserves: {total_food:>8}\n\
+             Gold dust:     {total_dust:>8}\n\
+             \n\
+             Treasury: ${money:>10}  ({money_sign}{money_delta})\n\
+             \n\
+             Nation levels:\n\
+               Technology.. {tech:>8.2}  ({dtech:+.2})\n\
+               Research.... {res:>8.2}  ({dres:+.2})\n\
+               Education... {edu:>8.2}  ({dedu:+.2})\n\
+               Happiness... {hap:>8.2}  ({dhap:+.2})\n",
+            nat.name,
+            nsect   = my_sects.len(),
+            money   = nat.money,
+            tech    = nat.tech,
+            res     = nat.research,
+            edu     = nat.education,
+            hap     = nat.happiness,
+            dtech   = dtech,
+            dres    = dres,
+            dedu    = dedu,
+            dhap    = dhap,
+        );
+
+        // Production summary from budget level accumulators
+        let mut prod_lines = String::new();
+        if b.level[empire_types::product_chr::NatLevel::Tech as usize] > 0.0 {
+            prod_lines.push_str(&format!(
+                "  Tech produced:     {:.2}\n",
+                b.level[empire_types::product_chr::NatLevel::Tech as usize]
+            ));
+        }
+        if b.level[empire_types::product_chr::NatLevel::Research as usize] > 0.0 {
+            prod_lines.push_str(&format!(
+                "  Research produced: {:.2}\n",
+                b.level[empire_types::product_chr::NatLevel::Research as usize]
+            ));
+        }
+        if b.level[empire_types::product_chr::NatLevel::Education as usize] > 0.0 {
+            prod_lines.push_str(&format!(
+                "  Education produced:{:.2}\n",
+                b.level[empire_types::product_chr::NatLevel::Education as usize]
+            ));
+        }
+
+        let full_report = if prod_lines.is_empty() {
+            report
+        } else {
+            format!("{}\nProduction:\n{}", report.trim_end(), prod_lines)
+        };
+
+        if let Err(e) = telegrams::send(
+            db, nat.cnum, 0, telegrams::TEL_UPDATE, &full_report,
+        ).await {
+            warn!(cnum = nat.cnum, error = %e, "Failed to send update report telegram");
+        }
+    }
+}
+
+// ── Ship production/repair (ship.c — shiprepair) ─────────────────────────────
+//
+// Ships in a friendly harbor gain efficiency each update.
+// Mirrors shiprepair() in src/lib/update/ship.c.
+//
+// Algorithm (harbor case only):
+//   wf     = etu * (ship.civ/2 + ship.mil/5)          (crew contribution)
+//   avail  = wf + sect.avail * 100                     (total labor pool)
+//   delta  = avail / shpchr.bwork                      (max % we can build)
+//   delta  = min(delta, etu * ship_grow_scale)          (rate cap)
+//   delta  = min(delta, 100 - ship.effic)              (remaining cap)
+//   build  = get_materials(sect, lcm, hcm, delta)       (material limited)
+//   wf    -= build * shpchr.bwork                      (crew used up first)
+//   if wf < 0: sect.avail -= roundavg(-wf / 100)       (consume harbor avail)
+//   ship.effic  += build
+//   budget.money -= ship_grow_cost * build / 100
+
+fn prod_ships(
+    ships:   &mut [empire_types::ship::Ship],
+    sectors: &mut [empire_types::sector::Sector],
+    budgets: &mut [Budget],
+    etu:     i32,
+    rates:   &UpdateRates,
+) {
+    // Build a coord → sector index map for fast lookup
+    let coord_map: std::collections::HashMap<(i16, i16), usize> = sectors
+        .iter().enumerate()
+        .map(|(i, s)| ((s.x, s.y), i))
+        .collect();
+
+    for ship in ships.iter_mut() {
+        if ship.own == 0 || ship.effic >= 100 { continue; }
+
+        let Some(shpchr) = ShipChr::for_type(ship.ship_type as usize) else { continue };
+
+        // Find the sector the ship is in
+        let Some(&si) = coord_map.get(&(ship.x, ship.y)) else { continue };
+        let sect = &sectors[si];
+
+        // Must be a harbor owned by the same nation
+        if sect.sector_type != SectorType::Harbor { continue; }
+        if sect.own != ship.own { continue; }
+        if sect.effic < 2 { continue; }
+
+        let budget = &budgets[ship.own as usize];
+        if budget.money < 0.0 { continue; }
+
+        // Labor pool: crew contribution + harbor avail
+        let crew_wf = etu * (ship.items.get(Item::Civil) as i32 / 2
+                           + ship.items.get(Item::Milit) as i32 / 5);
+        let avail_pool = crew_wf + sectors[si].avail as i32 * 100;
+        if avail_pool <= 0 { continue; }
+
+        let bwork = shpchr.bwork.max(1);
+
+        // How much efficiency can we build this tick?
+        let mut delta = avail_pool / bwork;
+        let grow_cap = (etu as f32 * rates.ship_grow_scale) as i32;
+        delta = delta.min(grow_cap).min((100 - ship.effic) as i32);
+        if delta <= 0 { continue; }
+
+        // Material check: consume LCM and HCM proportional to delta
+        // LCM and HCM required for 100% are shpchr.lcm and shpchr.hcm
+        let lcm_avail = sectors[si].items.get(Item::Lcm) as i32;
+        let hcm_avail = sectors[si].items.get(Item::Hcm) as i32;
+
+        // Reduce delta if not enough materials (mirrors get_materials())
+        if shpchr.lcm > 0 {
+            let lcm_pct = lcm_avail * 100 / shpchr.lcm;
+            if lcm_pct < delta { delta = lcm_pct; }
+        }
+        if shpchr.hcm > 0 {
+            let hcm_pct = hcm_avail * 100 / shpchr.hcm;
+            if hcm_pct < delta { delta = hcm_pct; }
+        }
+        if delta <= 0 { continue; }
+
+        // Consume materials
+        let lcm_use = round_avg(shpchr.lcm as f64 * delta as f64 / 100.0) as i16;
+        let hcm_use = round_avg(shpchr.hcm as f64 * delta as f64 / 100.0) as i16;
+        sectors[si].items.add(Item::Lcm, -lcm_use);
+        sectors[si].items.add(Item::Hcm, -hcm_use);
+
+        // Deduct sector avail for labor beyond crew contribution
+        let wf_used = delta * bwork;
+        let harbor_labor = (wf_used - crew_wf).max(0);
+        if harbor_labor > 0 {
+            let avail_used = round_avg(harbor_labor as f64 / 100.0) as i16;
+            let new_avail = (sectors[si].avail - avail_used).max(0);
+            sectors[si].avail = new_avail;
+        }
+
+        // Build efficiency
+        ship.effic += delta as i8;
+        if ship.effic > 100 { ship.effic = 100; }
+
+        // Cost
+        let cost = shpchr.cost as f64 * delta as f64 / 100.0;
+        budgets[ship.own as usize].money -= cost;
+    }
 }
 
 // ── Mobility (mobility.c) ─────────────────────────────────────────────────────
@@ -449,6 +673,13 @@ fn prepare_sects(
         do_feed(s, etu, rates, verbose);
 
         check_pop_loss(s);
+
+        // 4.4.1 populace(): sectors with zero loyalty that haven't been claimed
+        // by the current owner yet get their old_own normalized immediately.
+        // This happens for all freshly created sectors (fairland, explore, capital).
+        if s.loyal == 0 && s.old_own != s.own && s.own != 0 {
+            s.old_own = s.own;
+        }
     }
     let _ = nations;
 }
@@ -519,7 +750,7 @@ fn produce_sects(
                     Some(NatLevel::Education) => nat_edu[own],
                     _                          => 0.0,
                 };
-                produce(s, own, prd, level, budgets);
+                produce(s, own, prd, level, dchr.peff, budgets);
             }
         }
     }
@@ -587,9 +818,10 @@ fn produce(
     own: usize,
     prd: &ProductChr,
     level: f64,
+    peff: i32,
     budgets: &mut [Budget],
 ) {
-    let p_e = prod_eff(prd, level);
+    let p_e = prod_eff(prd, level, peff);
     if p_e <= 0.0 { return; }
 
     let output = prod_output(s, prd, p_e);
@@ -605,7 +837,8 @@ fn produce(
 
 /// Return production efficiency for `prd` at `level`.
 /// Zero means level is too low.  Mirrors prod_eff() in produce.c
-fn prod_eff(prd: &ProductChr, level: f64) -> f64 {
+/// `peff` is dchr.peff (sector production efficiency percent, e.g. 900 for agri).
+fn prod_eff(prd: &ProductChr, level: f64, peff: i32) -> f64 {
     let level_pe = match prd.nlndx {
         None => 1.0,
         Some(_) => {
@@ -615,9 +848,7 @@ fn prod_eff(prd: &ProductChr, level: f64) -> f64 {
             delta / lag
         }
     };
-    // p_eff not in pchr; products produce at 100% of level_pe
-    // (dchr.peff / 100.0 would normally be multiplied in, defaulting to 1.0)
-    level_pe
+    level_pe * peff as f64 / 100.0
 }
 
 /// Compute how much a sector produces in one tick.
@@ -632,8 +863,11 @@ fn prod_output(
     // Material limit: how many units we can make from available inputs
     let material_limit = prod_materials_limit(s, prd);
     let unit_work = prd.bwork.max(1) as f64;
-    let worker_limit = s.avail as f64 * (s.effic as f64 / 100.0) / unit_work;
-    // Resource limit (natural resource depletion — simplified: use sector field)
+    // Resource quality reduces worker effectiveness (4.4.1: p_e = effic/100 * resource/100).
+    // This applies even when nrdep=0 (iron, food) — resource quality still limits productivity.
+    let res_factor = resource_val(s, &prd.resource) as f64 / 100.0;
+    let worker_limit = s.avail as f64 * (s.effic as f64 / 100.0) * res_factor / unit_work;
+    // Resource limit (depletion cap — only matters when nrdep > 0)
     let res_limit = prod_resource_limit(s, prd);
 
     let material_consume = material_limit.min(worker_limit).min(res_limit);
@@ -662,8 +896,9 @@ fn prod_output(
     // Deplete natural resource if applicable
     deplete_resource(s, prd, material_consume);
 
-    // Deduct worker-ETUs used
-    let work_used = (unit_work * material_consume / (s.effic as f64 / 100.0).max(0.01)) as i16;
+    // Deduct worker-ETUs used (4.4.1: work_used = bwork * consume / p_e)
+    let p_e = (s.effic as f64 / 100.0 * res_factor).max(0.001);
+    let work_used = round_avg(unit_work * material_consume / p_e) as i16;
     s.avail = (s.avail - work_used).max(0);
 
     output

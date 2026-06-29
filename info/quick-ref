@@ -1,21 +1,54 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Concept : Quick Reference Card
-Concept : Quick Reference Card
-Basic
-Sector-types:
-    BASICS                   INDUSTRIES                MILITARY / SCIENTIFIC
-    .  sea                   d  defense plant          t  technical center
-    ^  mountain              i  shell industry         f  fortress
-    s  sanctuary             m  mine                   r  research lab
-    /  wasteland             g  gold mine              n  nuclear plant
-    -  wilderness            h  harbor                 l  library/school
-    c  capital/city          w  warehouse              e  enlistment center
-    p  park                  u  uranium mine           !  headquarters
-    COMMUNICATIONS           *  airfield
-    +  highway               a  agribusiness           FINANCIAL
-    )  radar installation    o  oil field              b  bank
-                             j  light manufacturing
-    #  bridge head           k  heavy manufacturing
-    =  bridge span           %  refinery
-See also : Sectors
+QUICK REFERENCE — Common Commands
+
+SURVEYING YOUR COUNTRY
+  census *              sector status (pop, eff, mob, food)
+  resource *            mineral deposits
+  commodity *           all goods in each sector
+  map *                 graphical map
+  nation                treasury, tech, reserve
+  power                 nation power rankings
+  ship *                list your ships
+  update                time until next update
+
+GROWING YOUR TERRITORY
+  explore X,Y path c N  send N civs along path to claim sectors
+    path chars: u=upper-right  j=right  n=lower-right
+                b=lower-left   g=left   y=upper-left
+
+SECTORS
+  des X,Y type          redesignate sector (see info sector-types)
+  census * ?des=a       census only agribusiness sectors
+
+COMMODITIES
+  move food 0,0 100 4,-2    move 100 food from capital to 4,-2
+  threshold food 0,0 2000   keep 2000 food in capital
+  deliver food X,Y 200 $    deliver surplus to dist center
+  distribute * 0,0          all sectors use capital as dist hub
+
+SHIPS
+  build s 6,0 0 1       build fishing boat (type 0) at harbor 6,0
+  ship *                list ships
+  navigate 0 jjjj       move ship 0 four sectors right
+  load food 0 500       load 500 food onto ship 0
+  unload food 0 200     unload 200 food from ship 0
+
+MILITARY
+  enlist 0,0 100        deploy 100 reserve troops to capital
+  demobilize * -10      put excess mil in reserve (keep 10/sector)
+  attack X,Y 0,0        attack X,Y from capital
+
+DIPLOMACY
+  relations             see stances with all countries
+  declare N war         declare war on country N
+  telegram N message    send private message
+  announce message      public broadcast to all
+
+INFORMATION
+  info topic            help on any topic
+  show s b              ship build requirements
+  show l b              land unit requirements
+  version               server settings
+  syntax                how sector/ship specs work
+
+SEE ALSO
+  info  overview  basics  syntax  sector-types

@@ -43,7 +43,7 @@ struct NationRow {
     xcap: i64, ycap: i64, xorg: i64, yorg: i64,
     money: i64, reserve: i64,
     tech: f64, research: f64, education: f64, happiness: f64,
-    login_count: i64, tele_cnt: i64,
+    login_count: i64, tele_cnt: i64, ann_cnt: i64, last_ann_read: i64,
     passwd_hash: String, last_login: i64, last_logout: i64,
 }
 
@@ -73,6 +73,8 @@ impl From<NationRow> for Nation {
             education: r.education, happiness: r.happiness,
             login_count: r.login_count as i32,
             tele_cnt: r.tele_cnt as i32,
+            ann_cnt: r.ann_cnt as i32,
+            last_ann_read: r.last_ann_read,
             passwd_hash: r.passwd_hash,
             last_login: r.last_login,
             last_logout: r.last_logout,
@@ -161,9 +163,9 @@ pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
         "INSERT OR REPLACE INTO nations \
          (uid,cnum,status,flags,name,representative,host_addr,user_id,\
           xcap,ycap,xorg,yorg,money,reserve,tech,research,education,\
-          happiness,login_count,tele_cnt,passwd_hash,last_login,last_logout,\
+          happiness,login_count,tele_cnt,ann_cnt,last_ann_read,passwd_hash,last_login,last_logout,\
           updated_at) \
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
     .bind(n.uid).bind(n.cnum as i64).bind(n.status as i64)
     .bind(n.flags.bits() as i64)
@@ -173,6 +175,7 @@ pub async fn put(db: &Db, n: &Nation) -> DbResult<()> {
     .bind(n.money as i64).bind(n.reserve as i64)
     .bind(n.tech).bind(n.research).bind(n.education).bind(n.happiness)
     .bind(n.login_count as i64).bind(n.tele_cnt as i64)
+    .bind(n.ann_cnt as i64).bind(n.last_ann_read)
     .bind(&n.passwd_hash).bind(n.last_login).bind(n.last_logout)
     .execute(db.pool()).await?;
     Ok(())
@@ -266,7 +269,7 @@ mod tests {
             xcap: 0, ycap: 0, xorg: 0, yorg: 0,
             money: 0, reserve: 0,
             tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
-            login_count: 0, tele_cnt: 0,
+            login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
             passwd_hash: "".into(), last_login: 0, last_logout: 0,
         }
     }
@@ -282,7 +285,7 @@ mod tests {
             xcap: 4, ycap: 2, xorg: 0, yorg: 0,
             money: 20_000, reserve: 0,
             tech: 10.5, research: 3.2, education: 1.0, happiness: 50.0,
-            login_count: 1, tele_cnt: 0,
+            login_count: 1, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
             passwd_hash: "".into(), last_login: 0, last_logout: 0,
         };
         put(&db, &n).await.unwrap();

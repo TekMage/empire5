@@ -269,7 +269,7 @@ async fn ensure_deity(db: &Db) -> Result<()> {
         xorg: 0, yorg: 0,
         money: 0, reserve: 0,
         tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
-        login_count: 0, tele_cnt: 0,
+        login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
         passwd_hash: String::new(),
         last_login: 0, last_logout: 0,
     };
@@ -295,7 +295,7 @@ async fn ensure_visitor(db: &Db, nc: usize) -> Result<()> {
         xorg: 0, yorg: 0,
         money: 0, reserve: 0,
         tech: 0.0, research: 0.0, education: 0.0, happiness: 0.0,
-        login_count: 0, tele_cnt: 0,
+        login_count: 0, tele_cnt: 0, ann_cnt: 0, last_ann_read: 0,
         passwd_hash: String::new(),
         last_login: 0, last_logout: 0,
     };

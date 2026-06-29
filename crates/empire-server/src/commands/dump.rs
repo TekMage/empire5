@@ -26,8 +26,9 @@
 //   c_del m_del c_cut m_cut
 
 use super::ctx::CmdCtx;
-use empire_db::sectors;
+use empire_db::{sectors, ships};
 use empire_types::commodity::Item;
+use empire_types::ship_chr::ShipChr;
 
 // Item enum indices used to index del[] array:
 //   Civil=0, Milit=1, Shell=2, Gun=3, Petrol=4, Iron=5, Dust=6, Bar=7,
@@ -49,7 +50,7 @@ pub async fn run(subcmd: &str, ctx: &CmdCtx<'_>) -> String {
 
     match subcmd {
         "dump"  => dump_sectors(ts, ctx).await,
-        "sdump" => empty_dump("SHIPS",      "ships",  "sdump", ts),
+        "sdump" => dump_ships(ts, ctx).await,
         "ldump" => empty_dump("LAND UNITS", "units",  "ldump", ts),
         "pdump" => empty_dump("PLANES",     "planes", "pdump", ts),
         _       => "10 Unknown dump subcommand\n".to_string(),
@@ -158,7 +159,39 @@ c_del m_del c_cut m_cut\n");
     out
 }
 
-// Outputs an empty dump for ship/land/plane types — no records but valid
+async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
+    let all = match ships::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 Database error: {e}\n"),
+    };
+
+    let mine: Vec<_> = all.into_iter()
+        .filter(|s| s.own == ctx.cnum)
+        .collect();
+
+    let mut out = String::new();
+    out.push_str(&format!("1 DUMP SHIPS {ts}\n"));
+    out.push_str("1 uid own x y type eff mob tech fl\n");
+
+    for s in &mine {
+        let rx = ctx.x_rel(s.x);
+        let ry = ctx.y_rel(s.y);
+        let type_name = ShipChr::for_type(s.ship_type as usize)
+            .map(|c| c.name)
+            .unwrap_or("unknown");
+        out.push_str(&format!(
+            "1 {} {} {} {} {} {} {} {} {}\n",
+            s.uid, s.own, rx, ry, type_name, s.effic, s.mobil, s.tech, s.fleet
+        ));
+    }
+
+    let n = mine.len();
+    out.push_str(&format!("1 {n} ships\n"));
+    out.push_str("0 sdump\n");
+    out
+}
+
+// Outputs an empty dump for land/plane types — no records but valid
 // header and footer so ParseDump terminates cleanly.
 fn empty_dump(dump_type: &str, unit_name: &str, cmd_ok: &str, ts: i64) -> String {
     format!(

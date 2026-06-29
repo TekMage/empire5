@@ -452,12 +452,21 @@ where
                     ).as_bytes()
                 ).await?;
             }
-            // Telegram notification (NF_INFORM handled in Phase 5)
+            // Telegram notification
             if nat.tele_cnt > 0 {
                 let msg = if nat.tele_cnt == 1 {
                     "You have a new telegram waiting ...".to_string()
                 } else {
                     format!("You have {} new telegrams waiting ...", nat.tele_cnt)
+                };
+                writer.write_all(protocol::data_line(&msg).as_bytes()).await?;
+            }
+            // Announcement notification
+            if nat.ann_cnt > 0 {
+                let msg = if nat.ann_cnt == 1 {
+                    "You have 1 new announcement (use 'read w' to view).".to_string()
+                } else {
+                    format!("You have {} new announcements (use 'read w' to view).", nat.ann_cnt)
                 };
                 writer.write_all(protocol::data_line(&msg).as_bytes()).await?;
             }

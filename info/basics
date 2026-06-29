@@ -1,33 +1,43 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Introduction : Basics
-Introduction : Basics
-Basic
-First, there are no real rules to playing empire.  What you do
-is what you do.  There are some general guidelines here, and some
-deities may be more forgiving than others.
-One player, one country.
-You may NEVER use any country other than your own.
-It is OK for two people to play one country
-but it is NEVER OK for one person to play two countries.
-If you are caught doing this, your countries will be removed
-from the game.
-In addition, your registrations for future games may be
-declined.
-DON'T DO IT.
-OK, but what do I do when I'm away?
-1) you may turn over your country to someone who has never
-played anyone else's country in that game.
-You MUST tell the deity if you do this
-as he/she/it will be watching who is playing what.
-2) you may turn your country over to the deity.
-Bugs: if you find a bug,
-you are REQUIRED to report it to the deity.
-I will not let other people know about the bug
-and in most cases, you may exploit it until it is fixed.
-Punishment for use without telling: at least $50,000 or
-getting your country removed from the game.
-Denial-of-service attacks are forbidden.  Any form of attack that
-prevents a player from connecting to the server is against the rules.
-This includes letter bombing.
-See also : Introduction
+BASICS — First Steps in Empire
+
+YOUR FIRST SESSION
+  When you log in, type commands at the prompt.  Most commands
+  accept abbreviated names (census = cens, designate = des, etc.).
+
+  Start by surveying your territory:
+    census *          see all your sectors
+    resource *        see mineral deposits
+    nation            see your treasury and stats
+    map *             see a map of your territory
+    update            see when the next update runs
+
+BUILD YOUR ECONOMY
+  Food comes first.  Without food, civilians starve.
+    1. Find a sector with high fert:    resource *
+    2. Designate it as agribusiness:    des X,Y a
+    3. Set food threshold in capital:   threshold food 0,0 2000
+    4. Set threshold elsewhere:         threshold food * 30
+
+  Then develop production:
+    - Iron mine (m) + LCM factory (j) → light construction materials
+    - LCM + libraries (l) → education
+    - LCM + tech center (t) + research (r) → technology
+    - Gold mine (g) → dust → treasury income
+
+GROW YOUR TERRITORY
+    explore 0,0 j civ 10    send civilians to claim new sectors
+    explore 0,0 jj civ 5    two sectors east
+
+BUILD A MILITARY
+    des 1,-3 e              designate an enlistment center
+    (wait for updates until it reaches 60% efficiency)
+    demobilize 1,-3 100     move auto-enlisted mil to reserve
+    enlist 0,0 50           place reserve troops in capital
+
+CONNECT SECTORS
+    distribute * 0,0        all sectors distribute to capital
+    threshold food * 30     each sector keeps 30 food minimum
+    threshold food 0,0 2000 capital keeps 2000 food
+
+SEE ALSO
+  overview  syntax  sector-types  census  explore  threshold

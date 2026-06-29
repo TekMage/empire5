@@ -121,7 +121,9 @@ pub struct Nation {
 
     // Login tracking
     pub login_count: i32,
-    pub tele_cnt: i32,      // # telegrams waiting
+    pub tele_cnt: i32,      // # personal telegrams waiting
+    pub ann_cnt:  i32,      // # unread announcements
+    pub last_ann_read: i64, // unix timestamp: last time announces were read
 
     // Authentication (Phase 2)
     /// bcrypt hash of the nation password; empty = no password set

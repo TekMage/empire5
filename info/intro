@@ -1,24 +1,77 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Subject : INTRODUCTION
-Subject : INTRODUCTION
-Basics * 
-The basic rules for playing Empire
-Expert   
-Advice to expert Empire players
-Guide *!
-User's Guide to Empire
-Hints   
-Hints to help you play Empire better
-Kill * 
-How to kill your process on the server
-Novice *!
-Advice for Novices
-Overview * 
-An Overview of the Game
-Suggestions   
-Suggestions for enhancements to the game
-For info on a particular topic, type "info <topic>" where <topic> is
-one of the topics listed above.
-Topics marked by * are the most important and should be read by new players.
-Topics with unusually long info are marked with a !.
+INTRO — Empire 5 Help Index
+
+  Type 'info <topic>' to read any page.
+
+GETTING STARTED
+  overview        What is Empire and how to play
+  basics          First steps: economy, exploration, military
+  quick-ref       One-page command cheat sheet
+  syntax          Sector specs, conditionals, directions
+
+SECTORS AND ECONOMY
+  census          Sector status display
+  resource        Mineral deposit display
+  commodity       Commodity stockpile display
+  map             ASCII map display
+  designate       Change sector type
+  sector-types    All sector designation letters
+  threshold       Set distribution minimums
+  distribute      Set each sector's distribution hub
+  deliver         Set automatic per-sector delivery
+  move            Move commodities between sectors
+  explore         Claim new territory
+  realm           Define named areas
+
+SHIPS
+  ship            List ships
+  build           Build ships, land units, planes
+  navigate        Move ships at sea
+  load            Load goods onto a ship
+  unload          Unload goods from a ship
+  show            Unit type statistics and costs
+
+MILITARY
+  enlist          Deploy reserve troops to a sector
+  demobilize      Convert sector troops to reserve
+  attack          Assault an enemy sector
+  march           Move land units
+  bomb            Bomb enemy sectors
+  fly             Rebase planes
+  launch          Fire missiles
+  mission         Set standing unit missions
+  btu             Mobility unit explanation
+
+NATION AND DIPLOMACY
+  nation          View country stats
+  power           Nation power rankings
+  report          Active nation overview
+  relations       View diplomatic stances
+  declare         Change diplomatic stance
+  telegram        Send a private message
+  read            Read incoming telegrams
+  announce        Public broadcast
+  change          Change password / country name
+
+ECONOMY/MARKET
+  sell            List goods for sale
+  buy             Purchase from market
+  trade           View market listings
+  loan            View or offer loans
+
+ADMIN (deity only)
+  add             Create/reset nation slots
+  enable          Resume update cycle
+  disable         Pause update cycle
+  shutdown        Stop the server
+  force           Trigger immediate update
+
+UTILITIES
+  version         Server version and config
+  update          Next update countdown
+  dump            Machine-readable sector dump
+  sdump           Machine-readable ship dump
+  xdump           Raw table export
+  info            This help system
+
+SEE ALSO
+  overview  basics  quick-ref  syntax

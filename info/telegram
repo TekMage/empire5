@@ -1,0 +1,28 @@
+TELEGRAM
+  Send a message to another country.
+
+SYNTAX
+  telegram <cnum> <message>
+  tele     <cnum> <message>
+  pray     <message>           (sends to deity, country 0)
+
+DESCRIPTION
+  Sends a telegram to another country.  Telegrams are received
+  immediately and can be read with the 'read' command.
+
+  <cnum>     - country number to send to
+  <message>  - the message text (rest of command line)
+
+  'pray' is a shortcut to send a message to the deity (country 0),
+  useful for reporting bugs or requesting help.
+
+  Telegrams are stored until read.  The recipient sees a notification
+  of unread telegrams when they log in.
+
+EXAMPLE
+  telegram 3 Interested in an alliance?
+  tele 2 I have iron to trade, interested?
+  pray The gold mine at -3,1 seems broken
+
+SEE ALSO
+  read  announce  relations  declare

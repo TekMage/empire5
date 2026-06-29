@@ -1,0 +1,23 @@
+READ
+  Read incoming telegrams.
+
+SYNTAX
+  read
+  rea
+
+DESCRIPTION
+  Reads all unread telegrams addressed to your country, in the order
+  they were received.  Each telegram shows the sender, timestamp,
+  and message body.
+
+  After you read all telegrams, the unread count resets to zero.
+  Telegrams are not deleted after reading — they can be reviewed
+  again in the next session.
+
+  Your unread telegram count is shown when you log in.
+
+EXAMPLE
+  read                      read all unread telegrams
+
+SEE ALSO
+  telegram  announce  relations

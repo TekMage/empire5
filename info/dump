@@ -1,0 +1,35 @@
+DUMP / SDUMP / LDUMP / PDUMP
+  Machine-readable data dumps for external tools and scripts.
+
+SYNTAX
+  dump              sector dump (all your sectors)
+  sdump             ship dump (all your ships)
+  ldump             land unit dump
+  pdump             plane dump
+
+DESCRIPTION
+  Outputs game data in a fixed-column machine-readable format
+  intended for client-side tools (parsers, bots, map display).
+
+  dump  — all sector fields for owned sectors, one row per sector.
+          Includes coordinates, designations, efficiency, all item
+          counts, delivery/threshold settings, and terrain data.
+
+  sdump — all ship fields: uid, owner, x, y, type, efficiency,
+          mobility, tech, fleet letter.
+
+  ldump/pdump — same concept for land units and planes (stub output
+          if no units exist).
+
+  The first line after the header is a column-name row.
+  Subsequent rows are data.  The final line gives the record count.
+
+  Use 'census', 'ship', 'commodity' for human-readable output.
+
+EXAMPLE
+  dump                      full sector dump
+  sdump                     ship dump
+  pdump                     plane dump
+
+SEE ALSO
+  census  ship  xdump  commodity  resource

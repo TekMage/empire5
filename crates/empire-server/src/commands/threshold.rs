@@ -22,6 +22,7 @@ use empire_db::sectors;
 use empire_types::commodity::Item;
 use empire_types::sector_chr::SectorChr;
 use super::ctx::CmdCtx;
+use super::sector_sel::SectSpec;
 
 const ALL_ITEMS: [Item; 14] = [
     Item::Civil, Item::Milit, Item::Shell, Item::Gun, Item::Petrol,
@@ -44,6 +45,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let area_spec = parts.get(1).copied().unwrap_or("*");
     let new_thresh: Option<i16> = parts.get(2).and_then(|s| s.trim().parse().ok());
 
+    let filter = match SectSpec::parse(area_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -55,7 +61,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     for mut s in all_sectors {
         if s.own != ctx.cnum && !ctx.is_deity { continue; }
         if s.own == 0 { continue; }
-        if !matches_area(&s, area_spec, ctx) { continue; }
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) { continue; }
 
         let xy = ctx.format_xy(s.x, s.y);
         let dchr = SectorChr::for_type(s.sector_type);
@@ -78,7 +84,12 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             }
             s.del[item_idx].threshold = thresh;
             match sectors::put(ctx.db, &s).await {
-                Ok(_) => {}
+                Ok(_) => {
+                    out.push_str(&format!(
+                        "1 {xy} {} threshold set to {thresh}\n",
+                        dchr.name
+                    ));
+                }
                 Err(e) => {
                     out.push_str(&format!("1 {xy}: database error: {e}\n"));
                     continue;
@@ -126,25 +137,3 @@ fn parse_item(s: &str) -> Option<Item> {
     None
 }
 
-fn matches_area(s: &empire_types::sector::Sector, spec: &str, ctx: &CmdCtx) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Some((rx, ry)) = parse_rel_xy(spec) {
-        return s.x == ctx.x_abs(rx) && s.y == ctx.y_abs(ry);
-    }
-    if let Some(pos) = spec.find(':') {
-        let (coord_part, dist_part) = spec.split_at(pos);
-        let dist_part = &dist_part[1..];
-        if let (Some((rx, ry)), Ok(dist)) = (parse_rel_xy(coord_part), dist_part.trim().parse::<i32>()) {
-            let ax = ctx.x_abs(rx);
-            let ay = ctx.y_abs(ry);
-            let d = crate::subs::geo::map_dist(s.x, s.y, ax, ay, ctx.world_x, ctx.world_y);
-            return d <= dist;
-        }
-    }
-    true
-}
-
-fn parse_rel_xy(s: &str) -> Option<(i16, i16)> {
-    let (xs, ys) = s.split_once(',')?;
-    Some((xs.trim().parse().ok()?, ys.trim().parse().ok()?))
-}

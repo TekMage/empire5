@@ -170,6 +170,7 @@ pub async fn run_newcap(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
 
     sect.own = target_cnum;
+    sect.old_own = target_cnum;
 
     if let Err(e) = sectors::put(ctx.db, &sect).await {
         return format!("10 Database error saving sector: {e}\n");

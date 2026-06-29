@@ -1,51 +1,36 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : DELIVER
-Command : DELIVER
-Expert
-[##:##] Command : deliver <COMM> <SECTS> <THRESH> <DIR>
-[##:##] Command : deliver <COMM> <SECTS> +<THRESH>
-[##:##] Command : deliver <COMM> <SECTS> <DIR>
-[##:##] Command : deliver <COMM> <SECTS> q
-An example of using deliver in addition to distribute is where
-you may have a mine which uses distribute to get its food
-from a warehouse, but uses deliver to export its iron to the adjacent
-hcm factory.
-Deliver may be used to extra-fine tune a distribution network.  In
-fact, deliver can greatly improve the performance of a distribution
-network if used properly.
-If 'q' is specified rather than a threshold, then the delivery
-directions and thresholds will simply be listed.  You can also use the
-"cutoff" command to list delivery thresholds.
-The number <THRESH> specifies how much of that commodity you would
-like to be kept in the sector.  If you do not want to change the
-direction that a sector delivers to, then put a '+' before the number
-<THRESH>.
-Note that delivery thresholds are stored as multiples of 8.  If you
-specify a threshold that is not a multiple of 8, it will be rounded down.
-Delivery will not ship out the last civilian or the last military if
-there are no civilians, regardless of thresholds.
-The direction must be specified as one of the six direction characters,
-(usually `y' `u' `j' `n' `b' or `g'), the no-direction character,
-(usually `h').  If no direction is specified, then the direction will
-not be changed for that sector.
-[##:##] Command : deli f 0,0 0 j
-Will deliver all food from 0,0 to 2,0.
-[##:##] Command : deli i * ?des=m +87
-Will set iron delivery threshold to 80 in all mines.
-[##:##] Command : deli l * q
-Will list all lcm delivery specifications.  (Sectors with no delivery
-threshold or direction will not be listed).
-The census and commodity reports will indicate deliveries by the
-same characters used to specify them in this command.
-If, during an update, the destination sector is not owned by you,
-the message delivery walkout between x,y & x,y will be printed
-and nothing will be delivered.
-Delivery routes may also be mapped out with the route command.
-See "info Mobility" for an explanation of mobility costs.
-See also : cutoff
-, census
-, commodity
-, route
-, distribute
-, Distribution
+DELIVER
+  Set automatic per-sector delivery for a commodity each update.
+
+SYNTAX
+  deliver <commodity> <sects> <threshold> <direction>
+  deli    <commodity> <sects> <threshold> <direction>
+
+DESCRIPTION
+  Configures a sector to automatically move a commodity in a given
+  direction each update when the stockpile exceeds the threshold.
+  Delivery is point-to-point and moves commodities one step.
+
+  <commodity>  - single letter: f=food c=civ m=mil i=iron etc.
+  <sects>      - sector spec; supports realm (#N) and ?des=X condition
+  <threshold>  - don't deliver if stockpile is below this level
+  <direction>  - hex direction or $ for distribution center:
+                   u  upper-right      j  right
+                   n  lower-right      b  lower-left
+                   g  left             y  upper-left
+                   $  to dist center   .  cancel delivery
+
+  The ?des=X condition must be attached directly to <sects> with no
+  space: #1?des=a not #1 ?des=a.
+
+  Delivery uses sector mobility.  Distribution (see info threshold)
+  is usually preferred since it uses less mobility.
+
+EXAMPLE
+  deliver f 7,-1 200 $          deliver food above 200 to dist center
+  deliver i -4,2 50 j           deliver iron above 50 rightward
+  deliver f * 0 .               cancel all food delivery
+  deliver f #1?des=a 200 $      all agri in realm 1 deliver food
+  deliver i *?des=m 100 $       all iron mines deliver to dist center
+
+SEE ALSO
+  threshold  distribute  realm  syntax  commodity  census  btu

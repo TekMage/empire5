@@ -29,7 +29,7 @@
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use super::ctx::CmdCtx;
-use super::sector_sel::matches_area;
+use super::sector_sel::SectSpec;
 
 const ALL_ITEMS: [Item; 14] = [
     Item::Civil, Item::Milit, Item::Shell, Item::Gun, Item::Petrol,
@@ -124,6 +124,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         None => return format!("10 Unknown direction '{}'; use: . u j n b g y $ or +0..+7\n", dir_str),
     };
 
+    let filter = match SectSpec::parse(area_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 Database error: {e}\n"),
@@ -140,7 +145,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if s.own == 0 {
             continue;
         }
-        if !matches_area(&s, area_spec, ctx) {
+        if !filter.matches(&s, ctx.world_x, ctx.world_y) {
             continue;
         }
 

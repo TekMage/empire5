@@ -1,11 +1,35 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : ATTACK
-Command : ATTACK
-Basic
-[##:##] Command : attack <SECT> [<forts?> <ships?> <arty?> <planes?>]
-The attack command is used to attack a sector from neighboring sectors.
-For more details, see "info Attacking".
-See also : Attacking
-, Combat
-, LandUnits
+ATTACK
+  Launch a ground assault on an enemy sector.
+
+SYNTAX
+  attack <target-x,y> <attacking-sects> [land-units]
+  atta   <target-x,y> <attacking-sects> [land-units]
+
+DESCRIPTION
+  Attacks an adjacent enemy sector with military from one or more
+  of your neighboring sectors.  The result depends on relative
+  military strength, efficiency, and tech levels.
+
+  If the attack succeeds, you capture the sector.  It will have 0%
+  efficiency under your control initially.  The previous owner's
+  civilians and resources remain in the sector.
+
+  Attack strength scales with:
+    - number of attacking military
+    - efficiency of attacking sectors
+    - tech level of your nation
+    - land units committed (if any)
+
+  Defense strength scales with:
+    - defending military
+    - sector efficiency and fortress bonus
+    - defender's tech level
+
+  Attacking costs military lives on both sides regardless of outcome.
+
+EXAMPLE
+  attack 2,0 0,0            attack 2,0 from your capital
+  attack -2,2 -3,1 -1,1    attack from two adjacent sectors
+
+SEE ALSO
+  march  bomb  relations  declare  census

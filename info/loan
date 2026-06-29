@@ -1,20 +1,26 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Subject : LOANS
-Subject : LOANS
-collect   
-Foreclose an overdue loan
-consider   
-Accept, decline or postpone consideration of a loan
-financial   
-Show all the outstanding loans in the world
-ledger   
-Report on outstanding loans
-offer   
-Offer a loan to another country
-repay   
-Repay a loan (all or part)
-shark   
-Purchase defaulted loan
-For info on a particular topic, type "info <topic>" where <topic> is
-one of the topics listed above.
+LOAN
+  Offer or view loans to other countries.
+
+SYNTAX
+  loan [<loan#>]
+
+DESCRIPTION
+  The loan system allows countries to lend money to each other.
+  The borrower repays with interest over time (deducted each update
+  from their treasury automatically).
+
+  Without an argument, shows all active loans involving you.
+  With a loan number, shows details of that specific loan.
+
+  To offer a loan:
+    loan <cnum> <amount> <interest-rate> <duration-updates>
+
+  The recipient can accept or decline the loan offer.  Once
+  accepted, money transfers immediately and repayment begins.
+
+EXAMPLE
+  loan                      see all your active loans
+  loan 3 1000 0.05 10       offer country 3 a $1000 loan, 5% rate
+
+SEE ALSO
+  nation  report  telegram

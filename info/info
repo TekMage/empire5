@@ -1,0 +1,25 @@
+INFO
+  Display help pages for commands and topics.
+
+SYNTAX
+  info [<topic>]
+
+DESCRIPTION
+  With a topic name, displays the help page for that command or
+  concept.  With no argument, lists all available topics.
+
+  Topics correspond to commands (e.g. 'info census') or concepts
+  (e.g. 'info sector-types', 'info syntax', 'info overview').
+
+  Command names and topic names are case-insensitive.
+  You can also type the full command name or its abbreviation.
+
+EXAMPLE
+  info                      list all available topics
+  info census               help for the census command
+  info sector-types         list all sector designation types
+  info syntax               how sector/ship specs work
+  info overview             general game introduction
+
+SEE ALSO
+  overview  syntax  basics  quick-ref

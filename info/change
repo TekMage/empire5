@@ -1,0 +1,23 @@
+CHANGE
+  Change your country's password or other settings.
+
+SYNTAX
+  change <setting> <value>
+  chan   <setting> <value>
+
+DESCRIPTION
+  Modifies account settings for your country.
+
+  Settings:
+    password <new-password>   change your login password
+    name     <new-name>       change your country's display name
+
+  Passwords are stored securely (bcrypt hashed).  Choose a password
+  other players won't guess — country names are public.
+
+EXAMPLE
+  change password hunter2   set new password
+  change name Atlantis      rename your country
+
+SEE ALSO
+  nation  add

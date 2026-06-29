@@ -1,30 +1,46 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : REALM
-Command : REALM
-Basic
-[##:##] Command : realm <NUMBER> <SECTS>
-The realm command allows you to manipulate the contents of the
-realms associated with your country
-which provide a convenient way to save coordinates that are
-frequently used
-(see info syntax for use of realm arguments).
-In the syntax of the realm command
-<NUMBER> is the number of the realm to be set.
-The <SECTS> argument is optional;
-if included, the specified realm will be set to <SECTS>;
-if omitted the coordinates of the specified realm will be printed.
-[##:##] Command : realm 1
-Realm 1 is -3:3,3:3
-[##:##] Command : realm 1 -3:2,4
-[##:##] Command : realm 1
-Realm 1 is now set to -3:2,4:4
-If the <NUMBER> argument is omitted,
-the coordinates of all realms will be printed.
-Also note that the <SECTS> argument may use the # form of realm
-specification.
-[##:##] Command : realm 0 #1
-Now realm 0 is set to -3:2,4:4.
-See also : Syntax
-, nation
-, Maps
+REALM
+  Define named rectangular sector areas for use in commands.
+
+SYNTAX
+  realm [<realm#>] [<x1:x2,y1:y2>]
+  real  [<realm#>] [<x1:x2,y1:y2>]
+
+DESCRIPTION
+  Realms are numbered rectangular shortcuts (0-49) that let you
+  refer to areas of the map by number instead of typing coordinates
+  every time.
+
+  realm 0 is always equivalent to all sectors (*).
+  Realms 1-49 can be defined to any rectangle you choose.
+
+  With no argument, shows all defined realms.
+  With just a number, shows that realm's coordinates.
+  With a number and coordinates, defines the realm.
+
+  Once defined, use #N in any sector-spec command to refer to
+  realm N.  You can combine a realm with a ?condition by appending
+  it with no space: #1?des=m
+
+SECTOR CONDITIONS
+  A ?condition can be appended directly to any sector spec (no space).
+  This filters sectors matched by the spec:
+
+    ?des=X    only sectors with designation letter X
+              e.g. ?des=m  (iron mines), ?des=a  (agribusiness),
+                   ?des=h  (harbors),    ?des=f  (food factories)
+
+  See 'info syntax' for the full list of designation letters.
+
+EXAMPLE
+  realm 1 -5:5,-5:5         define realm 1 as area near capital
+  realm 2 0:10,0:10         define realm 2 as eastern island
+  realm                     list all realm definitions
+  census #1                 census of all sectors in realm 1
+  census #1?des=m           census of iron mines in realm 1
+  threshold food #2 50      keep 50 food in every sector of realm 2
+  threshold iron #1?des=m 100   keep 100 iron in realm 1 iron mines
+  deliver f #2?des=a 200 $  all agri in realm 2 deliver food to dist
+  distribute #2 4,6         point all realm 2 sectors to warehouse
+
+SEE ALSO
+  census  map  syntax  threshold  deliver  distribute

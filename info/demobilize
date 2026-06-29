@@ -1,0 +1,34 @@
+DEMOBILIZE
+  Convert active military in sectors into national reserve.
+
+SYNTAX
+  demobilize <sects> <amount> [reserve|civ]
+  demo       <sects> <amount> [reserve|civ]
+
+DESCRIPTION
+  Transfers military from sector(s) into your national reserve pool
+  (or optionally converts them to civilians).  Costs $5 per troop.
+
+  <sects>   - sector(s) to draw from
+  <amount>  - how many to demobilize per sector.
+              Use a negative number to keep that many and demob rest.
+              Example: -10 means "keep 10, demob the rest"
+  reserve   - (default) mil becomes nat_reserve
+  civ       - mil becomes civilians instead (no reserve gained)
+
+  Requirements:
+    - Sector must be >=60% efficient
+    - Sector must still be under original ownership (not conquered)
+    - You must have enough money ($5/troop)
+
+  The reserve can then be spent via 'enlist' to quickly deploy
+  troops anywhere you own.
+
+EXAMPLE
+  demobilize 1,-3 100       move 100 mil to reserve, cost $500
+  demobilize * -10          keep 10 mil each sector, rest to reserve
+  demobilize 0,0 50 civ     convert 50 mil to civilians at capital
+  demo * 200                shorthand alias
+
+SEE ALSO
+  enlist  nation  sector-types  census

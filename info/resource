@@ -1,56 +1,30 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : RESOURCE
-Command : RESOURCE
-Basic
-[##:##] Command : resource <SECTS>
-The resource command displays specific information on
-some or all of the sectors you occupy.
-In the syntax of the resource command
-<SECTS> is the area on which you wish information,
-(see info syntax).
-A typical usage might be:
-[##:##] Command : resource 0:9,0:9 ?des=m
-which would list data for mines in an area
-to the south-east of the capital.
-A resource report lists each of your sectors in the specified area
-headed by:
 RESOURCE
-  sect        eff  min gold fert oil uran ter
-These columns represent:
-sect
-the x and y coordinates of the sector
-eff
-the efficiency of the sector (affects all benefits
-of a designated sector except mobility units)
-min
-the relative richness in non-gold minerals,
-gold
-the relative richness in gold ore,
-fert
-the fertility of the soil in relative terms,
-oil
-the oil content in relative terms,
-uran
-the uranium (radioactive materials) content in relative terms,
-ter
-the territory number.
-For example:
-[##:##] Command : reso #0
-Sat Sep  2 03:20:00 1989
-RESOURCE
-  sect        eff  min gold fert oil uran ter
-   3,-5   ^   40%   38    0   64   0   44
-   5,-5   )  100%   75    0   41   0   36  90
-   7,-5   t  100%   65    0   38   0   72
-   9,-5   h  100%   48    0   42   0   45   5
-   0,-4   j  100%    0    0  112  40    0
-   2,-4   j  100%   32    0   69   0   36
-   4,-4   l  100%   60    0   53   0   37  22
-   6,-4   +  100%   52    0   14   0   78
-  10,-4   ^   20%  100    0    0   0   79
-    9 sectors
-See also : commodity
-, census
-, Products
-, Sectors
+  Show mineral and terrain resources for owned sectors.
+
+SYNTAX
+  resource [<sects>]
+  reso     [<sects>]
+
+DESCRIPTION
+  Displays natural resource values for each owned sector.  These
+  are fixed terrain properties that determine what a sector can
+  produce when designated appropriately.
+
+  Column meanings:
+    sect      - x,y and designation
+    min       - mineral density  (iron mines use this)
+    gold      - gold deposit     (gold mines use this)
+    fert      - fertility        (agribusiness sectors use this)
+    ocontent  - oil content      (oil fields use this)
+    uran      - uranium content  (uranium mines use this)
+
+  Values range 0-100.  A value of 0 means that resource cannot be
+  extracted regardless of designation.  Use this to pick the best
+  location before designating new production sectors.
+
+EXAMPLE
+  resource *                check all sectors
+  resource -5:5,-5:5        find good sites near capital
+
+SEE ALSO
+  census  designate  sector-types  show

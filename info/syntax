@@ -1,110 +1,51 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Concept : Command Syntax
-Concept : Command Syntax
-Basic
-The Empire Shell (command interpreter)
-expects input in the form:
-[##:##] Command : VERB ARG1 ARG2 ...
-VERB is any one of the Empire commands on the command list
-(what you see when you type list-- e.g.
-, info, etc).
-The number of ARGs varies from command to command.
-In most cases the ARGs need not be supplied on the command line;
-any that are not supplied will be obtained by prompting.
-The exception to this rule are those ARGs
-that are enclosed in [square brackets]
-in the command list.
-The presence of these ARGs changes the way the command is carried out.
-Certain basic argument types recur often and are abbreviated in the
-following ways.
-<TYPE> ::= 'se', 'sh', 'l', or 'p' for sector, ship, land unit, or
-plane respectively.  If "sector" is not a possibility, then 's' will
-likely suffice for "ship".
-<CNUM/CNAME> ::= either a country number or a country name
-<COMM> ::= any one, (or unambiguous abbreviation), of the list of
-commodities found in info Selector:
-<LOAN> ::= loan number
-<SECT> ::= sector coordinates in the form: x,y
-<SECTS> ::= sector(s) in the form:
-lox:hix,loy:hiy ?cond&cond&...
-lox, hix, loy, hiy are coordinates bounding
-the rectangular area to be considered
-cond is a condition of the form:
-<VALUE><OPERATOR><VALUE>
-<VALUE> is either a <COMM>, as above,
-a number in the range 0 to 65536,
-a sector designation,
-(m for mine, c for capital, etc), a type of unit
-(frigate, cavalry, etc), or a selector found in info
-Selector.
-<OPERATOR> can be any one of:
-<
-less than
-=
-equal
->
-greater than
-#
-not equal
-Thus mob=100, ore#0, 7=guns, civ#mil,
-des=b are examples of legitimate conditions,
-(note lack of embedded spaces),
-and
-[##:##] Command : census -3:3,-3:3 ?des=+&gun=5&mil>civ
-will list all highways
-within 3 of your capital
-with exactly 5 guns and more military than civilians.
-Similarly,
-[##:##] Command : deliver f -9:9,-9:9 ?f_del=0
-will allow you to set up food delivery
-in all the sectors that don't already
-have food delivery.
-Note that hix, hiy, and ?cond are all optional.
-Also, the entire lox:hix,loy:hiy section may be replaced
-by either #, #0, #1, #2,
-or #3, ... which refer to
-realms which you can define.
-(See info realm.)
-Note that # and #0 are equivalent.  Also * refers to
-all sectors, and @x,y:dist refers to all sectors within dist of x,y.
-<SHIP> ::= one ship number
-<FLEET> ::= fleet designation,
-which may be a list of ships separated by slashes (`/'),
-a fleet letter,
-the character tilde (`~') which means all ships not in a specific fleet,
-or a rectangular sector area.
-<SHIP/FLEET> ::= either a single ship number or a fleet designation.
-Note that <FLEET> specifications may have an optional ?cond&cond...
-argument like that used for <SECTS> arguments.
-For instance:
-[##:##] Command : ship ~ ?des=d&mil>5
-will list all destroyers that have more than 5 military
-which are not currently in any fleet.
-The output from commands may also be sent to a file or another
-process by utilizing these alternate syntaxes:
-[##:##] Command : VERB ARG1 ... > FILE
-which sends the output to the file FILE.
-[##:##] Command : VERB ARG1 ... >> FILE
-which appends the output to the file FILE.
-[##:##] Command : VERB ARG1 ... >! FILE
-which sends the output to the file FILE,
-replacing the file it if it already exists.
-[##:##] Command : VERB ARG ... | PROGRAM [ARGS...]
-which send the output of the command to the program PROGRAM
-with optional arguments ARGS.
-This is most useful when PROGRAM is some type of
-pager like more(1) or less(1).
-The Empire shell also recognizes a few control characters:
-\*(fIname\*(fP
-\*(fImeaning\*(fP
-interrupt
-Abort command and return to Empire command level
-quit
-Exit Empire
-EOT
-Exit Empire
-See also : realm
-, Moving
-, Selector
-, Playing
+SYNTAX — Command and Selector Syntax
+
+SECTOR SPECIFICATIONS
+  Most commands accept a sector spec as an argument.
+
+  *                     all sectors you own
+  0,0                   single sector at relative (0,0)
+  -3:3,-3:3             rectangle: x from -3 to 3, y from -3 to 3
+  0,0:5                 all sectors within 5 of (0,0)
+  #1                    realm 1 (defined with 'realm' command)
+
+SECTOR CONDITIONALS  (?des=X)
+  Append ?des=X directly to any spec (no space) to filter by
+  sector designation letter.  For commands like threshold, deliver,
+  and distribute, the condition must be part of the same argument:
+
+    *?des=h               all your harbor sectors
+    #1?des=m              iron mines inside realm 1
+    0,0:5?des=a           agribusiness within 5 of capital
+    *?des=f               all food factories
+
+  Designation letters:
+    c  capital      h  harbor       f  food factory    a  agribusiness
+    m  iron mine    e  tech school  l  library         r  research lab
+    +  oil well     !  oil refinery  i  shell industry  w  warehouse
+    u  uranium mine g  gold mine    d  dust factory     b  bank
+    s  shell dump   k  lcm factory  j  hcm factory      (see 'info sectors')
+
+SHIP SPECIFICATIONS
+  *                     all your ships
+  0                     ship uid 0
+  0-5                   ships 0 through 5
+
+COMMODITY LETTERS
+  c=civ  m=mil  u=uw   f=food  s=shell  g=gun  p=petrol
+  i=iron d=dust b=bar  o=oil   l=lcm    h=hcm  r=rad
+
+HEX DIRECTIONS
+  u=upper-right  j=right   n=lower-right
+  b=lower-left   g=left    y=upper-left
+  h=stop         v=view (look without moving)
+
+EXAMPLES
+  census *?des=a            census of all agribusiness sectors
+  threshold food *?des=a 30 set food threshold in all agri sectors
+  threshold iron #1?des=m 100  keep 100 iron in realm 1 iron mines
+  deliver f #2?des=a 200 $  all agri in realm 2 deliver food to dist
+  distribute #1 4,6         point all realm 1 sectors to warehouse
+
+SEE ALSO
+  realm  census  map  deliver  threshold  distribute

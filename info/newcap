@@ -1,8 +1,26 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-   "http://www.w3.org/TR/html4/strict.dtd">
-Command : NEWCAP
-Command : NEWCAP
-Expert
-[##:##] Command : newcap <NAT> <SECTOR>
-See also : add
-, Deity
+NEWCAP
+  Move your capital to a new sector.
+
+SYNTAX
+  newcap <x,y>
+
+DESCRIPTION
+  Relocates your capital to the specified sector.  All relative
+  coordinates for your country shift so that the new capital becomes
+  (0,0).
+
+  The new capital sector must be:
+    - Owned by you
+    - Designated as capital type ('c')
+
+  After moving, all sector coordinates shown in census, map, and
+  other commands are relative to the new capital.
+
+  WARNING: Moving the capital changes all your sector coordinates.
+  Update your thresholds and delivery settings if needed.
+
+EXAMPLE
+  newcap 2,0                move capital to the sector at current 2,0
+
+SEE ALSO
+  capital  designate  census  map
