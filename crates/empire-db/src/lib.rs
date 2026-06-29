@@ -173,6 +173,32 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 8 {
+            // Migration 007 was initially deployed with wrong column names (uid/item/happened_at).
+            // Drop and recreate with the correct schema.
+            let stmts = [
+                "DROP TABLE IF EXISTS news",
+                "CREATE TABLE news (\
+                    id      INTEGER PRIMARY KEY AUTOINCREMENT,\
+                    actor   INTEGER NOT NULL,\
+                    verb    INTEGER NOT NULL,\
+                    victim  INTEGER NOT NULL DEFAULT 0,\
+                    times   INTEGER NOT NULL DEFAULT 1,\
+                    when_ts INTEGER NOT NULL\
+                )",
+                "CREATE INDEX IF NOT EXISTS news_when ON news(when_ts)",
+            ];
+            for stmt in &stmts {
+                let _ = sqlx::raw_sql(stmt).execute(pool).await;
+            }
+            sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (8)")
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -218,6 +244,22 @@ pub(crate) async fn test_db() -> Db {
         let _ = sqlx::raw_sql(stmt).execute(&pool).await;
     }
     sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (7)")
+        .execute(&pool).await.unwrap();
+    for stmt in &[
+        "DROP TABLE IF EXISTS news",
+        "CREATE TABLE news (\
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,\
+            actor   INTEGER NOT NULL,\
+            verb    INTEGER NOT NULL,\
+            victim  INTEGER NOT NULL DEFAULT 0,\
+            times   INTEGER NOT NULL DEFAULT 1,\
+            when_ts INTEGER NOT NULL\
+        )",
+        "CREATE INDEX IF NOT EXISTS news_when ON news(when_ts)",
+    ] {
+        let _ = sqlx::raw_sql(stmt).execute(&pool).await;
+    }
+    sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (8)")
         .execute(&pool).await.unwrap();
     Db { pool }
 }
