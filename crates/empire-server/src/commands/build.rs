@@ -39,7 +39,7 @@ use empire_types::land_chr::LandChr;
 use empire_types::plane_chr::PlaneChr;
 use empire_types::plane::PlaneFlags;
 use super::ctx::CmdCtx;
-use super::sector_sel::matches_area;
+use super::sector_sel::SectSpec;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -84,6 +84,11 @@ async fn build_ships(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: 
         None => return format!("10 Unknown ship type {type_idx}\n"),
     };
 
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -100,7 +105,7 @@ async fn build_ships(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: 
             if sect.own == 0 {
                 continue;
             }
-            if !matches_area(&sect, sect_spec, ctx) {
+            if !filter.matches(&sect, ctx.world_x, ctx.world_y) {
                 continue;
             }
 
@@ -229,6 +234,11 @@ async fn build_land(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: u
         None => return format!("10 Unknown land unit type {type_idx}\n"),
     };
 
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -245,7 +255,7 @@ async fn build_land(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: u
             if sect.own == 0 {
                 continue;
             }
-            if !matches_area(&sect, sect_spec, ctx) {
+            if !filter.matches(&sect, ctx.world_x, ctx.world_y) {
                 continue;
             }
             // Land units require Urban (capital) in C, but we allow any owned sector
@@ -360,6 +370,11 @@ async fn build_planes(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count:
         None => return format!("10 Unknown plane type {type_idx}\n"),
     };
 
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -376,7 +391,7 @@ async fn build_planes(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count:
             if sect.own == 0 {
                 continue;
             }
-            if !matches_area(&sect, sect_spec, ctx) {
+            if !filter.matches(&sect, ctx.world_x, ctx.world_y) {
                 continue;
             }
 
