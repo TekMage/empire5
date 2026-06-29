@@ -1,0 +1,49 @@
+PRODUCTION
+  Simulate next-update production for your sectors.
+
+SYNTAX
+  production [<sector-spec>]
+  prod [<sector-spec>]
+
+DESCRIPTION
+  Shows what each of your sectors will produce at the next update,
+  based on current efficiency, avail, materials on hand, and your
+  tech/education level.  Nothing is changed — this is read-only.
+
+  The simulation applies the same pre-production steps the update
+  uses: food consumption (which affects civilian count), and
+  efficiency building (which can change avail and effic).  Sectors
+  below 60% efficiency after these steps are skipped.
+
+OUTPUT COLUMNS
+  sect   — sector coordinates
+  des    — sector type mnemonic
+  eff    — physical production efficiency (sector effic x resource quality)
+  avail  — available work units
+  make   — projected output (number + commodity mnemonic, or decimal for tech/res)
+  p.e.   — tech-adjusted production efficiency
+  cost   — dollar cost of this production run
+  use1-3 — commodities consumed at projected output level
+  max1-3 — commodities that would be consumed if inputs were unlimited
+  max    — maximum possible output if inputs were unlimited
+
+DIAGNOSTICS
+  If "make" is much lower than "max", you are input-limited: the
+  sector doesn't have enough raw materials.  Supply the missing
+  commodity (shown in use1-3 vs max1-3) to reach full output.
+
+  If p.e. is low or zero, your tech level is below the minimum
+  required for that product type.
+
+  If make and max are both zero, check avail and effic — the sector
+  may not have enough workers or may be below 60% efficiency.
+
+EXAMPLE
+  prod *            simulate production for all your sectors
+  prod #2           sectors in realm 2
+  prod ?des=i       all iron mines
+
+SEE ALSO
+  census  commodity  threshold  show
+
+
