@@ -48,6 +48,7 @@ pub mod trades;
 pub mod loans;
 pub mod telegrams;
 pub mod news;
+pub mod bmap;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -199,6 +200,20 @@ impl Db {
                 .execute(pool).await?;
         }
 
+        let version: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 1) FROM schema_version")
+                .fetch_one(pool).await?;
+
+        if version < 9 {
+            // Add per-nation fog-of-war map (bmap BLOB).
+            // Empty blob = all unseen; updated by radar sweeps.
+            let _ = sqlx::raw_sql(
+                "ALTER TABLE nations ADD COLUMN bmap BLOB NOT NULL DEFAULT X''"
+            ).execute(pool).await;
+            sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (9)")
+                .execute(pool).await?;
+        }
+
         Ok(())
     }
 
@@ -260,6 +275,11 @@ pub(crate) async fn test_db() -> Db {
         let _ = sqlx::raw_sql(stmt).execute(&pool).await;
     }
     sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (8)")
+        .execute(&pool).await.unwrap();
+    let _ = sqlx::raw_sql(
+        "ALTER TABLE nations ADD COLUMN bmap BLOB NOT NULL DEFAULT X''"
+    ).execute(&pool).await;
+    sqlx::query("INSERT OR IGNORE INTO schema_version(version) VALUES (9)")
         .execute(&pool).await.unwrap();
     Db { pool }
 }

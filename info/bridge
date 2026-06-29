@@ -1,0 +1,73 @@
+BRIDGE BUILDING
+===============
+
+Bridges let you cross water, connecting your empire across seas.
+
+COMMANDS
+--------
+  build b SECT DIR     Build a bridge span from SECT in direction DIR
+  build t SECT DIR     Build a bridge tower from SECT in direction DIR
+
+DIRECTIONS
+----------
+  NE  (or ne)    North-East
+  E   (or e)     East
+  SE  (or se)    South-East
+  SW  (or sw)    South-West
+  W   (or w)     West
+  NW  (or nw)    North-West
+
+SECTOR TYPES
+------------
+  #   Bridge Head  — terminus; owned land sector adjacent to water.
+                     Designate a land sector as # before bridging.
+  =   Bridge Span  — the bridge crossing water between heads/towers.
+  @   Bridge Tower — mid-ocean support tower; built from a span
+                     into deep water to extend the bridge further.
+
+BRIDGE SPAN (build b)
+---------------------
+  Source:     Any owned # (Bridge Head) or @ (Bridge Tower) sector
+              at ≥60% efficiency.
+  Target:     The adjacent water sector in the chosen direction.
+              It must have bridge support (an adjacent # or @ sector
+              at ≥60% that is not the source itself).
+  Tech req:   10
+  Materials:  100 HCM from the source sector
+  Cost:       $1,000 from your treasury
+
+  The new = sector is created at 10% efficiency, owned by you.
+
+BRIDGE TOWER (build t)
+----------------------
+  Source:     Any owned = (Bridge Span) sector at ≥60% efficiency.
+  Target:     An adjacent water sector in the chosen direction.
+              The target must NOT be adjacent to any land sector
+              (towers extend into open water only).
+  Tech req:   100
+  Materials:  300 HCM from the source sector
+  Cost:       $3,000 from your treasury
+
+  The new @ sector is created at 10% efficiency, owned by you.
+
+BRIDGE SUPPORT
+--------------
+  A water sector can receive a span only when it has "support" —
+  at least one adjacent # or @ sector at ≥60% efficiency.  This
+  prevents dangling spans that have nothing to anchor to.
+
+TIPS
+----
+  • Designate your coastal sector as # first (e.g.: des 4,4 #).
+  • Raise its efficiency to 60% before building.
+  • Bridge spans and towers grow toward 100% efficiency on update
+    like any other sector.
+  • To cross a wide ocean, build a tower mid-span and continue
+    from there with another span.
+  • Bridges can be conquered like any sector.
+
+SEE ALSO
+--------
+  info designate   Sector designation
+  info build       General build command
+  info sector-types  Full list of sector types

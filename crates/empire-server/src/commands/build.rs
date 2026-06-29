@@ -30,9 +30,10 @@
 
 use empire_db::{sectors, ships, planes, land_units};
 use empire_types::commodity::{Inventory, Item};
+use empire_types::coords::Coord;
 use empire_types::land::LandUnit;
 use empire_types::plane::Plane;
-use empire_types::sector::SectorType;
+use empire_types::sector::{Sector, SectorType};
 use empire_types::ship::{RetreatFlags, Ship};
 use empire_types::ship_chr::ShipChr;
 use empire_types::land_chr::LandChr;
@@ -43,10 +44,29 @@ use super::sector_sel::SectSpec;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
+    if parts.is_empty() {
+        return "10 Usage: build s|l|p|b|t SECT-SPEC ...\n".to_string();
+    }
+    let what = parts[0];
+
+    // Bridge span/tower have their own arg layout
+    match what {
+        "b" | "bridge" => {
+            let sect_spec = parts.get(1).copied().unwrap_or("");
+            let direction = parts.get(2).copied().unwrap_or("");
+            return build_bridge_span(ctx, sect_spec, direction).await;
+        }
+        "t" | "tower" => {
+            let sect_spec = parts.get(1).copied().unwrap_or("");
+            let direction = parts.get(2).copied().unwrap_or("");
+            return build_bridge_tower(ctx, sect_spec, direction).await;
+        }
+        _ => {}
+    }
+
     if parts.len() < 3 {
         return "10 Usage: build s|l|p SECT-SPEC TYPE-NUMBER [COUNT]\n".to_string();
     }
-    let what = parts[0];
     let sect_spec = parts[1];
     let type_str = parts[2];
     let count: u32 = if parts.len() >= 4 {
@@ -69,10 +89,10 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     };
 
     match what {
-        "s" | "ship" => build_ships(ctx, sect_spec, type_idx, count).await,
-        "l" | "land" => build_land(ctx, sect_spec, type_idx, count).await,
+        "s" | "ship"  => build_ships(ctx, sect_spec, type_idx, count).await,
+        "l" | "land"  => build_land(ctx, sect_spec, type_idx, count).await,
         "p" | "plane" => build_planes(ctx, sect_spec, type_idx, count).await,
-        _ => "10 Usage: build s|l|p SECT-SPEC TYPE-NUMBER [COUNT]\n".to_string(),
+        _ => "10 Usage: build s|l|p|b|t SECT-SPEC ...\n".to_string(),
     }
 }
 
@@ -522,5 +542,315 @@ async fn next_plane_uid(ctx: &CmdCtx<'_>) -> i32 {
         Ok(all) => all.iter().map(|p| p.uid).max().unwrap_or(-1) + 1,
         Err(_) => 0,
     }
+}
+
+// ── Bridge span building ──────────────────────────────────────────────────────
+//
+// Mirrors build_bspan() in buil.c.
+// Requirements:
+//   tech >= 10.0  (buil_bt)
+//   source sector must be BridgeHead (or BridgeTower)
+//   source must have >= 100 HCM  (buil_bh)
+//   source must have enough avail
+//   cost $1000  (buil_bc)
+//   target must be adjacent water sector
+//   target must have a supporting bridge head or tower adjacent to it
+
+const BSPAN_TECH_REQ: f64  = 10.0;
+const BSPAN_HCM_REQ:  i16  = 100;
+const BSPAN_CASH_REQ: f64  = 1000.0;
+const BTOWER_TECH_REQ: f64 = 100.0;
+const BTOWER_HCM_REQ:  i16 = 300;
+const BTOWER_CASH_REQ: f64 = 3000.0;
+
+// 6-direction offsets matching Empire hex grid (matching DIROFF in update.rs)
+const DIROFF6: [(Coord, Coord); 6] = [
+    (1, -1),  // NE
+    (2, 0),   // E
+    (1, 1),   // SE
+    (-1, 1),  // SW
+    (-2, 0),  // W
+    (-1, -1), // NW
+];
+
+fn parse_direction(s: &str) -> Option<(Coord, Coord)> {
+    match s.trim().to_lowercase().as_str() {
+        "ne" | "ur" => Some((1, -1)),
+        "e"  | "r"  => Some((2, 0)),
+        "se" | "dr" => Some((1, 1)),
+        "sw" | "dl" => Some((-1, 1)),
+        "w"  | "l"  => Some((-2, 0)),
+        "nw" | "ul" => Some((-1, -1)),
+        _ => None,
+    }
+}
+
+fn wrap(v: i16, max: i32) -> i16 {
+    ((v as i32).rem_euclid(max)) as i16
+}
+
+/// True if (x,y) is adjacent to a bridge head or tower owned by any nation.
+fn has_bridge_support(x: Coord, y: Coord, all: &[Sector], wx: i32, wy: i32) -> bool {
+    for (dx, dy) in DIROFF6 {
+        let nx = wrap(x + dx, wx);
+        let ny = wrap(y + dy, wy);
+        if let Some(s) = all.iter().find(|s| s.x == nx && s.y == ny) {
+            if s.effic >= 60
+                && (s.sector_type == SectorType::BridgeHead
+                    || s.sector_type == SectorType::BridgeTower)
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+async fn build_bridge_span(ctx: &CmdCtx<'_>, sect_spec: &str, direction: &str) -> String {
+    if sect_spec.is_empty() {
+        return "10 Usage: build b <bridge-head-sector> <direction>\n  Directions: NE E SE SW W NW\n".to_string();
+    }
+    if !ctx.is_deity && ctx.nat.tech < BSPAN_TECH_REQ {
+        return format!("10 Building a bridge span requires tech {:.0}\n", BSPAN_TECH_REQ);
+    }
+    let (dx, dy) = match parse_direction(direction) {
+        Some(d) => d,
+        None => return format!(
+            "10 '{}' is not a valid direction (use NE E SE SW W NW)\n", direction
+        ),
+    };
+
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let all_sectors = match sectors::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 database error: {e}\n"),
+    };
+
+    let mut out = String::new();
+    let mut found = false;
+    let wx = ctx.world_x;
+    let wy = ctx.world_y;
+
+    for mut sp in all_sectors.clone() {
+        if sp.own != ctx.cnum && !ctx.is_deity { continue; }
+        if sp.own == 0 { continue; }
+        if !filter.matches(&sp, wx, wy) { continue; }
+        if sp.sector_type != SectorType::BridgeHead
+            && sp.sector_type != SectorType::BridgeTower
+            && !ctx.is_deity
+        {
+            out.push_str(&format!(
+                "1 {}: must be a bridge head (#) or tower\n",
+                ctx.format_xy(sp.x, sp.y)
+            ));
+            found = true;
+            continue;
+        }
+        found = true;
+
+        // Check HCM
+        if sp.items.get(Item::Hcm) < BSPAN_HCM_REQ {
+            out.push_str(&format!(
+                "1 {}: not enough HCM (need {})\n",
+                ctx.format_xy(sp.x, sp.y), BSPAN_HCM_REQ
+            ));
+            continue;
+        }
+        // Check cash
+        if ctx.nat.money < BSPAN_CASH_REQ as i32 {
+            out.push_str(&format!("1 Not enough money (need ${:.0})\n", BSPAN_CASH_REQ));
+            break;
+        }
+
+        let tx = wrap(sp.x + dx, wx);
+        let ty = wrap(sp.y + dy, wy);
+        let target = all_sectors.iter().find(|s| s.x == tx && s.y == ty);
+
+        match target {
+            None => {
+                out.push_str(&format!(
+                    "1 {}: no sector in that direction\n",
+                    ctx.format_xy(tx, ty)
+                ));
+                continue;
+            }
+            Some(t) if t.sector_type != SectorType::Sea => {
+                out.push_str(&format!(
+                    "1 {}: not a water sector\n",
+                    ctx.format_xy(tx, ty)
+                ));
+                continue;
+            }
+            _ => {}
+        }
+        if !has_bridge_support(tx, ty, &all_sectors, wx, wy) && !ctx.is_deity {
+            out.push_str(&format!(
+                "1 {}: not adjacent to a bridge head or tower\n",
+                ctx.format_xy(tx, ty)
+            ));
+            continue;
+        }
+
+        // Build the span — convert target water sector to BridgeSpan
+        let mut new_span = all_sectors.iter().find(|s| s.x == tx && s.y == ty).unwrap().clone();
+        new_span.sector_type = SectorType::BridgeSpan;
+        new_span.new_type    = SectorType::BridgeSpan;
+        new_span.effic       = 10;  // SCT_MINEFF
+        new_span.mobil       = 0;
+        new_span.own         = sp.own;
+        new_span.old_own     = sp.own;
+
+        // Deduct HCM and cash from source sector
+        sp.items.add(Item::Hcm, -BSPAN_HCM_REQ);
+
+        if let Err(e) = sectors::put(ctx.db, &new_span).await {
+            out.push_str(&format!("1 database error: {e}\n"));
+            continue;
+        }
+        if let Err(e) = sectors::put(ctx.db, &sp).await {
+            out.push_str(&format!("1 database error: {e}\n"));
+            continue;
+        }
+        // Deduct cash from nation
+        let mut nat = ctx.nat.clone();
+        nat.money = (nat.money as f64 - BSPAN_CASH_REQ) as i32;
+        let _ = empire_db::nations::put(ctx.db, &nat).await;
+
+        out.push_str(&format!(
+            "1 Bridge span built over {}\n",
+            ctx.format_xy(tx, ty)
+        ));
+    }
+
+    if !found {
+        out.push_str(&format!("1 {sect_spec}: No sector(s)\n"));
+    }
+    out.push_str("0 build\n");
+    out
+}
+
+async fn build_bridge_tower(ctx: &CmdCtx<'_>, sect_spec: &str, direction: &str) -> String {
+    if sect_spec.is_empty() {
+        return "10 Usage: build t <bridge-span-sector> <direction>\n  Directions: NE E SE SW W NW\n".to_string();
+    }
+    if !ctx.is_deity && ctx.nat.tech < BTOWER_TECH_REQ {
+        return format!("10 Building a bridge tower requires tech {:.0}\n", BTOWER_TECH_REQ);
+    }
+    let (dx, dy) = match parse_direction(direction) {
+        Some(d) => d,
+        None => return format!(
+            "10 '{}' is not a valid direction (use NE E SE SW W NW)\n", direction
+        ),
+    };
+
+    let filter = match SectSpec::parse(sect_spec, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let all_sectors = match sectors::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 database error: {e}\n"),
+    };
+
+    let mut out = String::new();
+    let mut found = false;
+    let wx = ctx.world_x;
+    let wy = ctx.world_y;
+
+    for mut sp in all_sectors.clone() {
+        if sp.own != ctx.cnum && !ctx.is_deity { continue; }
+        if sp.own == 0 { continue; }
+        if !filter.matches(&sp, wx, wy) { continue; }
+        if sp.sector_type != SectorType::BridgeSpan && !ctx.is_deity {
+            out.push_str(&format!(
+                "1 {}: towers can only be built from bridge spans\n",
+                ctx.format_xy(sp.x, sp.y)
+            ));
+            found = true;
+            continue;
+        }
+        found = true;
+
+        if sp.items.get(Item::Hcm) < BTOWER_HCM_REQ {
+            out.push_str(&format!(
+                "1 {}: not enough HCM (need {})\n",
+                ctx.format_xy(sp.x, sp.y), BTOWER_HCM_REQ
+            ));
+            continue;
+        }
+        if ctx.nat.money < BTOWER_CASH_REQ as i32 {
+            out.push_str(&format!("1 Not enough money (need ${:.0})\n", BTOWER_CASH_REQ));
+            break;
+        }
+
+        let tx = wrap(sp.x + dx, wx);
+        let ty = wrap(sp.y + dy, wy);
+        let target = all_sectors.iter().find(|s| s.x == tx && s.y == ty);
+
+        match target {
+            None => {
+                out.push_str(&format!("1 {}: no sector\n", ctx.format_xy(tx, ty)));
+                continue;
+            }
+            Some(t) if t.sector_type != SectorType::Sea => {
+                out.push_str(&format!("1 {}: not a water sector\n", ctx.format_xy(tx, ty)));
+                continue;
+            }
+            _ => {}
+        }
+
+        // Tower cannot be adjacent to land (except water/bridge types)
+        let land_adjacent = DIROFF6.iter().any(|&(odx, ody)| {
+            let nx = wrap(tx + odx, wx);
+            let ny = wrap(ty + ody, wy);
+            if let Some(adj) = all_sectors.iter().find(|s| s.x == nx && s.y == ny) {
+                let t = adj.sector_type;
+                t != SectorType::Sea && t != SectorType::BridgeSpan && t != SectorType::BridgeTower
+            } else { false }
+        });
+        if land_adjacent && !ctx.is_deity {
+            out.push_str(&format!(
+                "1 {}: can't build tower next to land\n",
+                ctx.format_xy(tx, ty)
+            ));
+            continue;
+        }
+
+        let mut new_tower = all_sectors.iter().find(|s| s.x == tx && s.y == ty).unwrap().clone();
+        new_tower.sector_type = SectorType::BridgeTower;
+        new_tower.new_type    = SectorType::BridgeTower;
+        new_tower.effic       = 10;
+        new_tower.mobil       = 0;
+        new_tower.own         = sp.own;
+        new_tower.old_own     = sp.own;
+
+        sp.items.add(Item::Hcm, -BTOWER_HCM_REQ);
+
+        if let Err(e) = sectors::put(ctx.db, &new_tower).await {
+            out.push_str(&format!("1 database error: {e}\n"));
+            continue;
+        }
+        if let Err(e) = sectors::put(ctx.db, &sp).await {
+            out.push_str(&format!("1 database error: {e}\n"));
+            continue;
+        }
+        let mut nat = ctx.nat.clone();
+        nat.money = (nat.money as f64 - BTOWER_CASH_REQ) as i32;
+        let _ = empire_db::nations::put(ctx.db, &nat).await;
+
+        out.push_str(&format!(
+            "1 Bridge tower built at {}\n",
+            ctx.format_xy(tx, ty)
+        ));
+    }
+
+    if !found {
+        out.push_str(&format!("1 {sect_spec}: No sector(s)\n"));
+    }
+    out.push_str("0 build\n");
+    out
 }
 

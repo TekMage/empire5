@@ -21,7 +21,7 @@
 // columns are spaces (invalid positions), giving the visual hex stagger.
 
 use std::collections::HashMap;
-use empire_db::{sectors, nations};
+use empire_db::{sectors, nations, bmap};
 use empire_types::coords::Coord;
 use empire_types::sector::{Sector, SectorType};
 use crate::subs::geo;
@@ -37,10 +37,56 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let wx = ctx.world_x;
     let wy = ctx.world_y;
 
-    // Build lookup: (abs_x, abs_y) → char
+    // Load fog-of-war map (deities see all).
+    let mut bm = if ctx.is_deity {
+        None
+    } else {
+        match bmap::get_bmap(ctx.db, ctx.cnum, wx as usize, wy as usize).await {
+            Ok(b) => Some(b),
+            Err(_) => None,
+        }
+    };
+
+    // Seed bmap with own sectors if it's completely empty.
+    let mut bmap_changed = false;
+    if let Some(ref mut b) = bm {
+        if b.is_empty() {
+            for s in &all_sectors {
+                if s.own == ctx.cnum {
+                    b.set(s.x, s.y, s.sector_type.mnemonic() as u8);
+                    bmap_changed = true;
+                }
+            }
+        }
+    }
+
+    // Build lookup: (abs_x, abs_y) → char applying fog of war.
     let mut lookup: HashMap<(Coord, Coord), char> = HashMap::new();
     for s in &all_sectors {
-        lookup.insert((s.x, s.y), map_char(s, ctx.cnum, ctx.is_deity));
+        let ch = if ctx.is_deity {
+            map_char(s, ctx.cnum, true)
+        } else {
+            fog_map_char(s, ctx.cnum, bm.as_ref())
+        };
+        lookup.insert((s.x, s.y), ch);
+
+        // Keep bmap current for own sectors
+        if let Some(ref mut b) = bm {
+            if s.own == ctx.cnum {
+                let new_ch = s.sector_type.mnemonic() as u8;
+                if b.get(s.x, s.y) != new_ch {
+                    b.set(s.x, s.y, new_ch);
+                    bmap_changed = true;
+                }
+            }
+        }
+    }
+
+    // Persist bmap if changed
+    if bmap_changed {
+        if let Some(ref b) = bm {
+            let _ = bmap::put_bmap(ctx.db, ctx.cnum, b).await;
+        }
     }
 
     // Compute absolute display bounds from arg.
@@ -124,6 +170,24 @@ fn map_char(s: &Sector, player_cnum: u8, is_deity: bool) -> char {
     } else {
         '?'
     }
+}
+
+/// Fog-of-war map character: own sector → current mnemonic,
+/// previously seen → bmap char, never seen → space.
+fn fog_map_char(s: &Sector, cnum: u8, bm: Option<&bmap::Bmap>) -> char {
+    if s.own == cnum {
+        return s.sector_type.mnemonic();
+    }
+    // Water / mountain / wasteland are always visible (no hiding topology)
+    let t = s.sector_type;
+    if t == SectorType::Sea || t == SectorType::Mountain || t == SectorType::Wasteland {
+        return t.mnemonic();
+    }
+    if let Some(b) = bm {
+        let seen = b.get(s.x, s.y);
+        if seen != 0 { return seen as char; }
+    }
+    ' '
 }
 
 /// Parse map area argument into (center_abs, radius).

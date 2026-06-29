@@ -32,17 +32,20 @@ All major game systems are implemented. The server is running live on **TekBot**
 | Player login (TCP protocol) | ✅ Full protocol — user/coun/pass/play pre-login flow, bcrypt passwords |
 | Session management | ✅ Duplicate-login detection, kill command, journal logging |
 | Update engine (ETU ticks) | ✅ Full port — populace, production, mobility, nation levels, schedule files |
-| Map display | ✅ Sector mnemonics match Empire 4 standard (`.`=sea, `-`=wilderness) |
+| Map display | ✅ Fog-of-war per-nation bmap; `map` shows last-seen terrain, own sectors always current |
 | `census` | ✅ Full sector report with efficiency, civilians, commodities, coastal flag |
-| `map` / `bmap` / `smap` | ✅ Toroidal hex world map with configurable realm |
+| `map` / `bmap` / `smap` | ✅ Toroidal hex world map with configurable realm, fog of war for non-deity |
+| `radar` | ✅ Sweep `)` sectors to reveal terrain; range formula matches 4.4.1 `techfact()` |
 | `nation` | ✅ Nation status, treasury, tech, research, education, happiness |
 | `designate` | ✅ Sector redesignation with type validation |
 | `explore` | ✅ Move civilians into wilderness to claim territory |
 | `move` | ✅ Move commodities between owned sectors |
 | `distribute` / `deliver` | ✅ Distribution centers and commodity delivery thresholds |
 | `threshold` | ✅ Per-sector per-commodity storage thresholds |
+| `production` | ✅ Simulate next-update production output for any sector spec |
 | `relations` / `declare` | ✅ Diplomacy — stance declarations (neutral/hostile/allied) |
-| `build` | ✅ Build ships, land units, planes from sectors |
+| `build s\|l\|p` | ✅ Build ships, land units, planes from sectors |
+| `build b\|t` | ✅ Build bridge spans (`=`) and towers (`@`) from bridge heads (`#`) |
 | `march` | ✅ Land unit movement (direction string or X,Y destination) |
 | `navigate` | ✅ Ship navigation (direction string or X,Y destination) |
 | `attack` | ✅ Ground combat with att/def strength, tech bonus, takeover on win |
@@ -50,9 +53,10 @@ All major game systems are implemented. The server is running live on **TekBot**
 | `sell` / `buy` / `trade` / `loan` | ✅ Commodity market and P2P lending |
 | `show` | ✅ Build cost/stat tables for sectors, ships, land units, planes, items |
 | `power` | ✅ Nation power rankings |
+| `news` | ✅ In-game news feed of recent world events |
 | `add` / `capital` / `newcap` | ✅ Deity nation management |
 | `enable` / `disable` / `shutdown` | ✅ Deity server control |
-| `info` | ✅ 49 help pages from official Wolfpack Empire documentation |
+| `info` | ✅ 51 help pages including bridge and radar |
 | `xdump` | ✅ Structured data export (nations, sectors, relations, ships, planes, units) |
 | `version` | ✅ Server version, world dimensions, ETU |
 | Docker deployment | ✅ Multi-stage Dockerfile, named volume, container running on TekBot |
@@ -170,16 +174,20 @@ Valid sectors satisfy `(x + y) % 2 == 0` on a toroidal world. Direction offsets 
 Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `census` — sector report: efficiency, civilians, commodities, coastal flag, thresholds
 - [x] `nation` — nation status, treasury, tech, research, education, happiness
-- [x] `map` / `bmap` / `smap` / `sect` — toroidal hex map with configurable realm and flags
+- [x] `map` / `bmap` / `smap` / `sect` — toroidal hex map with fog of war (per-nation bmap)
+- [x] `radar` — sweep `)` radar sectors to reveal terrain; tech-scaled range
 - [x] `designate` — sector redesignation with type validation
 - [x] `threshold` — per-sector per-commodity storage thresholds
 - [x] `relations` / `declare` — diplomacy: view and set stance toward other nations
 - [x] `distribute` / `deliver` — distribution centers and delivery thresholds
+- [x] `production` / `prod` — simulate next-update production output
+- [x] `news` — in-game event feed
 - [x] `version` / `info` / `xdump` — server metadata and data export
 - [x] `show sect/ship/land/plane/item/product/updates` — all descriptor tables
 - [x] `power` — nation power rankings
 - [x] `add` / `capital` / `newcap` / `enable` / `disable` / `shutdown` — deity commands
 - [x] `build s|l|p` — build ships, land units, planes
+- [x] `build b|t` — build bridge spans (`=`) and bridge towers (`@`)
 - [x] `march` — land unit movement
 - [x] `navigate` — ship navigation
 - [x] `attack` — ground combat
@@ -210,8 +218,8 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] 49 official Wolfpack Empire info pages installed in `info/`
 
 ### Phase 8 — Open Items
-- [ ] `resource` / `report` / `commodity` commands (not yet dispatched)
-- [ ] `edit` / `news` / `dump` / `telegram` / `wire` commands
+- [ ] `resource` / `report` / `commodity` commands (stubs in dispatch; output incomplete)
+- [ ] `edit` — deity sector/nation/unit editing
 - [ ] `empire-client` Rust client (Phase 11 placeholder; use C client from empire4.4.1)
 
 ---
@@ -232,6 +240,11 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] Deity admin: add nation, newcap, enable/disable, shutdown
 - [x] xdump / xundump round-trip fidelity
 - [x] Docker containerized deployment
+- [x] Fog of war — per-nation bmap updated by radar sweeps and own-sector visibility
+- [x] Bridge building — spans (`=`) and towers (`@`) with tech requirements
+- [x] Radar command — sweep `)` sectors, tech-scaled range
+- [x] Production simulation — `prod` command
+- [x] News feed — `news` command with correct schema migration
 - [ ] Naval combat (board, torpedo, fire)
 - [ ] Nuclear weapons: build, arm, launch, detonate, fallout
 - [ ] Standing missions firing during update
@@ -402,6 +415,8 @@ enable
 | `*` | airfield | `+` | highway |
 | `g` | gold mine | `o` | oil field |
 | `%` | wasteland | `n` | naval base |
+| `#` | bridge head | `=` | bridge span |
+| `@` | bridge tower | `)` | radar |
 
 ---
 

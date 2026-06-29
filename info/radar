@@ -1,0 +1,69 @@
+RADAR
+=====
+
+The radar command sweeps your radar sectors and reveals terrain
+in a radius around each one, updating your fog-of-war map.
+
+COMMAND
+-------
+  radar SECT-SPEC     Sweep radar sector(s) matching SECT-SPEC
+  radar *             Sweep all your radar sectors
+
+SECTOR TYPE
+-----------
+  )   Radar  — the sector type that performs the sweep.
+               Must be owned by you and ≥60% efficient to fire.
+
+RANGE
+-----
+  Range is determined by your technology level and the sector's
+  efficiency:
+
+    range = floor( 16 * (50 + tech) / (200 + tech) * eff / 100 )
+    minimum range: 1
+
+  At tech 0, 100% efficient radar: range = floor(16 * 50/200) = 4
+  At tech 200, 100%: range = floor(16 * 250/400) = 10
+  At tech 500, 100%: range = floor(16 * 550/700) = 12
+  Maximum (very high tech, 100%): approaches 16.
+
+WHAT YOU SEE
+------------
+  The radar map uses the same character set as the sector map.
+  Within range/3 of the radar:   actual sector mnemonic
+  Beyond range/3 (outer ring):   '?' (something is there)
+  Own sectors, sea (~), mountains (^), wasteland (+):
+                                  always show actual mnemonic
+
+  The center radar sector is marked '0' on the display.
+
+FOG OF WAR
+----------
+  Empire uses fog of war: you only see sectors you have explored
+  or swept with radar.  The `map` command shows your last-known
+  view of all sectors.  Radar updates that view for the area
+  scanned.
+
+  Sectors you have never seen show as blank space on the map.
+  Previously seen sectors show their last-known designation.
+
+EXAMPLES
+--------
+  radar *          Sweep all your radar sectors.
+  radar 4,4        Sweep only the radar at 4,4.
+  radar #1         Sweep radar sectors in realm 1.
+
+TIPS
+----
+  • A chain of radar sectors can map a wide area each update.
+  • Higher tech dramatically extends range.
+  • Keep radar sectors well-supplied and building toward 100%
+    efficiency for maximum range.
+  • Ships and planes can scout too — their movement updates your
+    bmap as they travel.
+
+SEE ALSO
+--------
+  info map         View your fog-of-war map
+  info sector-types  Full list of sector types
+  info build       Build command (for placing ) sectors)
