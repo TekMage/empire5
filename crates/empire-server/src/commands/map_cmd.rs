@@ -178,9 +178,14 @@ fn fog_map_char(s: &Sector, cnum: u8, bm: Option<&bmap::Bmap>) -> char {
     if s.own == cnum {
         return s.sector_type.mnemonic();
     }
-    // Water / mountain / wasteland are always visible (no hiding topology)
+    // Topology always visible: water, mountains, wasteland, and unowned
+    // wilderness/plains — mirrors map_char() logic in 4.4.1 maps.c.
     let t = s.sector_type;
-    if t == SectorType::Sea || t == SectorType::Mountain || t == SectorType::Wasteland {
+    if t == SectorType::Sea
+        || t == SectorType::Mountain
+        || t == SectorType::Wasteland
+        || (s.own == 0 && (t == SectorType::Wilderness || t == SectorType::Plains))
+    {
         return t.mnemonic();
     }
     if let Some(b) = bm {
