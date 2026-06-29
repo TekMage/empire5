@@ -27,8 +27,39 @@ use empire_types::sector::{Sector, SectorType};
 use crate::subs::geo;
 use super::ctx::CmdCtx;
 
-// Hex grid neighbor offsets (matches DIROFF in 4.4.1 dir.c).
-const DIROFF6: [(Coord, Coord); 6] = [(1,-1),(2,0),(1,1),(-1,1),(-2,0),(-1,-1)];
+// Visibility offsets per efficiency tier, mirroring getbit.c bitmaps[0..4].
+// Each entry is (dx, dy) added to a sector's coords; includes the sector itself.
+// Tier = effic/20, clamped to 4.
+//   tier 0 (eff  0-20): immediate ring + self
+//   tier 1 (eff 21-40): ~2-hex ring
+//   tier 2 (eff 41-60): ~3-hex ring
+//   tier 3 (eff 61-80): ~5-hex ring
+//   tier 4 (eff 81+):   ~6-hex ring
+const VIS0: &[(i16,i16)] = &[
+    (-1,-1),(1,-1),(-2,0),(0,0),(2,0),(-1,1),(1,1),
+];
+const VIS1: &[(i16,i16)] = &[
+    (0,-2),(-3,-1),(-1,-1),(1,-1),(3,-1),(-2,0),(0,0),(2,0),(-3,1),(-1,1),(1,1),(3,1),(0,2),
+];
+const VIS2: &[(i16,i16)] = &[
+    (-2,-2),(0,-2),(2,-2),(-3,-1),(-1,-1),(1,-1),(3,-1),
+    (-4,0),(-2,0),(0,0),(2,0),(4,0),(-3,1),(-1,1),(1,1),(3,1),(-2,2),(0,2),(2,2),
+];
+const VIS3: &[(i16,i16)] = &[
+    (-1,-3),(1,-3),(-4,-2),(-2,-2),(0,-2),(2,-2),(4,-2),
+    (-5,-1),(-3,-1),(-1,-1),(1,-1),(3,-1),(5,-1),
+    (-4,0),(-2,0),(0,0),(2,0),(4,0),
+    (-5,1),(-3,1),(-1,1),(1,1),(3,1),(5,1),
+    (-4,2),(-2,2),(0,2),(2,2),(4,2),(-1,3),(1,3),
+];
+const VIS4: &[(i16,i16)] = &[
+    (-3,-3),(-1,-3),(1,-3),(3,-3),(-4,-2),(-2,-2),(0,-2),(2,-2),(4,-2),
+    (-5,-1),(-3,-1),(-1,-1),(1,-1),(3,-1),(5,-1),
+    (-6,0),(-4,0),(-2,0),(0,0),(2,0),(4,0),(6,0),
+    (-5,1),(-3,1),(-1,1),(1,1),(3,1),(5,1),
+    (-4,2),(-2,2),(0,2),(2,2),(4,2),(-3,3),(-1,3),(1,3),(3,3),
+];
+const VIS_OFFSETS: [&[(i16,i16)]; 5] = [VIS0, VIS1, VIS2, VIS3, VIS4];
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let all_sectors = match sectors::get_all(ctx.db).await {
@@ -63,22 +94,24 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         }
     }
 
-    // Build set of coordinates adjacent to player's own sectors so that
-    // unseen non-wilderness sectors show '?' instead of blank space.
-    let adj_to_player: HashSet<(Coord, Coord)> = if ctx.is_deity {
+    // Build visibility set using efficiency-scaled offsets (mirrors bitinit2() in
+    // 4.4.1 getbit.c).  Each owned sector's efficiency tier determines how far it
+    // can see; the union of all visible coords is the player's current sight range.
+    let visible: HashSet<(Coord, Coord)> = if ctx.is_deity {
         HashSet::new()
     } else {
-        let mut adj = HashSet::new();
+        let mut vis = HashSet::new();
         for s in &all_sectors {
             if s.own == ctx.cnum {
-                for &(dx, dy) in &DIROFF6 {
+                let tier = ((s.effic as usize) / 20).min(4);
+                for &(dx, dy) in VIS_OFFSETS[tier] {
                     let nx = geo::x_norm(s.x + dx, wx);
                     let ny = geo::y_norm(s.y + dy, wy);
-                    adj.insert((nx, ny));
+                    vis.insert((nx, ny));
                 }
             }
         }
-        adj
+        vis
     };
 
     // Build lookup: (abs_x, abs_y) → char applying fog of war.
@@ -86,20 +119,31 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     for s in &all_sectors {
         let ch = if ctx.is_deity {
             map_char(s, ctx.cnum, true)
+        } else if visible.contains(&(s.x, s.y)) {
+            // In sight range: show actual terrain; enemy-owned → '?'
+            map_char(s, ctx.cnum, false)
         } else {
-            let c = fog_map_char(s, ctx.cnum, bm.as_ref());
-            // Blank but adjacent → '?' so player knows something is there.
-            if c == ' ' && adj_to_player.contains(&(s.x, s.y)) { '?' } else { c }
+            // Outside range: show bmap (previous intel) or blank
+            fog_map_char(s, ctx.cnum, bm.as_ref())
         };
         lookup.insert((s.x, s.y), ch);
 
-        // Keep bmap current for own sectors
+        // Update bmap with anything identifiable in the current sight range
         if let Some(ref mut b) = bm {
-            if s.own == ctx.cnum {
-                let new_ch = s.sector_type.mnemonic() as u8;
-                if b.get(s.x, s.y) != new_ch {
-                    b.set(s.x, s.y, new_ch);
-                    bmap_changed = true;
+            if visible.contains(&(s.x, s.y)) {
+                let t = s.sector_type;
+                // Store the mnemonic for own/unowned/topology sectors.
+                // Don't overwrite a known mnemonic with '?' for enemy sectors.
+                if s.own == ctx.cnum || s.own == 0
+                    || t == SectorType::Sea
+                    || t == SectorType::Mountain
+                    || t == SectorType::Wasteland
+                {
+                    let mnem = t.mnemonic() as u8;
+                    if b.get(s.x, s.y) != mnem {
+                        b.set(s.x, s.y, mnem);
+                        bmap_changed = true;
+                    }
                 }
             }
         }
@@ -195,21 +239,10 @@ fn map_char(s: &Sector, player_cnum: u8, is_deity: bool) -> char {
     }
 }
 
-/// Fog-of-war map character: own sector → current mnemonic,
-/// previously seen → bmap char, never seen → space.
+/// Outside current sight range: show own sectors and previously-seen bmap data.
 fn fog_map_char(s: &Sector, cnum: u8, bm: Option<&bmap::Bmap>) -> char {
     if s.own == cnum {
         return s.sector_type.mnemonic();
-    }
-    // Topology always visible: water, mountains, wasteland, and unowned
-    // wilderness/plains — mirrors map_char() logic in 4.4.1 maps.c.
-    let t = s.sector_type;
-    if t == SectorType::Sea
-        || t == SectorType::Mountain
-        || t == SectorType::Wasteland
-        || (s.own == 0 && (t == SectorType::Wilderness || t == SectorType::Plains))
-    {
-        return t.mnemonic();
     }
     if let Some(b) = bm {
         let seen = b.get(s.x, s.y);
