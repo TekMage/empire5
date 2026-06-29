@@ -758,7 +758,7 @@ fn produce_sects(
 
 /// Build up sector efficiency by 1 unit; return cash cost.
 /// Mirrors buildeff() in src/lib/update/sect.c
-fn build_eff(
+pub(crate) fn build_eff(
     s: &mut empire_types::sector::Sector,
     dchr: &SectorChr,
 ) -> f64 {
@@ -838,7 +838,7 @@ fn produce(
 /// Return production efficiency for `prd` at `level`.
 /// Zero means level is too low.  Mirrors prod_eff() in produce.c
 /// `peff` is dchr.peff (sector production efficiency percent, e.g. 900 for agri).
-fn prod_eff(prd: &ProductChr, level: f64, peff: i32) -> f64 {
+pub(crate) fn prod_eff(prd: &ProductChr, level: f64, peff: i32) -> f64 {
     let level_pe = match prd.nlndx {
         None => 1.0,
         Some(_) => {
@@ -904,7 +904,7 @@ fn prod_output(
     output
 }
 
-fn prod_materials_limit(s: &empire_types::sector::Sector, prd: &ProductChr) -> f64 {
+pub(crate) fn prod_materials_limit(s: &empire_types::sector::Sector, prd: &ProductChr) -> f64 {
     let mut count = 9999.0f64;
     for input in prd.inputs.iter().flatten() {
         let available = s.items.get(input.item) as f64;
@@ -914,13 +914,13 @@ fn prod_materials_limit(s: &empire_types::sector::Sector, prd: &ProductChr) -> f
     count
 }
 
-fn prod_resource_limit(s: &empire_types::sector::Sector, prd: &ProductChr) -> f64 {
+pub(crate) fn prod_resource_limit(s: &empire_types::sector::Sector, prd: &ProductChr) -> f64 {
     if prd.nrdep == 0 { return 9999.0; }
     let res_val = resource_val(s, &prd.resource);
     res_val as f64 * 100.0 / prd.nrdep as f64
 }
 
-fn resource_val(s: &empire_types::sector::Sector, resource: &Resource) -> u8 {
+pub(crate) fn resource_val(s: &empire_types::sector::Sector, resource: &Resource) -> u8 {
     match resource {
         Resource::None   => 100,
         Resource::Min    => s.min,
@@ -964,7 +964,7 @@ fn deplete_resource(
 // Called per owned sector during prepare_sects.
 // Mirrors do_feed() in src/lib/update/populace.c.
 
-fn do_feed(
+pub(crate) fn do_feed(
     s: &mut empire_types::sector::Sector,
     etu: i32,
     rates: &UpdateRates,
