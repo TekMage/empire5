@@ -17,7 +17,7 @@
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use super::ctx::CmdCtx;
-use super::sector_sel::matches_area;
+use super::sector_sel::SectSpec;
 
 // The 10 commodities shown in the commodity report (matching C comm.c order).
 // Civilians, military, food, and UW are omitted — they are not deliverable.
@@ -48,6 +48,10 @@ fn thresh_char(val: i16) -> char {
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let spec = args.trim();
+    let filter = match SectSpec::parse(if spec.is_empty() { "*" } else { spec }, ctx).await {
+        Ok(f) => f,
+        Err(e) => return format!("10 {e}\n"),
+    };
 
     let all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
@@ -60,7 +64,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     for s in &all_sectors {
         if s.own != ctx.cnum && !ctx.is_deity { continue; }
         if s.own == 0 { continue; }
-        if !spec.is_empty() && !matches_area(s, spec, ctx) { continue; }
+        if !filter.matches(s, ctx.world_x, ctx.world_y) { continue; }
 
         if nsect == 0 {
             let pfx = if ctx.is_deity { "1    " } else { "1 " };
