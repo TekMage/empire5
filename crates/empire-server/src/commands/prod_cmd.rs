@@ -76,7 +76,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if sim.effic < 60 { continue; }
 
         let xy = ctx.format_xy(s.x, s.y);
-        let des = dchr.name.chars().next().unwrap_or('?');
+        let des = s.sector_type.mnemonic();
 
         if dchr.is_enlist && sim.old_own == sim.own {
             // Enlistment sector
