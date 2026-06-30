@@ -173,7 +173,7 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
     out.push_str(&format!("1 DUMP SHIPS {ts}\n"));
     // Field order matches 4.4.1 sdump.c exactly so ptkei ParseDump works.
     // Note: first field is "id" not "uid" — ptkei SHIPS DB keys on "id".
-    out.push_str("1 id type x y flt eff civ mil uw food pln he xl land mob fuel tech shell gun petrol iron dust bar oil lcm hcm rad def spd vis rng fir origx origy\n");
+    out.push_str("1 id type x y flt eff civ mil uw food pln he xl land mob fuel tech shell gun petrol iron dust bar oil lcm hcm rad def spd vis rng fir origx origy name\n");
 
     for s in &mine {
         let rx  = ctx.x_rel(s.x);
@@ -206,7 +206,7 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
         let rad   = s.items.get(Item::Rad);
 
         out.push_str(&format!(
-            "1 {} {} {} {} {} {} {} {} {} {} 0 0 0 0 {} 0 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            "1 {} {} {} {} {} {} {} {} {} {} 0 0 0 0 {} 0 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
             s.uid, type_name, rx, ry, flt,
             s.effic, civ, mil, uw, food,
             // pln he xl land already 0 0 0 0 above
@@ -215,7 +215,8 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
             s.tech,
             shell, gun, pet, iron, dust, bar, oil, lcm, hcm, rad,
             def, spd, vis, rng, fir,
-            orx, ory
+            orx, ory,
+            if s.name.is_empty() { "~".to_string() } else { format!("\"{}\"", s.name) }
         ));
     }
 

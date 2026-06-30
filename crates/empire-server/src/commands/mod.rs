@@ -71,6 +71,7 @@ mod execute_cmd;
 mod news_cmd;
 mod prod_cmd;
 mod radar_cmd;
+mod name_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -172,6 +173,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "assault" | "assa"  => assault_cmd::run(args, &ctx).await,
         "execute" | "exec"  => execute_cmd::run(args, &ctx).await,
         "news"              => news_cmd::run(args, &ctx).await,
+        "name"              => name_cmd::run(args, &ctx).await,
         "production" | "prod" => prod_cmd::run(args, &ctx).await,
         "radar" | "rada"    => radar_cmd::run(args, &ctx).await,
 
