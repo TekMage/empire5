@@ -27,13 +27,54 @@ OUTPUT COLUMNS
   max1-3 — commodities that would be consumed if inputs were unlimited
   max    — maximum possible output if inputs were unlimited
 
+HOW LEVEL OUTPUT MAPS TO 'NATION' NUMBERS
+  Sectors like libraries (l), parks (p), tech centers (t), and
+  research labs (r) show a decimal "make" value with a '.' suffix
+  instead of a commodity mnemonic.  This raw output becomes the
+  number in your 'nation' report as follows:
+
+  TECHNOLOGY and RESEARCH (from 't' and 'r' sectors):
+    These accumulate directly each update.  The "make" value is
+    added to your current level (before logarithmic slowdown above
+    tech=1.0 and before decay at ~1%/update).
+    Example: three tech centers each producing 0.7 tech/update
+    will raise your tech level by ~2.1 per update net of decay.
+
+  EDUCATION (from 'l' library sectors):
+    Education is a moving average (window ~192 ETU at default).
+    Raw edu output is scaled by:
+      edu_rate = raw_output * 600000 / (total_civs * etu)
+    Then averaged in:
+      new_edu = (old_edu * 192 + edu_rate * etu) / (192 + etu)
+
+    With 5000 civs and 96-ETU updates, a single 100% library
+    producing ~25 raw edu/update pushes education up ~10 points
+    on the first update from zero.  Education rises quickly at
+    first, then slows as it approaches a plateau.
+
+  HAPPINESS (from 'p' park sectors):
+    Happiness works the same way but with a faster window (~48 ETU)
+    and an additional factor (hap_edu) that decreases as education
+    rises.  Educated populations need more parks to stay happy.
+      hap_rate = raw_output * hap_edu * 600000 / (civs * etu)
+      new_hap  = (old_hap * 48 + hap_rate * etu) / (48 + etu)
+    See 'info happiness' for hap_edu values by education level.
+
+  PRODUCTION EFFICIENCY (p.e.) FOR LEVEL SECTORS:
+    Libraries and parks always produce at p.e.=1.0 (no requirement).
+    Tech centers and research labs need education >= 5:
+      p.e. = (education - 5) / (education + 5)
+      edu=10: 33%  edu=20: 60%  edu=30: 71%  edu=50: 82%
+    If p.e. is 0, your education is below 5 — build more libraries.
+
 DIAGNOSTICS
   If "make" is much lower than "max", you are input-limited: the
   sector doesn't have enough raw materials.  Supply the missing
   commodity (shown in use1-3 vs max1-3) to reach full output.
 
-  If p.e. is low or zero, your tech level is below the minimum
-  required for that product type.
+  If p.e. is low or zero, your tech or education level is below the
+  minimum required for that product type.  Use 'show product' to
+  see requirements for each product.
 
   If make and max are both zero, check avail and effic — the sector
   may not have enough workers or may be below 60% efficiency.
@@ -42,8 +83,7 @@ EXAMPLE
   prod *            simulate production for all your sectors
   prod #2           sectors in realm 2
   prod ?des=i       all iron mines
+  prod ?des=t       tech centers — check p.e. vs. education
 
 SEE ALSO
-  census  commodity  threshold  show
-
-
+  census  commodity  threshold  show  info tech-tree  info happiness

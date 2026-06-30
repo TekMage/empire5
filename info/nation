@@ -9,21 +9,43 @@ DESCRIPTION
   Displays key statistics for your country:
     money     - treasury ($).  Negative means debt
     reserve   - military reserve (troops for enlist command)
-    tech      - technology level.  Unlocks advanced units
-    research  - research level.  Prerequisite for high tech
-    education - education level.  Improves production
-    happiness - happiness.  Affects civilian work rate
+    tech      - technology level.  Unlocks advanced production
+    research  - research level.  Affects max population
+    education - education level.  Required for tech/research centers
+    happiness - happiness.  Affects civilian work rate and combat
+
+  Technology and Research grow by accumulation each update.
+  Education and Happiness are moving averages — they change slowly.
 
   Deities can view any country by passing its number.
   Players see only their own stats unless relations allow.
 
-  Technology, research, education, and happiness grow each update
-  based on what you produce in tech centers, research labs,
-  libraries, and agribusiness sectors.
+THE FOUR LEVELS
+  Education (library 'l'):
+    Build libraries — they need 1 LCM per unit produced.
+    Education >= 5 is required for tech centers and research labs
+    to produce anything at all.  See 'info tech-tree'.
+
+  Technology (tech center 't'):
+    Needs education >= 5.  Consumes 1 dust + 5 oil + 10 LCM per unit.
+    Gates most advanced production: shells/guns need tech>=20, rad>=40.
+    Decays ~1% per update — keep producing to stay ahead.
+
+  Research (research lab 'r'):
+    Same inputs as tech centers.  Affects maximum population limits.
+    Decays the same way as technology.
+
+  Happiness (park 'p'):
+    Build parks — they need 1 LCM per unit produced.
+    Low happiness causes civil unrest, reduced sector work rates, and
+    possible revolt.  High happiness improves combat effectiveness.
+    Required happiness rises with tech and education.
+    See 'info happiness' for details.
 
 EXAMPLE
   nation                    view your own stats
   nation 3                  view country 3 (deity only)
 
 SEE ALSO
+  info tech-tree   info happiness   info production
   power  relations  census  enlist  demobilize  change  report

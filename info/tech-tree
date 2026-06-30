@@ -1,0 +1,154 @@
+THE TECHNOLOGY TREE
+  Education -> Research & Technology -> advanced production
+
+OVERVIEW
+  The 'nation' report shows four nation levels:
+
+    Education .... how educated your population is
+    Research ..... medical/population research
+    Technology ... industrial know-how
+    Happiness .... civilian morale
+
+  These levels gate what your sectors can produce and how efficiently
+  they do it.  The progression is:
+
+    LCM plants (j) -> libraries (l) -> Education
+    Education >= 5  -> tech centers (t) produce Technology
+    Education >= 5  -> research labs (r) produce Research
+
+  Happiness and Education have no level requirement and can be
+  started immediately.
+
+HOW LEVELS WORK
+  Education and Happiness are MOVING AVERAGES.  They represent the
+  current state of your population and change gradually.  You cannot
+  spike them with a single update.
+
+  Technology and Research ACCUMULATE each update.  They grow as long
+  as you produce them, but also DECAY slightly each update:
+    decay = level * etu / (100 * age_rate)
+  At default age_rate=96 and etu=96: about 1% of your level decays
+  per update.  Keep producing to stay ahead of decay.
+
+THE CHAIN: WHAT GOES WHERE
+  Step 1 — BUILD LCM (light manufacturing 'j')
+    Iron mines (m) -> LCM plants (j) -> light construction materials
+    LCM is consumed by libraries, tech centers, research labs, and parks.
+    Every sector in the tech tree depends on LCM.  Build LCM plants first.
+
+  Step 2 — BUILD LIBRARIES (l) to raise Education
+    Sector:   library/school (l)
+    Consumes: 1 LCM per unit produced
+    Requires: no level — starts producing immediately
+    Education is a slow moving average (window ~192 ETU).
+    At 96 ETU/update, education moves about 33% toward its target
+    each update.  A single library and 5000 civs raises education
+    by roughly 2-8 points in the first update.
+
+  Step 3 — BUILD TECH CENTERS (t) once edu >= 5
+    Sector:   technical center (t)
+    Consumes: 1 dust + 5 oil + 10 LCM per unit produced
+    Requires: education >= 5 to produce anything
+    Technology accumulates directly — no averaging.
+
+  Step 3 — BUILD RESEARCH LABS (r) once edu >= 5
+    Sector:   research lab (r)
+    Consumes: 1 dust + 5 oil + 10 LCM per unit produced (same as tech)
+    Requires: education >= 5 to produce anything
+    Research accumulates directly — no averaging.
+
+  Step 4 — BUILD PARKS (p) to raise Happiness
+    Sector:   park (p)
+    Consumes: 1 LCM per unit produced
+    Requires: no level — starts producing immediately
+    Happiness has a shorter window (~48 ETU) than education.
+    See 'info happiness' for why this matters.
+
+PRODUCTION EFFICIENCY (p.e.)
+  For sectors that require a nation level, the 'prod' command shows
+  a p.e. column.  Production is zero until the threshold is met,
+  then scales up gradually:
+
+    p.e. = (level - threshold) / (10 + level - threshold)
+
+  Tech centers and research labs (threshold=5 for education):
+    edu=5:   0%     (threshold, nothing produced yet)
+    edu=6:   9%
+    edu=10:  33%
+    edu=15:  50%
+    edu=20:  60%
+    edu=30:  71%
+    edu=50:  82%
+    edu=100: 90%
+    edu=200: 95%
+
+  Education rises slowly, so expect low p.e. from your tech centers
+  and research labs for the first several updates.
+
+WHICH SECTOR PRODUCTION REQUIRES WHAT
+  Technology level gates most military production:
+
+    tech >= -10:  food (a), oil (o), lcm (j), hcm (k)
+    tech >= 20:   shells (i), guns (d), petrol (%)
+    tech >= 40:   radioactive materials (u)
+
+  Use 'show product' to see all thresholds.  The 'prod' command shows
+  your current p.e. for every sector — if p.e. is 0%, check your
+  tech or education level.
+
+HOW 'PROD' OUTPUT MAPS TO 'NATION' NUMBERS
+  The 'prod' command's "make" column shows raw output per update.
+  Here is how that raw output becomes the level in your 'nation' report:
+
+  TECHNOLOGY and RESEARCH accumulate directly:
+    new_tech = old_tech + raw_tech_output  (before log cap)
+    Decay applies each update (~1% at default settings).
+    A single tech center producing 3 units/update will raise tech
+    by ~3 per update until logarithmic slowdown above tech=1.0
+    starts reducing the effective gain.
+
+  EDUCATION is a moving average:
+    edu_rate = raw_edu_output * 600000 / (civs * etu)
+    new_edu  = (old_edu * 192 + edu_rate * etu) / (192 + etu)
+
+    With 5000 civs, 96 ETU, and one 100% library producing ~25 edu:
+      edu_rate = 25 * 600000 / (5000 * 96) = 31.25
+      First update from edu=0: new_edu = (0 + 31.25*96) / (192+96)
+                                        = 3000 / 288 = 10.4
+
+    More libraries or more civs shift these numbers proportionally.
+
+  HAPPINESS is similar to education but faster:
+    hap_rate = raw_hap_output * hap_edu * 600000 / (civs * etu)
+    new_hap  = (old_hap * 48 + hap_rate * etu) / (48 + etu)
+
+    The hap_edu factor decreases as education rises (educated
+    people are harder to please).  See 'info happiness'.
+
+RESOURCE PLANNING
+  Key raw material requirements:
+    1 library at 100%:     ~1 LCM/avail consumed
+    1 tech center at 100%: ~10 LCM + 1 dust + 5 oil per unit
+    1 research lab at 100%: same as tech center
+    1 park at 100%:        ~1 LCM/avail consumed
+
+  A tech center at edu=10 (33% p.e.) produces ~0.33 tech per avail.
+  A tech center at edu=30 (71% p.e.) produces ~0.71 tech per avail.
+
+  Rule of thumb for LCM production:
+    Each LCM plant (j) at 100% needs 1 iron per LCM.
+    Iron mine -> LCM plant -> libraries/parks/tech centers.
+    Early game: 1 iron mine feeding 1 LCM plant feeds ~3-4 libraries.
+    Later: tech centers eat 10 LCM per unit — add more LCM plants.
+
+WHAT TO BUILD FIRST
+  1. Iron mine (m) + light manufacturing (j) — get LCM flowing
+  2. Library (l) — start education; it takes several updates to build up
+  3. Once edu >= 5: add tech center (t) and research lab (r)
+     You'll need gold mines (g) and oil fields (o) for their inputs
+  4. Park (p) — once LCM is flowing; especially once tech > 40
+     (see 'info happiness' for when happiness becomes critical)
+  5. More LCM plants as tech centers consume 10 LCM per unit
+
+SEE ALSO
+  info happiness   info sector-types   info production   show product

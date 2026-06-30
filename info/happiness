@@ -1,0 +1,89 @@
+HAPPINESS
+  Civilian morale.  Low happiness causes unrest and reduces productivity.
+  High happiness improves combat performance.
+
+HAPPINESS REQUIREMENT
+  As your technology and education advance, your citizens expect a
+  matching quality of life.  The happiness they "require" is:
+
+    hap_req = (tech - 40) / 40 + education / 3
+
+  Examples:
+    tech=0,   edu=0:   hap_req = -1.0   (no requirement at game start)
+    tech=40,  edu=0:   hap_req =  0.0
+    tech=80,  edu=0:   hap_req =  1.0
+    tech=80,  edu=6:   hap_req =  3.0
+    tech=120, edu=15:  hap_req =  7.0
+    tech=160, edu=30:  hap_req = 13.0
+
+  Early game the requirement is negative, so you can ignore happiness
+  until tech passes about 40 AND education starts climbing.  After
+  that, hap_req rises fast — build parks BEFORE you need them.
+
+EFFECTS OF LOW HAPPINESS
+  Each update, for every sector you own:
+    If your happiness < hap_req, there is a chance of loyalty damage:
+      chance = (hap_req - happiness) / 5.0
+
+  When loyalty is damaged (loyal > 65) and mil < civ/20:
+    - Sector work rate (sct_work) drops — civilians refuse to work
+    - Small chance (~7% max) of REVOLT: sector abandons your nation
+    - You receive a telegram: "Civil unrest in <sector>!"
+
+  At very high loyalty (> 100), work rate can drop to zero.
+  Your sectors produce nothing.  This is a game-ending spiral:
+  no production -> can't build -> loyalty keeps rising -> more revolts.
+
+  Rule of thumb: keep happiness at or above hap_req at all times.
+
+EFFECTS OF HIGH HAPPINESS
+  Happiness also affects COMBAT.  The ratio of your happiness to your
+  opponent's modifies combat effectiveness:
+
+    combat_factor = your_hap / their_hap   (clamped: 0.8 to 2.0)
+
+  Examples:
+    your_hap = 2x opponent:  +100% fighting effectiveness
+    your_hap = same:          no modifier
+    your_hap = half:          -20% fighting effectiveness
+
+  A well-happy army fights much better.  Raiding nations with low
+  happiness is much easier.
+
+RAISING HAPPINESS
+  Build parks (p sectors):
+    Consumes: 1 LCM per unit produced
+    Requires: no level — build from day one
+    Happiness is a fast moving average (window ~48 ETU at default)
+    It responds twice as fast as education.
+
+  Educated populations need more parks.  The happiness your parks
+  produce is multiplied by:
+    hap_edu = 1.5 - (education + 10) / (education + 20)
+
+    edu=0:   1.00 (baseline)
+    edu=10:  0.83
+    edu=30:  0.70
+    edu=60:  0.61
+    edu=100: 0.58
+
+  At edu=100 you need roughly twice as many parks to produce the
+  same happiness as at edu=0.  Plan LCM production accordingly.
+
+MONITORING HAPPINESS
+  Use 'nation' to check your current happiness vs. hap_req:
+    nation        — shows Education, Happiness, Technology, Research
+
+  Each update report also shows the delta (change this update).
+  If happiness is dropping, add more parks immediately.
+
+STAYING AHEAD
+  1. Build 1-2 parks early — LCM is cheap and parks pay off fast
+  2. Watch tech and education — when tech > 40 and edu > 3,
+     hap_req starts climbing
+  3. If you see "Civil unrest" telegrams, add parks NOW
+  4. More civs = more LCM consumed by parks (1 LCM per park unit)
+     Scale your LCM production with population growth
+
+SEE ALSO
+  info tech-tree   info nation   info production   show product

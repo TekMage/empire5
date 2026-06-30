@@ -25,7 +25,7 @@
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::SectorChr;
 use empire_types::item_chr::ItemChr;
-use empire_types::product_chr::ProductChr;
+use empire_types::product_chr::{ProductChr, NatLevel};
 use empire_types::ship_chr::ShipChr;
 use empire_types::land_chr::LandChr;
 use empire_types::plane_chr::PlaneChr;
@@ -207,10 +207,29 @@ fn show_item() -> String {
 // ── show product ─────────────────────────────────────────────────────────────
 
 fn show_product() -> String {
+    // Build reverse map: product index → sector mnemonic.
+    // Prefer the first non-deity sector that produces each product.
+    let n = ProductChr::count();
+    let mut sect_char = vec![' '; n];
+    let mut sect_deity = vec![true; n];
+    for &st in SECT_TYPES {
+        let dchr = SectorChr::for_type(st);
+        if dchr.prd < 0 { continue; }
+        let idx = dchr.prd as usize;
+        if idx >= n { continue; }
+        if sect_char[idx] == ' ' || (sect_deity[idx] && !dchr.is_deity) {
+            sect_char[idx] = st.mnemonic();
+            sect_deity[idx] = dchr.is_deity;
+        }
+    }
+
     let mut out = String::new();
-    out.push_str("1   Prod    Name                              Produces   Cost  Inputs\n");
-    for idx in 0..ProductChr::count() {
+    out.push_str("1   Prod     Name                          Sect  bwk  Produces      Req         Cost  Inputs\n");
+    for idx in 0..n {
         let Some(prd) = ProductChr::get(idx as i8) else { continue };
+
+        let sect = sect_char[idx];
+
         let produces = if let Some(item) = prd.item {
             item.name().to_string()
         } else if let Some(lev) = prd.level {
@@ -218,18 +237,24 @@ fn show_product() -> String {
         } else {
             "nothing".to_string()
         };
+
+        let req = match prd.nlndx {
+            None                        => "none".to_string(),
+            Some(NatLevel::Tech)        => format!("tech>={}", prd.nlmin),
+            Some(NatLevel::Education)   => format!("edu>={}", prd.nlmin),
+            Some(NatLevel::Research)    => format!("res>={}", prd.nlmin),
+            Some(NatLevel::Happiness)   => format!("hap>={}", prd.nlmin),
+        };
+
         let inputs: Vec<String> = prd.inputs.iter()
             .flatten()
-            .map(|mi| format!("{}x{}", mi.amount, mi.item.mnemonic()))
+            .map(|mi| format!("{}{}", mi.amount, mi.item.mnemonic()))
             .collect();
-        let inputs_str = if inputs.is_empty() {
-            "none".to_string()
-        } else {
-            inputs.join(", ")
-        };
+        let inputs_str = if inputs.is_empty() { "none".to_string() } else { inputs.join(" ") };
+
         out.push_str(&format!(
-            "1   {:7} {:34} {:10}  {:4}  {}\n",
-            prd.sname, prd.name, produces, prd.cost, inputs_str
+            "1   {:8} {:30}  {}  {:3}  {:12}  {:10}  {:4}  {}\n",
+            prd.sname, prd.name, sect, prd.bwork, produces, req, prd.cost, inputs_str
         ));
     }
     out.push_str("0 show\n");
