@@ -216,7 +216,7 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
             shell, gun, pet, iron, dust, bar, oil, lcm, hcm, rad,
             def, spd, vis, rng, fir,
             orx, ory,
-            if s.name.is_empty() { "~".to_string() } else { format!("\"{}\"", s.name) }
+            format!("\"{}\"", s.name)
         ));
     }
 
