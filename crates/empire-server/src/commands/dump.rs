@@ -166,27 +166,61 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
     };
 
     let mine: Vec<_> = all.into_iter()
-        .filter(|s| s.own == ctx.cnum)
+        .filter(|s| s.own == ctx.cnum || ctx.is_deity)
         .collect();
 
     let mut out = String::new();
     out.push_str(&format!("1 DUMP SHIPS {ts}\n"));
-    out.push_str("1 uid own x y type eff mob tech fl\n");
+    // Field order matches 4.4.1 sdump.c exactly so ptkei ParseDump works.
+    // Note: first field is "id" not "uid" — ptkei SHIPS DB keys on "id".
+    out.push_str("1 id type x y flt eff civ mil uw food pln he xl land mob fuel tech shell gun petrol iron dust bar oil lcm hcm rad def spd vis rng fir origx origy\n");
 
     for s in &mine {
-        let rx = ctx.x_rel(s.x);
-        let ry = ctx.y_rel(s.y);
-        let type_name = ShipChr::for_type(s.ship_type as usize)
-            .map(|c| c.name)
-            .unwrap_or("unknown");
+        let rx  = ctx.x_rel(s.x);
+        let ry  = ctx.y_rel(s.y);
+        let orx = ctx.x_rel(s.opx);
+        let ory = ctx.y_rel(s.opy);
+        let flt = if s.fleet == '\0' || s.fleet == ' ' { '~' } else { s.fleet };
+
+        let mchr = ShipChr::for_type(s.ship_type as usize);
+        let type_name = mchr.map(|c| c.sname).unwrap_or("??");
+        let def  = mchr.map(|c| c.armor).unwrap_or(0);
+        let spd  = mchr.map(|c| c.speed).unwrap_or(0);
+        let vis  = mchr.map(|c| c.visib).unwrap_or(0);
+        let rng  = mchr.map(|c| c.vrnge).unwrap_or(0);
+        let fir  = mchr.map(|c| c.glim).unwrap_or(0);
+
+        let civ   = s.items.get(Item::Civil);
+        let mil   = s.items.get(Item::Milit);
+        let uw    = s.items.get(Item::Uw);
+        let food  = s.items.get(Item::Food);
+        let shell = s.items.get(Item::Shell);
+        let gun   = s.items.get(Item::Gun);
+        let pet   = s.items.get(Item::Petrol);
+        let iron  = s.items.get(Item::Iron);
+        let dust  = s.items.get(Item::Dust);
+        let bar   = s.items.get(Item::Bar);
+        let oil   = s.items.get(Item::Oil);
+        let lcm   = s.items.get(Item::Lcm);
+        let hcm   = s.items.get(Item::Hcm);
+        let rad   = s.items.get(Item::Rad);
+
         out.push_str(&format!(
-            "1 {} {} {} {} {} {} {} {} {}\n",
-            s.uid, s.own, rx, ry, type_name, s.effic, s.mobil, s.tech, s.fleet
+            "1 {} {} {} {} {} {} {} {} {} {} 0 0 0 0 {} 0 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            s.uid, type_name, rx, ry, flt,
+            s.effic, civ, mil, uw, food,
+            // pln he xl land already 0 0 0 0 above
+            s.mobil, // mob
+            // fuel=0
+            s.tech,
+            shell, gun, pet, iron, dust, bar, oil, lcm, hcm, rad,
+            def, spd, vis, rng, fir,
+            orx, ory
         ));
     }
 
     let n = mine.len();
-    out.push_str(&format!("1 {n} ships\n"));
+    out.push_str(&format!("1 {n} ship{}\n", if n == 1 { "" } else { "s" }));
     out.push_str("0 sdump\n");
     out
 }
