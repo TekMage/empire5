@@ -6,3 +6,4 @@ Cargo.lock
 /data/
 server.pid
 journal
+.DS_Store

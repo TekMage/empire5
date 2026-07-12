@@ -1,8 +1,0 @@
-# first.emp -- This file is sourced each time a new database is
-#	    created.  Place commands here that should be run once each
-#	    time a new server is connected.
-
-## Parse version to find the worldsize
-## Parse nation for country identification
-## Get sector stats
-null burst version; nation; show sect s; show sect b
