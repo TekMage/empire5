@@ -40,9 +40,22 @@ pub async fn run(topic: &str, ctx: &CmdCtx<'_>) -> String {
                         .to_string();
                 }
 
-                let mut out = String::from("2 Available info topics:\n");
-                for chunk in topics.chunks(6) {
-                    out.push_str(&format!("2   {}\n", chunk.join("  ")));
+                let mut out = String::from(
+                    "2 Available info topics — review these to learn the game.\n\
+                     2 New pages appear as commands are added; check back periodically\n\
+                     2 (e.g. once a day) for topics you haven't read yet.\n\
+                     2 Use 'info <topic>' to read one, e.g. 'info census'.\n\
+                     2\n",
+                );
+
+                let width = topics.iter().map(|t| t.len()).max().unwrap_or(0) + 2;
+                let cols = (78 / width).max(1);
+                for chunk in topics.chunks(cols) {
+                    let row: String = chunk
+                        .iter()
+                        .map(|t| format!("{t:<width$}"))
+                        .collect();
+                    out.push_str(&format!("2   {}\n", row.trim_end()));
                 }
                 out.push_str("1 info\n");
                 out

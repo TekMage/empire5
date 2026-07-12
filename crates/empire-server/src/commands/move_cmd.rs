@@ -28,6 +28,7 @@ use std::collections::HashMap;
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use empire_types::sector::SectorType;
+use empire_types::sector_chr::SectorChr;
 use empire_types::coords::Coord;
 use crate::subs::geo::{self, DIRCH};
 use crate::subs::pathfind;
@@ -172,10 +173,15 @@ async fn execute_move(
         );
     }
 
+    if src.mobil <= 0 {
+        return format!("10 No mobility in {rel_src}\n");
+    }
+
     let mut out = String::new();
     let mut cur_x = src_ax;
     let mut cur_y = src_ay;
     let mut steps = 0i8;
+    let mut mobility_left = src.mobil as f64;
 
     for ch in path_str.chars() {
         if ch == 'h' { break; }
@@ -212,6 +218,24 @@ async fn execute_move(
             out.push_str(&format!("1 {dest_rel} is not your territory\n"));
             break;
         }
+
+        // Mobility check: destination's terrain movement cost at its
+        // current efficiency (highways/bridges are cheap-to-free at high
+        // eff). Stop before going negative, same as 4.4.1's move_ground().
+        let step_cost = SectorChr::for_type(dest.sector_type).mcost(dest.effic);
+        if step_cost < 0.0 {
+            out.push_str(&format!("1 {dest_rel} is impassable\n"));
+            break;
+        }
+        if step_cost > mobility_left {
+            out.push_str(&format!(
+                "1 Not enough mobility to reach {dest_rel} — stopped at {}\n",
+                ctx.format_xy(cur_x, cur_y)
+            ));
+            break;
+        }
+
+        mobility_left -= step_cost;
         cur_x = nx;
         cur_y = ny;
         steps += 1;
@@ -225,7 +249,7 @@ async fn execute_move(
 
     let final_rel = ctx.format_xy(cur_x, cur_y);
     src.items.add(item, -amount);
-    src.mobil = src.mobil.saturating_sub(steps);
+    src.mobil = mobility_left.round().clamp(0.0, 127.0) as i8;
     if let Err(e) = sectors::put(ctx.db, &src).await {
         out.push_str(&format!("10 DB error: {e}\n"));
         out.push_str("0 move\n");

@@ -320,8 +320,12 @@ impl Default for UpdateRates {
             tech_log_base:   2.0,
             ally_factor:     2.0,
             level_age_rate: 96.0,
-            hap_avg:         48.0,  // 16 * 3
-            edu_avg:        192.0,  // 16 * 12
+            // 4.4.1 used hap_avg=48 and edu_avg=192 calibrated for etu=8-24.
+            // At etu=60 the moving-average window is proportionally shorter,
+            // so scale both up by 60/24 = 2.5 to preserve the same number
+            // of update-cycles to equilibrium as a classic 1-update/day game.
+            hap_avg:        120.0,  // 48 * (60/24)
+            edu_avg:        480.0,  // 192 * (60/24)
             hap_cons:   600_000.0,
             edu_cons:   600_000.0,
             // Unit growth

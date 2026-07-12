@@ -162,7 +162,8 @@ pub async fn run_newcap(args: &str, ctx: &CmdCtx<'_>) -> String {
     if sect.own == 0 && sect.sector_type == SectorType::Wilderness {
         sect.sector_type = SectorType::Capital;
         sect.new_type = SectorType::Capital;
-        sect.effic = 60;
+        sect.effic = 100;
+        sect.mobil = ctx.config.game.startmob as i8;
         let mut inv = Inventory::zero();
         inv.set(Item::Civil, ctx.config.game.newcap_start_civ);
         inv.set(Item::Food,  ctx.config.game.newcap_start_food);

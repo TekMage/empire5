@@ -20,12 +20,17 @@
 // Any unowned wilderness or plain sector touched becomes the player's.
 // Sea, mountain, and occupied enemy sectors cannot be entered.
 //
-// Mobility cost: 1 mob per step deducted from the source sector.
+// Mobility cost: each step costs the destination sector's terrain movement
+// cost (SectorChr::mcost — scaled by the destination's efficiency, so
+// highways/bridges at high efficiency are cheap or free to enter).  The walk
+// stops as soon as the source sector can't afford the next step, mirroring
+// 4.4.1's move_ground() — mobility never goes negative.
 // The moved commodity arrives in the final (destination) sector.
 
 use empire_db::sectors;
 use empire_types::commodity::Item;
 use empire_types::sector::SectorType;
+use empire_types::sector_chr::SectorChr;
 use crate::subs::geo;
 use super::ctx::CmdCtx;
 
@@ -76,11 +81,16 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         );
     }
 
+    if src.mobil <= 0 {
+        return format!("10 No mobility in {rel_x},{rel_y}\n");
+    }
+
     // Parse path string and walk it
     let mut out = String::new();
     let mut cur_x = abs_x;
     let mut cur_y = abs_y;
     let mut steps = 0i8;
+    let mut mobility_left = src.mobil as f64;
 
     for ch in path_str.chars() {
         if ch == 'h' { break; } // stop
@@ -124,6 +134,22 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             break;
         }
 
+        // Mobility check: cost is the destination's terrain movement cost at
+        // its current efficiency (SectorChr::mcost). Stop before going
+        // negative, same as 4.4.1's move_ground().
+        let step_cost = SectorChr::for_type(dest.sector_type).mcost(dest.effic);
+        if step_cost < 0.0 {
+            out.push_str(&format!("1 {dest_rel} is impassable — can't explore there\n"));
+            break;
+        }
+        if step_cost > mobility_left {
+            out.push_str(&format!(
+                "1 Not enough mobility to reach {dest_rel} — stopped at {}\n",
+                ctx.format_xy(cur_x, cur_y)
+            ));
+            break;
+        }
+
         // Claim unowned sector
         if dest.own == 0 {
             let mut claimed = dest.clone();
@@ -136,6 +162,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             out.push_str(&format!("1 {dest_rel} claimed\n"));
         }
 
+        mobility_left -= step_cost;
         cur_x = nx;
         cur_y = ny;
         steps += 1;
@@ -150,8 +177,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     // Deduct commodity from source, deposit in destination
     let final_rel = ctx.format_xy(cur_x, cur_y);
     src.items.add(item, -amount);
-    // Deduct 1 mob per step from source (floor at -127)
-    src.mobil = src.mobil.saturating_sub(steps);
+    src.mobil = mobility_left.round().clamp(0.0, 127.0) as i8;
     if let Err(e) = sectors::put(ctx.db, &src).await {
         out.push_str(&format!("10 DB error updating source: {e}\n"));
         out.push_str("0 explore\n");

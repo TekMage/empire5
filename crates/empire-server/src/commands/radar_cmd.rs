@@ -143,7 +143,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             out.push_str(&format!("1 {:4} {} {}\n", rel_y, row_str, rel_y));
         }
         render_radar_border(&mut out, rel_lx, disp_w, wx);
-        out.push('\n');
+        out.push_str("1\n");
     }
 
     if !swept_any {
