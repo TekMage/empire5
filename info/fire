@@ -1,0 +1,59 @@
+FIRE
+  Fire deck guns, artillery, or a fortress's guns at a ship or sector.
+
+SYNTAX
+  fire ship <uid-spec> ship <target-uid>
+  fire ship <uid-spec> sect <x,y>
+  fire land <uid-spec> ship <target-uid>
+  fire land <uid-spec> sect <x,y>
+  fire fort <x,y>       ship <target-uid>
+  fire fort <x,y>       sect <x,y>
+
+DESCRIPTION
+  Three kinds of unit can fire guns:
+    ship  - a ship with deck guns and shells aboard (effic >= 60%)
+    land  - an artillery-capable land unit (effic >= 40%), not loaded
+            on a ship or another unit
+    fort  - a fortress sector (effic >= 5%) with >= 5 militia aboard
+
+  <uid-spec> works like 'ship'/'land': a uid ("5"), a range ("0-5"),
+  or "*" for all of yours matching. <x,y> is your capital-relative
+  sector coordinate.
+
+  Unlike bombing or torpedoes, gunfire has NO miss chance: once a
+  firer is in range and eligible, damage lands every time. Damage
+  scales with the firer's efficiency and the number of guns it can
+  bring to bear, with some randomness in the dice roll per gun.
+
+  Ammo: firing consumes shells. Ships need roughly half a shell per
+  gun fired and will fire fewer guns if short on shells. A fortress
+  burns exactly 1 shell per shot regardless of gun count. An
+  artillery unit's ammo requirement is fixed by its type; firing
+  with less than that on hand still fires, but at reduced (scaled
+  down) effectiveness.
+
+  Ships also spend 15 mobility points firing their guns.
+
+  Counter-fire: if you fire on an enemy ship and it survives with
+  its own guns and ammo still usable, it fires back at you once,
+  immediately, in the same command. (Sectors and land units hit by
+  gunfire do not currently fire back.)
+
+  Friendly fire (hitting your own ship or sector) does not generate
+  a news item.
+
+KNOWN GAPS (v1)
+  - No auto-resupply of shells from a nearby sector/warehouse before
+    firing; a unit with 0 shells on hand simply can't fire.
+  - Return fire is a single reprisal shot, not 4.4.1's full
+    multi-defender pooled return fire from everyone in range.
+  - Damaged ships/units do not automatically retreat.
+
+EXAMPLE
+  fire ship 3 ship 12          ship 3 fires on ship 12
+  fire ship 0-2 sect 4,-1      ships 0-2 each shell sector 4,-1
+  fire land 5 sect 1,0         artillery unit 5 shells sector 1,0
+  fire fort 0,0 ship 7         your capital's fortress fires on ship 7
+
+SEE ALSO
+  torpedo  bomb  attack  ship  land  build

@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn fort_bonus_in_log() {
         let mut rng = rand::rngs::StdRng::seed_from_u64(1);
-        let defender = make_sector(SectorType::Fort, 100);
+        let defender = make_sector(SectorType::Fortress, 100);
         let result = att_resolve(
             &[], LandChr::all(),
             10, &defender, &[], LandChr::all(),

@@ -1,0 +1,47 @@
+TORPEDO
+  Fire torpedoes from a torpedo-capable ship at an enemy ship.
+
+SYNTAX
+  torpedo <ship-uid-spec> <target-ship-uid>
+  torp    <ship-uid-spec> <target-ship-uid>
+
+DESCRIPTION
+  Only ships whose type has torpedo capability can use this command
+  (see 'show ship b' for which types those are). Requires effic >=
+  60%, at least 1 gun and 3 shells aboard, at least 1 crew, and
+  mobility remaining.
+
+  <ship-uid-spec> works like 'ship': a uid ("5"), a range ("0-5"),
+  or "*" for all of yours matching that are eligible.
+
+  Torpedoing a submarine specifically requires your ship to also
+  have sub-torpedo capability; ordinary torpedoes can't hit a sub.
+
+  Ammo: firing costs exactly 3 shells and some mobility, whether the
+  shot hits or misses.
+
+  Damage on a hit is 40 plus two six-sided-ish random rolls (roughly
+  40-118). Hit chance falls off with range and gets a bonus the
+  stealthier (lower-visibility) your OWN ship is — a submarine
+  sneaking in close gets a notably better shot than a surface ship
+  at the same range, independent of what it's shooting at.
+
+  Counter-fire: if the target survives and is itself torpedo-capable,
+  it fires back once, immediately, in the same command.
+
+KNOWN GAPS (v1)
+  - No line-of-sight check: 4.4.1 blocks torpedoes that would have
+    to cross land between firer and target. Empire5 doesn't check
+    this yet (both ships being in sea sectors makes it a minor gap).
+  - No submerged/surfaced ship state. Submarine-flagged ships are
+    always assumed to need torpedo/sub-torpedo capability to hit;
+    there's no dive/surface toggle to manage.
+  - Torpedo mobility cost is a flat placeholder, not the tech-scaled
+    per-move formula 4.4.1 uses.
+
+EXAMPLE
+  torpedo 3 12          ship 3 fires a torpedo at ship 12
+  torp 0-2 12           ships 0-2 each take a shot at ship 12
+
+SEE ALSO
+  fire  bomb  ship  build
