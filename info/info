@@ -6,13 +6,19 @@ SYNTAX
 
 DESCRIPTION
   With a topic name, displays the help page for that command or
-  concept.  With no argument, lists all available topics.
+  concept.  With no argument, lists all available topics in aligned
+  columns — that list is the canonical index of every page a player
+  should review.
 
   Topics correspond to commands (e.g. 'info census') or concepts
   (e.g. 'info sector-types', 'info syntax', 'info overview').
 
   Command names and topic names are case-insensitive.
   You can also type the full command name or its abbreviation.
+
+  New topics are added over time as commands change.  Run 'info'
+  with no argument periodically (e.g. once a day) and read any
+  topic you don't recognize yet.
 
 EXAMPLE
   info                      list all available topics
