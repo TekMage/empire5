@@ -1,0 +1,34 @@
+LAND
+  List your land units in a human-readable table.
+
+SYNTAX
+  land [<uid-spec>]
+  lnd  [<uid-spec>]
+
+DESCRIPTION
+  Displays a table of land units you own.  With no argument shows
+  all your land units.
+
+  Column meanings:
+    lnd#           - land unit uid
+    land unit type - name of unit type (infantry, armor, etc.)
+    x,y            - current location (relative to your capital)
+    ar             - army letter (~ means not assigned to an army)
+    eff            - efficiency 0-100%.  Builds up over time in any
+                     owned sector, but only at full speed in a
+                     headquarters or fortress -- everywhere else
+                     it's a third the rate
+    civ            - civilians carried
+    mil            - military carried
+    uw             - uncompensated workers carried
+    fd             - food carried
+    mob            - mobility points
+    tech           - tech level the unit was built at
+
+EXAMPLE
+  land *                     all your land units
+  lnd 0                      land unit number 0 only
+  lnd 0-5                    land units 0 through 5
+
+SEE ALSO
+  ldump  build  ship  plane  fire  attack

@@ -43,6 +43,8 @@ mod march;
 mod navigate;
 mod attack;
 mod bomb;
+mod fire_cmd;
+mod torpedo_cmd;
 mod fly;
 mod launch;
 mod mission;
@@ -63,7 +65,11 @@ mod telegram_cmd;
 mod read_cmd;
 mod announce_cmd;
 mod ship_cmd;
+mod plane_cmd;
+mod land_cmd;
 mod load_cmd;
+mod tend_cmd;
+mod wingadd_cmd;
 mod enlist_cmd;
 mod demobilize_cmd;
 mod assault_cmd;
@@ -140,7 +146,10 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "navigate"  | "nav"         => navigate::run(args, &ctx).await,
         "attack"    | "atta"        => attack::run(args, &ctx).await,
         "bomb"                      => bomb::run(args, &ctx).await,
+        "fire"                      => fire_cmd::run(args, &ctx).await,
+        "torpedo" | "torp"          => torpedo_cmd::run(args, &ctx).await,
         "fly"                       => fly::run(args, &ctx).await,
+        "wingadd" | "wing"          => wingadd_cmd::run(args, &ctx).await,
         "launch"    | "lnch"        => launch::run(args, &ctx).await,
         "mission"   | "miss"        => mission::run(args, &ctx).await,
 
@@ -166,8 +175,11 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "pray"              => telegram_cmd::run(&format!("0 {args}"), &ctx).await,
 
         "ship"    | "shp"   => ship_cmd::run(args, &ctx).await,
+        "plane"   | "pln"   => plane_cmd::run(args, &ctx).await,
+        "land"    | "lnd"   => land_cmd::run(args, &ctx).await,
         "load"              => load_cmd::run(args, &ctx).await,
         "unload"  | "unlo"  => load_cmd::run_unload(args, &ctx).await,
+        "tend"              => tend_cmd::run(args, &ctx).await,
         "enlist"  | "enli"  => enlist_cmd::run(args, &ctx).await,
         "demobilize" | "demo" => demobilize_cmd::run(args, &ctx).await,
         "assault" | "assa"  => assault_cmd::run(args, &ctx).await,

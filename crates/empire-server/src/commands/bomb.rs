@@ -21,11 +21,14 @@
 //
 // Usage: bomb PLANE-SPEC TARGET-SECT [COMMODITY]
 //
-// PLANE-SPEC: "*" for all owned planes, single uid, or comma-separated uids.
+// PLANE-SPEC: "*" for all owned planes, a single uid, a uid range
+// ("0-5"), a comma list, "~" for planes with no wing, or a single
+// letter naming a wing (see 'info wingadd').
 // TARGET-SECT: destination sector (player-relative "X,Y").
 // COMMODITY: optional commodity letter to target (default: 'i' = sector efficiency).
 
-use empire_db::{planes, sectors};
+use empire_db::{news, planes, sectors};
+use empire_types::news::NewsVerb;
 use empire_types::plane_chr::PlaneChr;
 use empire_types::sector::SectorType;
 
@@ -35,7 +38,7 @@ use rand::rngs::StdRng;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 use crate::subs::aircombat::{air_combat, find_interceptors};
-use crate::subs::plnsub::{pln_capable, pln_bomb_eff, pln_use_fuel};
+use crate::subs::plnsub::{pln_capable, pln_bomb_eff, pln_use_fuel, plane_spec_matches};
 use crate::subs::damage::damage;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -80,7 +83,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         .into_iter()
         .filter(|p| {
             p.own == ctx.cnum
-                && plane_spec_matches(plane_spec, p.uid)
+                && plane_spec_matches(plane_spec, p)
         })
         .filter(|p| {
             let Some(chr) = chrs.get(p.plane_type as usize) else { return false; };
@@ -166,6 +169,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         "1 Bombing: {bomb_pct}% damage to sector (effic {old_effic}% → {new_effic}%)\n"
     ));
 
+    // File a news item — mirrors nreport(player->cnum, N_SCT_BOMB, target.sct_own, 1)
+    let _ = news::add_news(ctx.db, ctx.cnum, NewsVerb::SctBomb as u8, target_sector.own, 1).await;
+
     // Save sector
     if let Err(e) = sectors::put(ctx.db, &target_sector).await {
         out.push_str(&format!("1 Warning: error saving sector: {e}\n"));
@@ -181,20 +187,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     out.push_str("0 bomb\n");
     out
-}
-
-/// Return true if `uid` matches the plane spec string.
-fn plane_spec_matches(spec: &str, uid: i32) -> bool {
-    if spec == "*" {
-        return true;
-    }
-    for part in spec.split(',') {
-        let part = part.trim().trim_start_matches('#');
-        if let Ok(n) = part.parse::<i32>() {
-            if n == uid {
-                return true;
-            }
-        }
-    }
-    false
 }

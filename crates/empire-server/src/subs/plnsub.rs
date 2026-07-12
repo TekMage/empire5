@@ -86,6 +86,51 @@ pub fn pln_use_fuel(plane: &mut Plane, pchr: &PlaneChr, dist: i32) {
     plane.mobil = plane.mobil.saturating_sub(cost);
 }
 
+/// Return true if `plane` matches a plane-selector spec string. Shared by
+/// `bomb`, `fly`, and `wingadd` so a wing letter works as a selector
+/// everywhere planes are chosen, matching 4.4.1's <PLANE/WING> convention.
+///
+/// Accepted forms:
+///   "*"        — every plane
+///   "~"        — every plane with no wing assigned (the "null wing")
+///   "c"        — every plane currently in wing 'c' (any single letter)
+///   "5"        — plane uid 5
+///   "0-5"      — plane uids 0 through 5
+///   "2,14,23"  — plane uids 2, 14, and 23 (comma list; ranges allowed too)
+pub fn plane_spec_matches(spec: &str, plane: &Plane) -> bool {
+    let spec = spec.trim();
+    if spec.is_empty() || spec == "*" {
+        return true;
+    }
+    if spec == "~" {
+        return plane.wing == ' ' || plane.wing == '\0';
+    }
+    if spec.len() == 1 {
+        if let Some(c) = spec.chars().next() {
+            if c.is_ascii_alphabetic() {
+                return plane.wing == c;
+            }
+        }
+    }
+    for part in spec.split(',') {
+        let part = part.trim().trim_start_matches('#');
+        if let Ok(n) = part.parse::<i32>() {
+            if n == plane.uid {
+                return true;
+            }
+            continue;
+        }
+        if let Some((lo, hi)) = part.split_once('-') {
+            if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
+                if plane.uid >= lo && plane.uid <= hi {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -178,5 +223,44 @@ mod tests {
         let mut plane = make_plane(0, 30);
         let destroyed = pln_damage(&mut plane, 0);
         assert!(destroyed, "plane with effic=0 reports destroyed");
+    }
+
+    fn make_plane_uw(uid: i32, wing: char) -> Plane {
+        let mut p = make_plane(100, 30);
+        p.uid = uid;
+        p.wing = wing;
+        p
+    }
+
+    #[test]
+    fn spec_star_matches_any_wing_or_uid() {
+        assert!(plane_spec_matches("*", &make_plane_uw(42, 'c')));
+        assert!(plane_spec_matches("*", &make_plane_uw(0, ' ')));
+    }
+
+    #[test]
+    fn spec_tilde_matches_only_null_wing() {
+        assert!(plane_spec_matches("~", &make_plane_uw(1, ' ')));
+        assert!(!plane_spec_matches("~", &make_plane_uw(1, 'c')));
+    }
+
+    #[test]
+    fn spec_letter_matches_wing_not_uid() {
+        let plane = make_plane_uw(5, 'c');
+        assert!(plane_spec_matches("c", &plane));
+        assert!(!plane_spec_matches("d", &plane));
+        // A bare letter is a wing selector, never falls back to uid parsing.
+        let other = make_plane_uw(99, ' ');
+        assert!(!plane_spec_matches("c", &other));
+    }
+
+    #[test]
+    fn spec_uid_and_range_and_list() {
+        assert!(plane_spec_matches("5", &make_plane_uw(5, ' ')));
+        assert!(!plane_spec_matches("5", &make_plane_uw(6, ' ')));
+        assert!(plane_spec_matches("0-5", &make_plane_uw(3, ' ')));
+        assert!(!plane_spec_matches("0-5", &make_plane_uw(6, ' ')));
+        assert!(plane_spec_matches("2,14,23", &make_plane_uw(14, ' ')));
+        assert!(!plane_spec_matches("2,14,23", &make_plane_uw(15, ' ')));
     }
 }

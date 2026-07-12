@@ -17,16 +17,27 @@ DESCRIPTION
     u  upper-right      j  right
     n  lower-right      b  lower-left
     g  left             y  upper-left
-    h  stop (halt)      v  view (radar-like scan)
+    h  stop (halt)      v  view oil/fertility at current sector
 
   Ships can only pass through sea sectors or under bridges.
   A ship at a harbor can load/unload using 'load' and 'unload'.
   Ships at sea recover mobility slowly each update.
 
+  'v' does not move the ship and costs no mobility -- it just reports
+  the CURRENT sector's contents relevant to the ship's capabilities:
+    - oil exploration boats and oil derricks show [oil:N] (the sea
+      sector's oil deposit, same field a land oil field would drain)
+    - fishing boats and trawlers show [fert:N] (the sea sector's
+      fertility, which fish production draws on)
+  Sail an oil exploration boat around checking 'v' at each stop to find
+  a rich spot before committing a slower, pricier oil derrick to it.
+
 EXAMPLE
   navigate 0 jjjj           move ship 0 four sectors east
   navigate * h              halt all ships (stop in place)
   navigate 0 njjju          curved path south then northeast
+  navigate 0 uuv            move ship 0 two hexes, then report oil/fert there
+  navigate 0 vjjv           report here, move 2 hexes right, report there
 
 SEE ALSO
-  ship  load  unload  build  btu
+  ship  load  unload  tend  build  btu

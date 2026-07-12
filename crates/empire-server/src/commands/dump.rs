@@ -26,9 +26,11 @@
 //   c_del m_del c_cut m_cut
 
 use super::ctx::CmdCtx;
-use empire_db::{sectors, ships};
+use empire_db::{sectors, ships, planes, land_units};
 use empire_types::commodity::Item;
 use empire_types::ship_chr::ShipChr;
+use empire_types::plane_chr::PlaneChr;
+use empire_types::land_chr::LandChr;
 
 // Item enum indices used to index del[] array:
 //   Civil=0, Milit=1, Shell=2, Gun=3, Petrol=4, Iron=5, Dust=6, Bar=7,
@@ -51,8 +53,8 @@ pub async fn run(subcmd: &str, ctx: &CmdCtx<'_>) -> String {
     match subcmd {
         "dump"  => dump_sectors(ts, ctx).await,
         "sdump" => dump_ships(ts, ctx).await,
-        "ldump" => empty_dump("LAND UNITS", "units",  "ldump", ts),
-        "pdump" => empty_dump("PLANES",     "planes", "pdump", ts),
+        "ldump" => dump_land_units(ts, ctx).await,
+        "pdump" => dump_planes(ts, ctx).await,
         _       => "10 Unknown dump subcommand\n".to_string(),
     }
 }
@@ -122,7 +124,7 @@ c_del m_del c_cut m_cut\n");
         let dy = ctx.y_rel(s.dist_y);
 
         out.push_str(&format!(
-            "1 {rx} {ry} {des} _ {eff} {mob} . 0 {min} 0 {fert} {ocont} {uran} {work} 0 0 \
+            "1 {rx} {ry} {des} _ {eff} {mob} . 0 {min} {gold} {fert} {ocont} {uran} {work} 0 0 \
 {civ} {mil} {uw} {food} {shell} {gun} {pet} {iron} {dust} {bar} {oil} {lcm} {hcm} {rad} \
 {ud} {fd} {sd} {gd} {pd} {id} {dd} {bd} {od} {ld} {hd} {rd} \
 0 0 0 0 0 0 0 0 0 0 0 0 \
@@ -132,7 +134,8 @@ c_del m_del c_cut m_cut\n");
 {cd} {md} 0 0\n",
             eff   = s.effic,
             mob   = s.mobil,
-            min   = s.mines,
+            min   = s.min,
+            gold  = s.gmin,
             fert  = s.fertil,
             ocont = s.oil,
             uran  = s.uran,
@@ -226,10 +229,96 @@ async fn dump_ships(ts: i64, ctx: &CmdCtx<'_>) -> String {
     out
 }
 
-// Outputs an empty dump for land/plane types — no records but valid
-// header and footer so ParseDump terminates cleanly.
-fn empty_dump(dump_type: &str, unit_name: &str, cmd_ok: &str, ts: i64) -> String {
-    format!(
-        "1 DUMP {dump_type} {ts}\n1 uid own x y type eff mob\n1 0 {unit_name}\n0 {cmd_ok}\n"
-    )
+async fn dump_planes(ts: i64, ctx: &CmdCtx<'_>) -> String {
+    let all = match planes::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 Database error: {e}\n"),
+    };
+
+    let mine: Vec<_> = all.into_iter()
+        .filter(|p| p.own == ctx.cnum || ctx.is_deity)
+        .collect();
+
+    let mut out = String::new();
+    out.push_str(&format!("1 DUMP PLANES {ts}\n"));
+    out.push_str("1 id type x y wing eff mob tech mission range harden opx opy name\n");
+
+    for p in &mine {
+        let rx  = ctx.x_rel(p.x);
+        let ry  = ctx.y_rel(p.y);
+        let orx = ctx.x_rel(p.opx);
+        let ory = ctx.y_rel(p.opy);
+        let flt = if p.wing == '\0' || p.wing == ' ' { '~' } else { p.wing };
+
+        let pchr = PlaneChr::for_type(p.plane_type as usize);
+        let type_name = pchr.map(|c| c.sname).unwrap_or("??");
+
+        out.push_str(&format!(
+            "1 {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            p.uid, type_name, rx, ry, flt,
+            p.effic, p.mobil, p.tech,
+            p.mission, p.range, p.harden,
+            orx, ory,
+            "\"\"",
+        ));
+    }
+
+    let n = mine.len();
+    out.push_str(&format!("1 {n} plane{}\n", if n == 1 { "" } else { "s" }));
+    out.push_str("0 pdump\n");
+    out
+}
+
+async fn dump_land_units(ts: i64, ctx: &CmdCtx<'_>) -> String {
+    let all = match land_units::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 Database error: {e}\n"),
+    };
+
+    let mine: Vec<_> = all.into_iter()
+        .filter(|u| u.own == ctx.cnum || ctx.is_deity)
+        .collect();
+
+    let mut out = String::new();
+    out.push_str(&format!("1 DUMP LAND UNITS {ts}\n"));
+    out.push_str("1 id type x y army eff mob tech civ mil uw food shell gun petrol iron dust bar oil lcm hcm rad opx opy name\n");
+
+    for u in &mine {
+        let rx  = ctx.x_rel(u.x);
+        let ry  = ctx.y_rel(u.y);
+        let orx = ctx.x_rel(u.opx);
+        let ory = ctx.y_rel(u.opy);
+        let flt = if u.army == '\0' || u.army == ' ' { '~' } else { u.army };
+
+        let lchr = LandChr::for_type(u.land_type as usize);
+        let type_name = lchr.map(|c| c.sname).unwrap_or("??");
+
+        let civ   = u.items.get(Item::Civil);
+        let mil   = u.items.get(Item::Milit);
+        let uw    = u.items.get(Item::Uw);
+        let food  = u.items.get(Item::Food);
+        let shell = u.items.get(Item::Shell);
+        let gun   = u.items.get(Item::Gun);
+        let pet   = u.items.get(Item::Petrol);
+        let iron  = u.items.get(Item::Iron);
+        let dust  = u.items.get(Item::Dust);
+        let bar   = u.items.get(Item::Bar);
+        let oil   = u.items.get(Item::Oil);
+        let lcm   = u.items.get(Item::Lcm);
+        let hcm   = u.items.get(Item::Hcm);
+        let rad   = u.items.get(Item::Rad);
+
+        out.push_str(&format!(
+            "1 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            u.uid, type_name, rx, ry, flt,
+            u.effic, u.mobil, u.tech,
+            civ, mil, uw, food, shell, gun, pet, iron, dust, bar, oil, lcm, hcm, rad,
+            orx, ory,
+        ));
+    }
+
+    let n = mine.len();
+    out.push_str(&format!("1 {n} unit{}\n", if n == 1 { "" } else { "s" }));
+    out.push_str("0 ldump\n");
+    out
 }

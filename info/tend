@@ -1,0 +1,48 @@
+TEND
+  Transfer a commodity directly between two ships in the same sector.
+
+SYNTAX
+  tend <commodity> <tender-spec> <amount> <target-spec>
+
+DESCRIPTION
+  Moves goods straight from one ship's hold to another's, with no
+  harbor and no sector ownership required.  This is how you get oil
+  off an oil derrick parked in open ocean: the derrick can't unload
+  onto owned land (there isn't any out there), and 'load'/'unload'
+  only work at a harbor you own — 'tend' works ship-to-ship anywhere,
+  as long as both ships are in the same sector.
+
+  <commodity>    - single letter: o=oil f=food c=civ m=mil l=lcm etc.
+  <tender-spec>  - ship uid, range (0-5), or * — the ship you're
+                   commanding to give or take cargo
+  <amount>       - positive: move FROM tender TO target
+                   negative: move FROM target TO tender (tender pulls in)
+  <target-spec>  - ship uid, range, or * — the other ship(s) in the deal
+
+  Both ships must be in the same sector.  You must own the tender.
+  The target must be yours too, or owned by a nation you're on
+  Friendly terms with or better (see 'info relations').
+
+  Cargo capacity is enforced per ship type — e.g. an oil exploration
+  boat can only ever hold 1 oil (it's a scout, not a hauler), while
+  an oil derrick holds 990 and a tanker holds 990.  Transfers are
+  silently capped at whatever the receiving ship has room for.
+
+EXAMPLE
+  tend oil 1 500 5          move up to 500 oil from ship 1 to ship 5
+  tend oil 1 -500 5         pull up to 500 oil from ship 5 onto ship 1
+  tend food 0 999 1-4       spread ship 0's food across ships 1 through 4
+
+WORKFLOW: KEEPING AN OIL RIG PARKED ON A RICH SPOT
+  1. Sail an oil exploration boat around checking 'v' during navigate
+     to find a sea sector with high oil content (see 'info navigate').
+  2. Send an oil derrick there and leave it — it drills passively
+     every update as long as it stays put and isn't 'off'.
+  3. Periodically sail a tanker out to the same sector and run
+     'tend oil <derrick> <amount> <tanker>' to pull the oil off.
+  4. Sail the tanker back to a harbor and 'unload' it there.
+  The derrick never has to leave the good spot, so it never wastes
+  an update's production sailing back and forth.
+
+SEE ALSO
+  load  unload  navigate  ship  info navigate  info relations

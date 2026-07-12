@@ -63,7 +63,9 @@ use empire_types::nation::NatStatus;
 use empire_types::product_chr::{NatLevel, ProductChr, Resource};
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::{SectorChr, PRD_NONE};
-use empire_types::ship_chr::ShipChr;
+use empire_types::ship_chr::{ShipChr, ShipChrFlags};
+use empire_types::plane_chr::PlaneChr;
+use empire_types::land_chr::LandChr;
 use empire_types::MAX_NATIONS;
 
 use crate::journal::Journal;
@@ -288,11 +290,14 @@ async fn update_main(
     // 7. age_levels — tech/res decay + best-tech floor
     age_levels(&mut nations_mut, etu, rates);
 
-    // 8. prod_ships — repair/build ships in harbors
+    // 8. prod_ships/prod_planes/prod_land — repair/build units
     let mut ships      = empire_db::ships::get_all(&gs.db).await?;
     let mut planes     = empire_db::planes::get_all(&gs.db).await?;
     let mut land_units = empire_db::land_units::get_all(&gs.db).await?;
     prod_ships(&mut ships, &mut sectors, &mut budgets, etu, rates);
+    ship_produce_ocean(&mut ships, &mut sectors, &budgets, &nations, etu);
+    prod_planes(&mut planes, &mut sectors, &mut budgets, etu, rates);
+    prod_land(&mut land_units, &mut sectors, &mut budgets, etu, rates);
 
     // 9. mob_inc_all — mobility accrual
     mob_inc_all(&mut sectors, &mut ships, &mut planes, &mut land_units, etu, rates);
@@ -537,6 +542,242 @@ fn prod_ships(
     }
 }
 
+/// Build up plane efficiency in airfields.  Mirrors planerepair() in
+/// src/lib/update/plane.c (the carrier-based repair path is not ported —
+/// only airfield-based repair, which covers ordinary plane building).
+fn prod_planes(
+    planes:  &mut [empire_types::plane::Plane],
+    sectors: &mut [empire_types::sector::Sector],
+    budgets: &mut [Budget],
+    etu:     i32,
+    rates:   &UpdateRates,
+) {
+    let coord_map: HashMap<(Coord, Coord), usize> = sectors
+        .iter().enumerate()
+        .map(|(i, s)| ((s.x, s.y), i))
+        .collect();
+
+    for pln in planes.iter_mut() {
+        if pln.own == 0 || pln.off || pln.effic >= 100 { continue; }
+
+        let Some(pchr) = PlaneChr::for_type(pln.plane_type as usize) else { continue };
+
+        let Some(&si) = coord_map.get(&(pln.x, pln.y)) else { continue };
+        let sect = &sectors[si];
+
+        if sect.off { continue; }
+        if sect.sector_type != SectorType::Airfield { continue; }
+        if sect.own != pln.own { continue; }
+
+        let budget = &budgets[pln.own as usize];
+        if budget.money < 0.0 { continue; }
+
+        let avail_pool = sectors[si].avail as i32 * 100;
+        if avail_pool <= 0 { continue; }
+
+        let bwork = pchr.bwork.max(1);
+        let mut delta = avail_pool / bwork;
+        let grow_cap = (etu as f32 * rates.plane_grow_scale) as i32;
+        delta = delta.min(grow_cap).min((100 - pln.effic) as i32);
+        if delta <= 0 { continue; }
+
+        let lcm_avail = sectors[si].items.get(Item::Lcm) as i32;
+        let hcm_avail = sectors[si].items.get(Item::Hcm) as i32;
+        if pchr.lcm > 0 {
+            let lcm_pct = lcm_avail * 100 / pchr.lcm;
+            if lcm_pct < delta { delta = lcm_pct; }
+        }
+        if pchr.hcm > 0 {
+            let hcm_pct = hcm_avail * 100 / pchr.hcm;
+            if hcm_pct < delta { delta = hcm_pct; }
+        }
+        if delta <= 0 { continue; }
+
+        let lcm_use = round_avg(pchr.lcm as f64 * delta as f64 / 100.0) as i16;
+        let hcm_use = round_avg(pchr.hcm as f64 * delta as f64 / 100.0) as i16;
+        sectors[si].items.add(Item::Lcm, -lcm_use);
+        sectors[si].items.add(Item::Hcm, -hcm_use);
+
+        let wf_used = delta * bwork;
+        let avail_used = round_avg(wf_used as f64 / 100.0) as i16;
+        sectors[si].avail = (sectors[si].avail - avail_used).max(0);
+
+        pln.effic += delta as i8;
+        if pln.effic > 100 { pln.effic = 100; }
+
+        let cost = pchr.cost as f64 * delta as f64 / 100.0;
+        budgets[pln.own as usize].money -= cost;
+    }
+}
+
+/// Build up land unit efficiency.  Mirrors landrepair() in
+/// src/lib/update/land.c.  Any owned sector works, but build rate is
+/// only full speed at a headquarters or fortress -- everywhere else
+/// it's cut to a third, matching 4.4.1.
+fn prod_land(
+    land_units: &mut [empire_types::land::LandUnit],
+    sectors:    &mut [empire_types::sector::Sector],
+    budgets:    &mut [Budget],
+    etu: i32,
+    rates: &UpdateRates,
+) {
+    let coord_map: HashMap<(Coord, Coord), usize> = sectors
+        .iter().enumerate()
+        .map(|(i, s)| ((s.x, s.y), i))
+        .collect();
+
+    for lnd in land_units.iter_mut() {
+        if lnd.own == 0 || lnd.off || lnd.effic >= 100 { continue; }
+
+        let Some(lchr) = LandChr::for_type(lnd.land_type as usize) else { continue };
+
+        let Some(&si) = coord_map.get(&(lnd.x, lnd.y)) else { continue };
+        let sect = &sectors[si];
+
+        if sect.off { continue; }
+        if sect.own != lnd.own { continue; }
+
+        let budget = &budgets[lnd.own as usize];
+        if budget.money < 0.0 { continue; }
+
+        let avail_pool = sectors[si].avail as i32 * 100;
+        if avail_pool <= 0 { continue; }
+
+        let bwork = lchr.bwork.max(1);
+        let mut delta = avail_pool / bwork;
+        let grow_cap = (etu as f32 * rates.land_grow_scale) as i32;
+        delta = delta.min(grow_cap).min((100 - lnd.effic) as i32);
+        if delta <= 0 { continue; }
+
+        let lcm_avail = sectors[si].items.get(Item::Lcm) as i32;
+        let hcm_avail = sectors[si].items.get(Item::Hcm) as i32;
+        if lchr.lcm > 0 {
+            let lcm_pct = lcm_avail * 100 / lchr.lcm;
+            if lcm_pct < delta { delta = lcm_pct; }
+        }
+        if lchr.hcm > 0 {
+            let hcm_pct = hcm_avail * 100 / lchr.hcm;
+            if hcm_pct < delta { delta = hcm_pct; }
+        }
+        if delta <= 0 { continue; }
+
+        // Full speed only at headquarters/fortress; a third everywhere else.
+        let full_speed = matches!(
+            sect.sector_type,
+            SectorType::Headquarters | SectorType::Fortress
+        );
+        let mut build = delta;
+        if !full_speed { build /= 3; }
+        if build <= 0 { continue; }
+
+        let lcm_use = round_avg(lchr.lcm as f64 * build as f64 / 100.0) as i16;
+        let hcm_use = round_avg(lchr.hcm as f64 * build as f64 / 100.0) as i16;
+        sectors[si].items.add(Item::Lcm, -lcm_use);
+        sectors[si].items.add(Item::Hcm, -hcm_use);
+
+        let wf_used = delta * bwork;
+        let avail_used = round_avg(wf_used as f64 / 100.0) as i16;
+        sectors[si].avail = (sectors[si].avail - avail_used).max(0);
+
+        lnd.effic += build as i8;
+        if lnd.effic > 100 { lnd.effic = 100; }
+
+        let cost = lchr.cost as f64 * build as f64 / 100.0;
+        budgets[lnd.own as usize].money -= cost;
+    }
+}
+
+/// Ships with the OIL capability (oil exploration boat, oil derrick) drill
+/// for oil, and ships with the FISH capability (fishing boat, trawler) catch
+/// fish, while sitting in a sea sector.  Mirrors ship_produce() in
+/// src/lib/update/ship.c.  Unlike land production, this isn't gated on ship
+/// efficiency being under 100% — a fully-built ship is exactly when it
+/// should be producing.
+///
+/// Cargo is capped by the ship type's real per-item capacity (ShipChr::
+/// cargo_cap, ported from ship.config) — e.g. an oil exploration boat can
+/// only hold 1 oil (it's a scout, not a hauler) while an oil derrick holds
+/// 990. Once a ship is full, production for that item just stops; nothing
+/// is lost.
+fn ship_produce_ocean(
+    ships:    &mut [empire_types::ship::Ship],
+    sectors:  &mut [empire_types::sector::Sector],
+    budgets:  &[Budget],
+    nations:  &[empire_types::nation::Nation],
+    etu: i32,
+) {
+    let mut nat_tech = [0.0f64; MAX_NATIONS + 1];
+    for n in nations {
+        nat_tech[n.cnum as usize] = n.tech;
+    }
+
+    let coord_map: HashMap<(Coord, Coord), usize> = sectors
+        .iter().enumerate()
+        .map(|(i, s)| ((s.x, s.y), i))
+        .collect();
+
+    let oil_dchr  = SectorChr::for_type(SectorType::OilField);
+    let oil_prd   = ProductChr::get(oil_dchr.prd);
+    let agri_dchr = SectorChr::for_type(SectorType::Agri);
+    let agri_prd  = ProductChr::get(agri_dchr.prd);
+
+    for ship in ships.iter_mut() {
+        if ship.own == 0 || ship.off { continue; }
+        let own = ship.own as usize;
+        if budgets[own].money < 0.0 { continue; }
+
+        let Some(shpchr) = ShipChr::for_type(ship.ship_type as usize) else { continue };
+        if !shpchr.flags.intersects(ShipChrFlags::OIL | ShipChrFlags::FISH) { continue; }
+
+        let Some(&si) = coord_map.get(&(ship.x, ship.y)) else { continue };
+        if sectors[si].sector_type != SectorType::Sea { continue; }
+
+        let tech = nat_tech.get(own).copied().unwrap_or(0.0);
+        let work = total_work(
+            100, etu,
+            ship.items.get(Item::Civil),
+            ship.items.get(Item::Milit),
+            ship.items.get(Item::Uw),
+            ITEM_MAX as i32,
+        ) as f64;
+
+        if shpchr.flags.contains(ShipChrFlags::OIL) {
+            if let Some(prd) = oil_prd {
+                let p_e = prod_eff(prd, tech, oil_dchr.peff);
+                if p_e > 0.0 {
+                    let res_factor = sectors[si].oil as f64 / 100.0;
+                    let mut gained = work * ship.effic as f64 / 100.0 * res_factor * p_e;
+                    gained = gained.min(prod_resource_limit(&sectors[si], prd));
+                    let mut gained = round_avg(gained) as i16;
+                    let room = shpchr.cargo_cap(Item::Oil) - ship.items.get(Item::Oil);
+                    if gained > room { gained = room.max(0); }
+                    if gained > 0 {
+                        ship.items.add(Item::Oil, gained);
+                        deplete_resource(&mut sectors[si], prd, gained as f64);
+                    }
+                }
+            }
+        }
+
+        if shpchr.flags.contains(ShipChrFlags::FISH) {
+            if let Some(prd) = agri_prd {
+                let p_e = prod_eff(prd, tech, agri_dchr.peff);
+                if p_e > 0.0 {
+                    let res_factor = sectors[si].fertil as f64 / 100.0;
+                    // Fish don't deplete fertility (product nrdep=0 for food,
+                    // same as land agri — matches 4.4.1: no resource check).
+                    let gained = round_avg(work * ship.effic as f64 / 100.0 * res_factor * p_e) as i16;
+                    let room = shpchr.cargo_cap(Item::Food) - ship.items.get(Item::Food);
+                    let gained = gained.min(room.max(0));
+                    if gained > 0 {
+                        ship.items.add(Item::Food, gained);
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Mobility (mobility.c) ─────────────────────────────────────────────────────
 
 fn mob_inc_all(
@@ -671,6 +912,12 @@ fn prepare_sects(
 
         // Feed population — starvation, growth, and work improvement
         do_feed(s, etu, rates, verbose);
+
+        // Cap civilians and uw at sector maxpop (mirrors trunc_people in 4.4.1 human.c).
+        // Without this, 30% birth rate per update (etu=60) fills every sector to i16::MAX.
+        let maxpop16 = maxpop as i16;
+        if s.items.get(Item::Civil) > maxpop16 { s.items.set(Item::Civil, maxpop16); }
+        if s.items.get(Item::Uw)    > maxpop16 { s.items.set(Item::Uw,    maxpop16); }
 
         check_pop_loss(s);
 

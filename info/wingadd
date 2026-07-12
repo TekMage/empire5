@@ -1,0 +1,40 @@
+WINGADD
+  Assign planes to a wing letter, so the wing can be used as a group
+  designation on bomb and fly missions.
+
+SYNTAX
+  wingadd <wing-letter> <plane-spec>
+  wing    <wing-letter> <plane-spec>
+
+DESCRIPTION
+  Sets the wing letter on every owned plane matching <plane-spec>.
+  Once planes carry a wing letter, that same letter can be used as
+  the plane-spec argument to 'bomb' or 'fly' to select every plane
+  currently in that wing — no need to track individual uids.
+
+  <wing-letter> - a single letter a-z or A-Z naming the wing, or
+                  "~" to clear the wing assignment (return the
+                  planes to the null/unassigned wing)
+  <plane-spec>  - which planes to (re)assign:
+                    "*"        every owned plane
+                    "5"        plane uid 5
+                    "0-5"      plane uids 0 through 5
+                    "2,14,23"  a comma list of uids
+                    "~"        every plane with no wing assigned
+                    "c"        every plane currently in wing c
+                               (lets you rename/merge a wing)
+
+  Wing assignment has no effect on efficiency, mobility, or combat —
+  it is purely an organizational grouping.
+
+EXAMPLE
+  wingadd c *                put all owned planes into wing c
+  wingadd b 0-5              put planes 0-5 into wing b
+  wingadd d ~                put all unassigned planes into wing d
+  wingadd e c                rename/merge wing c's planes into wing e
+  wingadd ~ c                clear wing c's planes back to unassigned
+  bomb c 4,2 s               bomb sector 4,2 with every plane in wing c
+  fly c -3,1                 fly every plane in wing c to -3,1
+
+SEE ALSO
+  plane  bomb  fly  build

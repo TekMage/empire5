@@ -9,6 +9,11 @@ DESCRIPTION
   Unlike 'bomb', this is used for repositioning, dropping
   paratroopers, or air transport of commodities.
 
+  <plane-spec>  - plane uid ("5"), range ("0-5"), comma list ("2,14"),
+                  "*" for all owned planes, "~" for planes with no
+                  wing assigned, or a single letter naming a wing
+                  (see 'info wingadd' to group planes into a wing)
+
   The destination must be within the plane's range.
   Planes consume fuel (petrol) during flight.
   Planes must land at a friendly airfield (type '*') at >=40% eff
@@ -21,4 +26,4 @@ EXAMPLE
   fly 0 -6,0                move plane 0 to the western airfield
 
 SEE ALSO
-  bomb  launch  mission  build  navigate
+  bomb  wingadd  launch  mission  build  navigate

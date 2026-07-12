@@ -18,8 +18,12 @@ DESCRIPTION
   sdump — all ship fields: uid, owner, x, y, type, efficiency,
           mobility, tech, fleet letter.
 
-  ldump/pdump — same concept for land units and planes (stub output
-          if no units exist).
+  ldump — land unit fields: uid, owner, x, y, type, efficiency,
+          mobility, tech, army letter, item counts, origin coords.
+
+  pdump — plane fields: uid, owner, x, y, type, efficiency,
+          mobility, tech, wing letter, mission, range, hardening,
+          origin coords.
 
   The first line after the header is a column-name row.
   Subsequent rows are data.  The final line gives the record count.

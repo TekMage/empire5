@@ -32,4 +32,4 @@ EXAMPLE
   ship 0-5                  ships 0 through 5
 
 SEE ALSO
-  sdump  build  navigate  load  unload  show
+  sdump  build  navigate  load  unload  show  plane  land  fire  torpedo

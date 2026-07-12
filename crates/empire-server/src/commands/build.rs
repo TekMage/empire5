@@ -191,7 +191,7 @@ async fn build_ships(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: 
                 effic: 20, // SHIP_MINEFF
                 mobil: 0,
                 off: false,
-                tech: 0,
+                tech: ctx.nat.tech as i16,
                 fleet: ' ',
                 opx: sect.x,
                 opy: sect.y,
@@ -329,7 +329,7 @@ async fn build_land(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count: u
                 effic: 10, // LAND_MINEFF
                 mobil: 0,
                 off: false,
-                tech: 0,
+                tech: ctx.nat.tech as i16,
                 army: ' ',
                 opx: sect.x,
                 opy: sect.y,
@@ -469,7 +469,7 @@ async fn build_planes(ctx: &CmdCtx<'_>, sect_spec: &str, type_idx: usize, count:
                 effic: 10, // PLANE_MINEFF
                 mobil: 0,
                 off: false,
-                tech: 0,
+                tech: ctx.nat.tech as i16,
                 wing: ' ',
                 opx: sect.x,
                 opy: sect.y,

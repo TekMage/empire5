@@ -27,7 +27,11 @@ pub enum NewsVerb {
     WonSect      = 1,   // N_WON_SECT   — infantry capture territory
     SctLose      = 2,   // N_SCT_LOSE   — infantry beaten back
     SentTel      = 4,   // N_SENT_TEL   — sends a telegram
+    SctShell     = 10,  // N_SCT_SHELL  — gunners bombard a sector
+    ShpShell     = 11,  // N_SHP_SHELL  — shells a ship
     TookUnocc    = 12,  // N_TOOK_UNOCC — takes unoccupied land
+    SctBomb      = 16,  // N_SCT_BOMB   — planes bomb a sector
+    ShipTorp     = 52,  // N_SHIP_TORP  — ship torpedoed
     DeclAlly     = 26,  // N_DECL_ALLY  — announces alliance
     DeclWar      = 28,  // N_DECL_WAR   — declares war
     DisAlly      = 29,  // N_DIS_ALLY   — disavows alliance
@@ -80,7 +84,11 @@ impl NewsVerb {
             1  => Self::WonSect,
             2  => Self::SctLose,
             4  => Self::SentTel,
+            10 => Self::SctShell,
+            11 => Self::ShpShell,
             12 => Self::TookUnocc,
+            16 => Self::SctBomb,
+            52 => Self::ShipTorp,
             26 => Self::DeclAlly,
             28 => Self::DeclWar,
             29 => Self::DisAlly,
@@ -99,9 +107,10 @@ impl NewsVerb {
 
     pub fn page(self) -> NewsPage {
         match self {
-            Self::WonSect | Self::SctLose | Self::TookUnocc => NewsPage::FrontLine,
-            Self::AwonSect | Self::AloseSct                 => NewsPage::Sea,
+            Self::WonSect | Self::SctLose | Self::TookUnocc | Self::SctShell => NewsPage::FrontLine,
+            Self::AwonSect | Self::AloseSct | Self::ShpShell | Self::ShipTorp => NewsPage::Sea,
             Self::SentTel                                   => NewsPage::Telecom,
+            Self::SctBomb                                   => NewsPage::Sky,
             _ /* declare / relations */                     => NewsPage::Foreign,
         }
     }
@@ -113,6 +122,10 @@ impl NewsVerb {
             Self::SctLose      => -4,
             Self::SentTel      =>  1,
             Self::TookUnocc    =>  0,
+            Self::SctBomb      => -2,
+            Self::SctShell     => -2,
+            Self::ShpShell     => -2,
+            Self::ShipTorp     =>  0,
             Self::DeclAlly     =>  5,
             Self::DeclWar      => -5,
             Self::DisAlly      =>  0,
@@ -140,6 +153,14 @@ impl NewsVerb {
                                    "telexes %s"),
             Self::TookUnocc    => ("takes over unoccupied land",
                                    "attacks unowned land for some reason"),
+            Self::SctBomb      => ("planes dive-bomb one of %s's sectors",
+                                   "bombers wreak havoc on %s"),
+            Self::SctShell     => ("gunners bombard %s territory",
+                                   "artillery fires on %s sectors"),
+            Self::ShpShell     => ("shells a ship owned by %s",
+                                   "fires on %s ships"),
+            Self::ShipTorp     => ("ships torpedoed by %s torpedo-boats",
+                                   "ships sunk by marauding %s torpedo-boats"),
             Self::DeclAlly     => ("announces an alliance with %s",
                                    "/ %s alliance declared"),
             Self::DeclWar      => ("declares TOTAL WAR on %s",

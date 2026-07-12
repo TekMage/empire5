@@ -8,7 +8,10 @@ DESCRIPTION
   Sends planes on a bombing mission against a target.  Planes must
   be in an airfield within range of the target.
 
-  <plane-spec>  - plane uid, range, or * for all eligible planes
+  <plane-spec>  - plane uid ("5"), range ("0-5"), comma list ("2,14"),
+                  "*" for all eligible planes, "~" for planes with no
+                  wing assigned, or a single letter naming a wing
+                  (see 'info wingadd' to group planes into a wing)
   <target-x,y>  - the target sector or ship location
   <type>        - 's' for strategic (sector), 't' for tactical (units)
 
@@ -26,4 +29,4 @@ EXAMPLE
   bomb 0-3 2,4 t            planes 0-3 do tactical bombing at 2,4
 
 SEE ALSO
-  fly  launch  mission  build  attack
+  fly  wingadd  launch  mission  build  attack  fire  torpedo

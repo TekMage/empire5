@@ -1,0 +1,30 @@
+PLANE
+  List your planes in a human-readable table.
+
+SYNTAX
+  plane [<uid-spec>]
+  pln   [<uid-spec>]
+
+DESCRIPTION
+  Displays a table of planes you own.  With no argument shows all
+  your planes.
+
+  Column meanings:
+    pln#        - plane uid
+    plane type  - name of plane type (bomber, fighter, etc.)
+    x,y         - current location (relative to your capital)
+    wg          - wing letter (~ means not assigned to a wing)
+    eff         - efficiency 0-100%.  Builds up over time in an
+                  owned, non-offline airfield with lcm/hcm on hand
+    mob         - mobility points
+    tech        - tech level the plane was built at
+    mission     - current mission code (0 = none)
+    range       - maximum range in sectors
+
+EXAMPLE
+  plane *                    all your planes
+  pln 0                      plane number 0 only
+  pln 0-5                    planes 0 through 5
+
+SEE ALSO
+  pdump  build  ship  land  wingadd  bomb  fly

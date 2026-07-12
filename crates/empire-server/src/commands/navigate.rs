@@ -31,10 +31,17 @@
 use empire_db::{sectors, ships};
 use empire_types::coords::Coord;
 use empire_types::sector::SectorType;
+use empire_types::sector_chr::SectorChr;
+use empire_types::ship_chr::{ShipChr, ShipChrFlags};
 use crate::subs::geo::{DIROFF, DIRCH, DIR_FIRST, DIR_LAST, x_norm, y_norm, dir_from_char};
 use crate::subs::pathfind::find_path;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
+
+/// Sentinel pushed into the direction sequence for a 'v' token — "view the
+/// current sector's oil/fertility without moving," matching 4.4.1's
+/// unit_view(). Not a real direction, so it's outside the 1-6 range.
+const VIEW_MARKER: u8 = 255;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.splitn(2, ' ').collect();
@@ -84,6 +91,10 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
         let mut path_taken: Vec<char> = Vec::new();
         for dir_idx in directions {
+            if dir_idx == VIEW_MARKER {
+                out.push_str(&view_line(ctx, &ship).await);
+                continue;
+            }
             if ship.mobil <= 0 {
                 out.push_str(&format!(
                     "1 Ship {} ran out of mobility at {}\n",
@@ -209,8 +220,33 @@ async fn build_route(
         match dir_from_char(ch) {
             Some(d) if d >= DIR_FIRST && d <= DIR_LAST => dirs.push(d as u8),
             Some(0) => break, // DIR_STOP ('h')
+            _ if ch == 'v' => dirs.push(VIEW_MARKER),
             _ => return Err(format!("unknown direction character '{ch}'")),
         }
     }
     Ok(dirs)
+}
+
+/// Report the ship's current sector: oil content (if it can drill) and
+/// fertility (if it can fish), plus efficiency and sector type.
+/// Mirrors unit_view() in src/lib/subs/unitsub.c — triggered by 'v' in the
+/// route string, doesn't move the ship or cost mobility.
+async fn view_line(ctx: &CmdCtx<'_>, ship: &empire_types::ship::Ship) -> String {
+    let Ok(Some(sect)) = sectors::get_at(ctx.db, ship.x, ship.y).await else {
+        return format!("1 Ship {}: sector vanished\n", ship.uid);
+    };
+    let mut prefix = String::new();
+    if let Some(shpchr) = ShipChr::for_type(ship.ship_type as usize) {
+        if shpchr.flags.contains(ShipChrFlags::FISH) {
+            prefix.push_str(&format!("[fert:{}] ", sect.fertil));
+        }
+        if shpchr.flags.contains(ShipChrFlags::OIL) {
+            prefix.push_str(&format!("[oil:{}] ", sect.oil));
+        }
+    }
+    format!(
+        "1 {}Ship {} @ {} {}% {}\n",
+        prefix, ship.uid, ctx.format_xy(ship.x, ship.y),
+        sect.effic, SectorChr::for_type(sect.sector_type).name,
+    )
 }

@@ -32,4 +32,4 @@ EXAMPLE
   attack -2,2 -3,1 -1,1    attack from two adjacent sectors
 
 SEE ALSO
-  march  bomb  relations  declare  census
+  march  bomb  fire  torpedo  relations  declare  census

@@ -20,7 +20,9 @@
 //
 // Usage: fly PLANE-SPEC DEST-SECT
 //
-// PLANE-SPEC: "*" for all owned planes, single uid, or comma-separated uids.
+// PLANE-SPEC: "*" for all owned planes, a single uid, a uid range
+// ("0-5"), a comma list, "~" for planes with no wing, or a single
+// letter naming a wing (see 'info wingadd').
 // DEST-SECT: destination sector (player-relative "X,Y").
 //
 // Planes can only land at friendly sectors with airfield (a), naval base (n),
@@ -33,7 +35,7 @@ use empire_types::sector::SectorType;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 use crate::subs::geo::map_dist;
-use crate::subs::plnsub::{pln_capable, pln_use_fuel};
+use crate::subs::plnsub::{pln_capable, pln_use_fuel, plane_spec_matches};
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -85,7 +87,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let selected: Vec<_> = all_planes
         .into_iter()
-        .filter(|p| p.own == ctx.cnum && plane_spec_matches(plane_spec, p.uid))
+        .filter(|p| p.own == ctx.cnum && plane_spec_matches(plane_spec, p))
         .collect();
 
     if selected.is_empty() {
@@ -154,20 +156,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     out.push_str("0 fly\n");
     out
-}
-
-/// Return true if `uid` matches the plane spec string.
-fn plane_spec_matches(spec: &str, uid: i32) -> bool {
-    if spec == "*" {
-        return true;
-    }
-    for part in spec.split(',') {
-        let part = part.trim().trim_start_matches('#');
-        if let Ok(n) = part.parse::<i32>() {
-            if n == uid {
-                return true;
-            }
-        }
-    }
-    false
 }
