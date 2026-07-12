@@ -1,0 +1,41 @@
+# Empire 5 — Long-term campaign preset
+#
+# The marathon game: one update per day, runs for 1-3 months.
+# Players log in when they can, no pressure to check every hour.
+# Tech and research accumulate slowly; alliances and diplomacy matter a lot.
+# Larger world recommended to give room for long-term expansion.
+#
+# Typical game arc:
+#   Week  1-2  : infrastructure, explore, first tech
+#   Week  3-6  : military development, diplomacy, first wars
+#   Week  7-12 : major campaigns, shifting fronts
+#   Month 3+   : endgame or designated finish date
+
+[game]
+etu_per_update    = 96
+world_x           = 128
+world_y           = 64
+start_cash        = 20000
+newcap_start_civ  = 500
+newcap_start_food = 5000
+
+[update]
+update_interval_secs = 86400     # 24 hours — use a schedule file for exact times
+allow_force          = true
+
+# ── Rate parameters scaled to etu=96 ──────────────────────────────────────────
+#
+#   edu_avg  = 8  × etu   →  768
+#   hap_avg  = 2  × etu   →  192
+#   obrate   = 0.04 / etu →  0.000417  (4% population growth per update)
+#   uwbrate  = 0.02 / etu →  0.000208
+#
+# Tech decay (level_age_rate=96) means 1% loss per 96 ETU of game time.
+# At etu=96 that is exactly 1% per update — keep producing or levels slip.
+#
+[rates]
+edu_avg         = 768.0     # 8 × 96
+hap_avg         = 192.0     # 2 × 96
+obrate          = 0.000417  # 4% civ growth/update
+uwbrate         = 0.000208
+level_age_rate  = 96.0      # 1% tech/research decay per update at etu=96

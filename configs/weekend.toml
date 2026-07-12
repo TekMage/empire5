@@ -1,0 +1,35 @@
+# Empire 5 — Weekend game preset
+#
+# Mid-pace game designed to run Friday evening through Sunday night.
+# Updates every 30 minutes (~96 updates over the weekend).
+# Players can step away for a few hours and not fall too far behind.
+#
+# Typical game arc:
+#   Day 1 (Fri eve) : settle, explore, first LCM/libraries
+#   Day 2 (Sat)     : tech ramp, first military clashes
+#   Day 3 (Sun)     : endgame push, agreed finish Sunday evening
+
+[game]
+etu_per_update    = 40
+world_x           = 64
+world_y           = 32
+start_cash        = 25000
+newcap_start_civ  = 500
+newcap_start_food = 5000
+
+[update]
+update_interval_secs = 1800      # 30 minutes
+allow_force          = true
+
+# ── Rate parameters scaled to etu=40 ──────────────────────────────────────────
+#
+#   edu_avg  = 8  × etu   →  320
+#   hap_avg  = 2  × etu   →   80
+#   obrate   = 0.04 / etu →  0.001   (4% population growth per update)
+#   uwbrate  = 0.02 / etu →  0.0005
+#
+[rates]
+edu_avg  = 320.0    # 8 × 40
+hap_avg  =  80.0    # 2 × 40
+obrate   = 0.001    # 4% civ growth/update
+uwbrate  = 0.0005

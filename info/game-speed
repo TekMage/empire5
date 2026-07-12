@@ -1,0 +1,109 @@
+GAME SPEED AND PRESETS
+  How to tune Empire 5 for different play styles.
+
+OVERVIEW
+  Two settings control the overall pace of the game:
+
+    etu_per_update         — game time per update tick (ETU = Empire Time Units)
+    update_interval_secs   — real-world seconds between update ticks
+
+  Changing either one affects how the game FEELS.  But several other
+  parameters were designed for a specific ETU value in 4.4.1 (etu=8).
+  If you change etu_per_update without adjusting the related constants,
+  education swings too violently, population grows too fast, and the
+  game feels wrong.  The presets in configs/ handle all of this for you.
+
+PRESET CONFIGURATIONS
+  Four ready-to-use preset files are in configs/:
+
+    configs/blitz.toml      etu=20, update every 10 min,  game lasts 1-2 days
+    configs/weekend.toml    etu=40, update every 30 min,  game lasts a weekend
+    configs/standard.toml   etu=60, update every 1 hour,  game lasts 1-3 weeks
+    configs/longterm.toml   etu=96, update every 24 hours, game lasts 1-3 months
+
+  To use a preset, copy it to your data directory and pass it with --config,
+  or merge it into your empire.toml alongside your [server] and [limits] blocks.
+
+PARAMETERS THAT MUST SCALE WITH etu_per_update
+  These constants have values that assume a specific ETU rate.  They must
+  be adjusted whenever etu_per_update changes or the game feel breaks.
+
+  edu_avg (ETU education moving-average window)
+    Controls how quickly education responds to changes in library output.
+    Rule: edu_avg = 8 × etu_per_update
+    Calibration: 8 update cycles to reach equilibrium from zero.
+    Too low: one missed LCM delivery drops education sharply.
+    Too high: libraries take many updates before education moves at all.
+
+  hap_avg (ETU happiness moving-average window)
+    Same idea as edu_avg but for parks/happiness.
+    Rule: hap_avg = 2 × etu_per_update
+    Calibration: 2 update cycles to equilibrium — happiness responds faster.
+
+  obrate (civilian birth rate per ETU)
+    The 4.4.1 default (0.005/ETU) was tuned for etu=8, giving 4% growth
+    per update.  At etu=60 it gives 30% per update — sectors hit maxpop
+    in 2 updates and stay there.
+    Rule: obrate = 0.04 / etu_per_update   (keeps 4% growth per update)
+    Note: the compiled-in default (0.005) matches 4.4.1 etu=8 behaviour.
+          The presets use the scaled value for more gradual population curves.
+
+  uwbrate (uncompensated worker birth rate per ETU)
+    Same relationship as obrate, at half the rate.
+    Rule: uwbrate = 0.02 / etu_per_update
+
+PARAMETERS THAT ARE ALREADY IN ABSOLUTE ETU TERMS (no scaling needed)
+  These use ETU as units directly — they express "N ETUs of game time" —
+  so they stay consistent across different update frequencies.
+
+  level_age_rate
+    "Tech and research decay 1% per level_age_rate ETUs."
+    Default 96 means 1% decay per 96 ETU of game time.
+    At etu=60 that is one update every 1.6 ticks.
+    At etu=96 (longterm) that is exactly 1% per update.
+    You can raise this for very slow games where you want tech to persist.
+
+  eatrate, babyeat, fcrate, fgrate
+    All expressed per ETU.  They scale naturally with ETU and do not need
+    adjustment.  Raise fcrate/fgrate slightly for resource-poor maps.
+
+SCALING TABLE — quick reference
+  etu_per_update | interval   | edu_avg | hap_avg | obrate   | uwbrate
+  ───────────────────────────────────────────────────────────────────────
+       20        |  10 min    |   160   |    40   | 0.002    | 0.001
+       40        |  30 min    |   320   |    80   | 0.001    | 0.0005
+       60        |   1 hour   |   480   |   120   | 0.000667 | 0.000333
+       96        |  24 hours  |   768   |   192   | 0.000417 | 0.000208
+
+WORLD GENERATION PARAMETERS (fairland)
+  Resource richness affects how fast nations can advance, regardless of
+  update timing.  These are set when the world is created with fairland,
+  not in empire.toml.
+
+  Key fairland flags:
+    -R seed     — random seed (use the same seed for reproducible worlds)
+    -s          — resource density (higher = richer world, faster tech)
+    -c count    — number of starting countries
+    -l size     — land percentage
+
+  For blitz games: use a denser, smaller world so players meet quickly.
+  For long-term games: larger, sparser world with more room to expand.
+
+  Resource balance tips:
+    - More oil fields near capitals = faster tech center ramp-up
+    - Higher min (iron) deposits = faster LCM production chain
+    - Moderate gold (dust) = sustainable tech without trivial advancement
+
+EXAMPLE: running TekBot as a standard game
+  The docker/empire.toml on TekBot already uses etu=60.
+  Merge the [rates] section from configs/standard.toml into it to get
+  the proper scaled obrate.  Or override just the rates you want:
+
+    [rates]
+    edu_avg  = 480.0
+    hap_avg  = 120.0
+    obrate   = 0.000667
+    uwbrate  = 0.000333
+
+SEE ALSO
+  info production   info tech-tree   info happiness   info nation

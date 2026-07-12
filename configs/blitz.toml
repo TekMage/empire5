@@ -1,0 +1,36 @@
+# Empire 5 — Blitz game preset
+#
+# Fast, intense game that runs for 1-2 days.  Updates every 10 minutes.
+# Players need to check in frequently.  Tech and population advance quickly.
+# Good for tournaments, testing, or a quick weekend session with full attention.
+#
+# Typical game arc:
+#   Hour  1-2 : infrastructure build-out, explore, first skirmishes
+#   Hour  4-8 : tech warfare, ships, coordinated attacks
+#   Hour 12+  : endgame — dominant nation or agreed finish
+
+[game]
+etu_per_update    = 20
+world_x           = 64
+world_y           = 32
+start_cash        = 30000        # a bit more cash to bootstrap faster
+newcap_start_civ  = 500
+newcap_start_food = 5000
+
+[update]
+update_interval_secs = 600       # 10 minutes
+allow_force          = true
+
+# ── Rate parameters scaled to etu=20 ──────────────────────────────────────────
+#
+# Scaling rules (see info/game-speed for full explanation):
+#   edu_avg  = 8  × etu   →  160
+#   hap_avg  = 2  × etu   →   40
+#   obrate   = 0.04 / etu →  0.002   (4% population growth per update)
+#   uwbrate  = 0.02 / etu →  0.001
+#
+[rates]
+edu_avg  = 160.0    # 8 × 20
+hap_avg  =  40.0    # 2 × 20
+obrate   = 0.002    # 4% civ growth/update
+uwbrate  = 0.001
