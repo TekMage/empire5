@@ -54,7 +54,7 @@ RAISING HAPPINESS
   Build parks (p sectors):
     Consumes: 1 LCM per unit produced
     Requires: no level — build from day one
-    Happiness is a fast moving average (window ~48 ETU at default)
+    Happiness is a fast moving average (window ~120 ETU at default 60 ETU/update)
     It responds twice as fast as education.
 
   Educated populations need more parks.  The happiness your parks

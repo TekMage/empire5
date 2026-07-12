@@ -40,7 +40,7 @@ THE CHAIN: WHAT GOES WHERE
     Sector:   library/school (l)
     Consumes: 1 LCM per unit produced
     Requires: no level — starts producing immediately
-    Education is a slow moving average (window ~192 ETU).
+    Education is a slow moving average (window ~480 ETU at 60 ETU/update).
     At 96 ETU/update, education moves about 33% toward its target
     each update.  A single library and 5000 civs raises education
     by roughly 2-8 points in the first update.
@@ -61,7 +61,7 @@ THE CHAIN: WHAT GOES WHERE
     Sector:   park (p)
     Consumes: 1 LCM per unit produced
     Requires: no level — starts producing immediately
-    Happiness has a shorter window (~48 ETU) than education.
+    Happiness has a shorter window (~120 ETU at 60 ETU/update) than education.
     See 'info happiness' for why this matters.
 
 PRODUCTION EFFICIENCY (p.e.)
@@ -109,18 +109,20 @@ HOW 'PROD' OUTPUT MAPS TO 'NATION' NUMBERS
 
   EDUCATION is a moving average:
     edu_rate = raw_edu_output * 600000 / (civs * etu)
-    new_edu  = (old_edu * 192 + edu_rate * etu) / (192 + etu)
+    new_edu  = (old_edu * edu_avg + edu_rate * etu) / (edu_avg + etu)
+    (default edu_avg = 480 at 60 ETU/update; scales with update frequency)
 
-    With 5000 civs, 96 ETU, and one 100% library producing ~25 edu:
-      edu_rate = 25 * 600000 / (5000 * 96) = 31.25
-      First update from edu=0: new_edu = (0 + 31.25*96) / (192+96)
-                                        = 3000 / 288 = 10.4
+    With 5000 civs, 60 ETU, and one 100% library producing ~25 edu:
+      edu_rate = 25 * 600000 / (5000 * 60) = 50.0
+      First update from edu=0: new_edu = (0 + 50*60) / (480+60)
+                                        = 3000 / 540 = 5.6
 
     More libraries or more civs shift these numbers proportionally.
 
   HAPPINESS is similar to education but faster:
     hap_rate = raw_hap_output * hap_edu * 600000 / (civs * etu)
-    new_hap  = (old_hap * 48 + hap_rate * etu) / (48 + etu)
+    new_hap  = (old_hap * hap_avg + hap_rate * etu) / (hap_avg + etu)
+    (default hap_avg = 120 at 60 ETU/update)
 
     The hap_edu factor decreases as education rises (educated
     people are harder to please).  See 'info happiness'.

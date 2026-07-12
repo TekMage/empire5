@@ -3,41 +3,64 @@ SECTOR-TYPES — All Sector Designations
   Use 'des <sects> <letter>' to change designation.
   Use 'resource *' to find the best sites for each type.
 
-  KEY: Letter — Name (produces / requires)
+  KEY: Letter — Name (produces / consumes)
 
 TERRAIN (cannot be changed):
   .   sea              (impassable by land, navigable by ships)
-  ^   mountain         (impassable by all)
-  s   sanctuary        (capital, cannot be attacked)
+  ^   mountain          (impassable to land units; passively yields
+                         gold dust — no civs/workers needed)
+  -   wilderness        (unclaimed land, explore or build to claim)
+  ~   plains            (same as wilderness; distinct terrain flavor)
+  s   sanctuary         (deity-only; new player start zone before
+                         a real capital is chosen)
+  \   wasteland         (deity-only; nuclear fallout zone)
 
-ECONOMIC:
-  c   capital          (civilian happiness bonus, money)
-  a   agribusiness     (food — needs high fert)
-  g   gold mine        (gold dust — needs high gold resource)
-  m   iron mine        (iron ore — needs high min resource)
-  o   oil field        (oil — needs high ocontent)
-  u   uranium mine     (radioactives — needs uran resource)
-  j   light manuf      (LCM — consumes iron)
-  k   heavy manuf      (HCM — consumes iron)
-  r   research lab     (research — consumes lcm, oil, dust)
-  t   tech center      (tech — consumes lcm, oil, dust)
-  l   library          (education — consumes lcm)
-  b   bank             (money — no resource needed)
-  n   refinery         (petrol from oil)
+ECONOMIC — mines resource deposits (see 'resource *'):
+  m   iron mine         (iron ore — needs high min resource)
+  g   gold mine         (gold dust — needs high gold resource)
+  u   uranium mine      (radioactives — needs high uran resource)
+  a   agribusiness      (food — needs high fert resource)
+  o   oil field         (oil — needs high ocontent resource)
+
+ECONOMIC — manufacturing (consumes other commodities):
+  j   light manuf       (LCM — consumes iron)
+  k   heavy manuf       (HCM — consumes iron, at 2x the iron cost)
+  d   defense plant     (guns — consumes oil, lcm, hcm)
+  i   shell industry    (shells — consumes lcm, hcm)
+  %   refinery          (petrol — consumes oil)
+  b   bank              (gold bars — consumes dust)
+
+ECONOMIC — nation-level output (consumes lcm; needs education >= 5
+except library/park):
+  t   tech center       (tech level — consumes dust, oil, lcm)
+  r   research lab      (research level — consumes dust, oil, lcm)
+  l   library/school    (education level — consumes lcm)
+  p   park              (happiness level — consumes lcm)
+
+ECONOMIC — no production:
+  c   capital           (civilian happiness bonus, tax money;
+                         cannot be redesignated away)
+  n   nuclear plant     (no automatic production; used to build
+                         nuclear weapons)
 
 MILITARY:
   e   enlistment center (auto-recruits civs to mil each update)
-  f   fortress         (defense bonus)
-  d   defense plant    (shells)
-  i   shell plant      (shells — consumes iron)
+  f   fortress          (defense bonus; full-speed land unit
+                         efficiency build-up, like headquarters)
+  !   headquarters      (defense bonus; full-speed land unit
+                         efficiency build-up, like fortress)
+  )   radar installation (sweep for ships/missiles with 'radar')
 
 INFRASTRUCTURE:
-  h   harbor           (ships built/docked here)
-  *   airfield         (planes built/based here)
-  +   highway          (reduces movement cost)
-  w   warehouse        (storage hub)
-  -   wasteland        (nothing, can be redesignated)
-  p   park             (happiness boost)
+  h   harbor            (ships built/docked here; 10x cargo
+                         packing bonus)
+  *   airfield          (planes built/based here)
+  w   warehouse         (10x cargo packing bonus; storage hub)
+  +   highway           (movement cost drops toward zero as
+                         efficiency approaches 100%)
+  #   bridge head       (land end of a bridge, on the shore)
+  =   bridge span       (the bridge itself, crosses water)
+  @   bridge tower      (submarine-proof bridge foundation)
 
 SEE ALSO
-  designate  resource  census  build  show
+  designate  resource  census  build  show  production

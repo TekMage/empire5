@@ -26,4 +26,4 @@ EXAMPLE
   load lcm * 50             load up to 50 LCM onto each ship in harbor
 
 SEE ALSO
-  unload  ship  navigate  build  harbor
+  unload  tend  ship  navigate  build  harbor
