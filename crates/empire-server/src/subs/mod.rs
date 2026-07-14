@@ -26,5 +26,6 @@ pub mod shpsub;
 pub mod lndsub;
 pub mod fortsub;
 pub mod plnsub;
+pub mod satsub;
 pub mod aircombat;
 pub mod attsub;

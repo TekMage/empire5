@@ -11,8 +11,10 @@ DESCRIPTION
   60%, at least 1 gun and 3 shells aboard, at least 1 crew, and
   mobility remaining.
 
-  <ship-uid-spec> works like 'ship': a uid ("5"), a range ("0-5"),
-  or "*" for all of yours matching that are eligible.
+  <ship-uid-spec> works like 'ship': a uid ("5"), a range ("0-5"), a
+  comma list, "*" for all of yours matching that are eligible, "~"
+  for ships with no fleet assigned, or a single letter naming a
+  fleet (see 'info fleetadd').
 
   Torpedoing a submarine specifically requires your ship to also
   have sub-torpedo capability; ordinary torpedoes can't hit a sub.
@@ -42,6 +44,7 @@ KNOWN GAPS (v1)
 EXAMPLE
   torpedo 3 12          ship 3 fires a torpedo at ship 12
   torp 0-2 12           ships 0-2 each take a shot at ship 12
+  torp c 12             every ship in fleet c takes a shot at ship 12
 
 SEE ALSO
-  fire  bomb  ship  build
+  fire  bomb  ship  fleetadd  build

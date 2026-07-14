@@ -47,6 +47,7 @@ mod fire_cmd;
 mod torpedo_cmd;
 mod fly;
 mod launch;
+mod satellite_cmd;
 mod mission;
 mod sell;
 mod buy;
@@ -70,6 +71,8 @@ mod land_cmd;
 mod load_cmd;
 mod tend_cmd;
 mod wingadd_cmd;
+mod fleetadd_cmd;
+mod army_cmd;
 mod enlist_cmd;
 mod demobilize_cmd;
 mod assault_cmd;
@@ -77,6 +80,7 @@ mod execute_cmd;
 mod news_cmd;
 mod prod_cmd;
 mod radar_cmd;
+mod lradar_cmd;
 mod name_cmd;
 
 use crate::state::GameState;
@@ -150,7 +154,10 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "torpedo" | "torp"          => torpedo_cmd::run(args, &ctx).await,
         "fly"                       => fly::run(args, &ctx).await,
         "wingadd" | "wing"          => wingadd_cmd::run(args, &ctx).await,
+        "fleetadd" | "fleet"        => fleetadd_cmd::run(args, &ctx).await,
+        "army" | "armyadd"          => army_cmd::run(args, &ctx).await,
         "launch"    | "lnch"        => launch::run(args, &ctx).await,
+        "satellite" | "sat"         => satellite_cmd::run(args, &ctx).await,
         "mission"   | "miss"        => mission::run(args, &ctx).await,
 
         "sell"              => sell::run(args, &ctx).await,
@@ -188,6 +195,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "name"              => name_cmd::run(args, &ctx).await,
         "production" | "prod" => prod_cmd::run(args, &ctx).await,
         "radar" | "rada"    => radar_cmd::run(args, &ctx).await,
+        "lradar"            => lradar_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

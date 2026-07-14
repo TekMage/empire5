@@ -100,6 +100,53 @@ pub fn lnd_can_attack(unit: &LandUnit) -> bool {
     unit.effic >= LAND_MIN_EFF && unit.ship < 0 && unit.carried_by_land < 0
 }
 
+/// Return true if `unit` matches a land-unit-selector spec string. Shared
+/// by march, attack, fire, and army so an army letter works as a selector
+/// everywhere land units are chosen, matching 4.4.1's <UNIT/ARMY>
+/// convention (mirrors `shpsub::ship_spec_matches` for fleets,
+/// `plnsub::plane_spec_matches` for wings).
+///
+/// Accepted forms:
+///   "*"        — every unit
+///   "~"        — every unit with no army assigned (the "null army")
+///   "c"        — every unit currently in army 'c' (any single letter)
+///   "5"        — unit uid 5
+///   "0-5"      — unit uids 0 through 5
+///   "2,14,23"  — unit uids 2, 14, and 23 (comma list; ranges allowed too)
+pub fn land_spec_matches(spec: &str, unit: &LandUnit) -> bool {
+    let spec = spec.trim();
+    if spec.is_empty() || spec == "*" {
+        return true;
+    }
+    if spec == "~" {
+        return unit.army == ' ' || unit.army == '\0';
+    }
+    if spec.len() == 1 {
+        if let Some(c) = spec.chars().next() {
+            if c.is_ascii_alphabetic() {
+                return unit.army == c;
+            }
+        }
+    }
+    for part in spec.split(',') {
+        let part = part.trim().trim_start_matches('#');
+        if let Ok(n) = part.parse::<i32>() {
+            if n == unit.uid {
+                return true;
+            }
+            continue;
+        }
+        if let Some((lo, hi)) = part.split_once('-') {
+            if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
+                if unit.uid >= lo && unit.uid <= hi {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 /// Compute total defensive fire from a slice of land units (support fire).
 ///
 /// Only units above `LAND_MIN_FIRE_EFF` with a nonzero damage stat and guns
@@ -268,5 +315,43 @@ mod tests {
         u2.items.set(Item::Gun, 5);
         let total = lnd_support(&[u1, u2], LandChr::all());
         assert_eq!(total, 10); // dam=5 capped by gun=5, *2 units
+    }
+
+    fn make_unit_ua(uid: i32, army: char) -> LandUnit {
+        let mut u = make_unit(100, 11);
+        u.uid = uid;
+        u.army = army;
+        u
+    }
+
+    #[test]
+    fn land_spec_star_matches_any_army_or_uid() {
+        assert!(land_spec_matches("*", &make_unit_ua(42, 'c')));
+        assert!(land_spec_matches("*", &make_unit_ua(0, ' ')));
+    }
+
+    #[test]
+    fn land_spec_tilde_matches_only_null_army() {
+        assert!(land_spec_matches("~", &make_unit_ua(1, ' ')));
+        assert!(!land_spec_matches("~", &make_unit_ua(1, 'c')));
+    }
+
+    #[test]
+    fn land_spec_letter_matches_army_not_uid() {
+        let unit = make_unit_ua(5, 'c');
+        assert!(land_spec_matches("c", &unit));
+        assert!(!land_spec_matches("d", &unit));
+        let other = make_unit_ua(99, ' ');
+        assert!(!land_spec_matches("c", &other));
+    }
+
+    #[test]
+    fn land_spec_uid_and_range_and_list() {
+        assert!(land_spec_matches("5", &make_unit_ua(5, ' ')));
+        assert!(!land_spec_matches("5", &make_unit_ua(6, ' ')));
+        assert!(land_spec_matches("0-5", &make_unit_ua(3, ' ')));
+        assert!(!land_spec_matches("0-5", &make_unit_ua(6, ' ')));
+        assert!(land_spec_matches("2,14,23", &make_unit_ua(14, ' ')));
+        assert!(!land_spec_matches("2,14,23", &make_unit_ua(15, ' ')));
     }
 }

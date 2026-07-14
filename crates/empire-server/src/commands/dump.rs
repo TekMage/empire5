@@ -309,11 +309,12 @@ async fn dump_land_units(ts: i64, ctx: &CmdCtx<'_>) -> String {
         let rad   = u.items.get(Item::Rad);
 
         out.push_str(&format!(
-            "1 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+            "1 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
             u.uid, type_name, rx, ry, flt,
             u.effic, u.mobil, u.tech,
             civ, mil, uw, food, shell, gun, pet, iron, dust, bar, oil, lcm, hcm, rad,
             orx, ory,
+            "\"\"",
         ));
     }
 

@@ -2,27 +2,54 @@ LAUNCH
   Fire missiles or launch satellites.
 
 SYNTAX
-  launch <plane-spec> <target-x,y>
-  lnch   <plane-spec> <target-x,y>
+  launch <plane-spec> <target-x,y> [y|n]
+  lnch   <plane-spec> <target-x,y> [y|n]
 
 DESCRIPTION
-  Launches missiles at a target or puts satellites into orbit.
-  Only missile-type planes (built with missile capability) can
-  be launched.
+  Launches missiles at a target sector, or puts satellite-capable
+  planes into orbit over a target sector. <plane-spec> accepts a
+  uid, a uid range, a comma list, "*", "~" (planes with no wing
+  assigned), or a single letter naming a wing (see 'info wingadd').
 
-  Missiles are destroyed on use.  They deal significant damage
-  to the target sector's efficiency and population.
+  Only missile-type or satellite-type planes can be launched — check
+  a plane's type with 'show plane b' or 'plane <uid>'.
 
-  Satellites are not destroyed; they enter orbit and can provide
-  intelligence (visible to the owning country).
+  MISSILES are destroyed on use (one-shot). Damage to the target
+  sector's efficiency scales with the missile's own efficiency
+  (roughly effic*2%, capped at 100%).
 
-  Missiles require:
+  SATELLITES are not destroyed — they enter orbit and stay there.
+  The trailing [y|n] argument is REQUIRED for a satellite launch:
+  "y" for geostationary orbit (stays fixed over the target), "n" for
+  a moving orbit. It's ignored for missile launches.
+
+  Launching a satellite can fail outright (a chance that increases
+  the lower the plane's efficiency — "KABOOOOM! Range safety officer
+  detonates booster!", plane destroyed) or drift one hex off target
+  (chance decreases with higher tech and efficiency). A successful
+  launch reports how many time units until the satellite is ready —
+  it needs to fully regenerate its mobility first (same passive
+  regen every plane gets each update; no special action needed, just
+  wait). Once ready, use 'satellite' to get a report from it.
+
+  Requirements to launch a satellite:
+    - Not already in orbit
     - At least 40% efficiency
-    - Enough fuel (petrol) for flight
+    - Target within the plane's range
+
+KNOWN GAPS (v1)
+  - No fuel/petrol consumption check for either missiles or
+    satellites (the underlying per-mission fuel mechanic isn't wired
+    up anywhere in empire5 yet, not just here).
+  - No airbase-readiness check before launch (4.4.1 requires the
+    plane be at a valid airfield/carrier; empire5 doesn't verify this).
+  - Anti-satellite missiles (shooting down an enemy's orbiting
+    satellite) aren't implemented.
 
 EXAMPLE
   launch 5 -4,2             fire missile (plane 5) at sector -4,2
-  launch 10 0,0             launch satellite (plane 10) into orbit
+  launch 10 0,0 y           launch satellite (plane 10), geostationary
+  launch 10 0,0 n           launch satellite (plane 10), moving orbit
 
 SEE ALSO
-  bomb  fly  mission  build  show
+  satellite  bomb  fly  wingadd  mission  build  show

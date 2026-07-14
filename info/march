@@ -8,7 +8,9 @@ DESCRIPTION
   Moves one or more land units along a sequence of direction steps.
   Units must have sufficient mobility to complete the path.
 
-  <unit-spec>  - land unit number, range (0-5), or * for all
+  <unit-spec>  - land unit uid, range (0-5), comma list, * for all,
+                 ~ for unassigned units, or an army letter (see
+                 'info army')
   <path>       - string of direction letters
   [start-x,y]  - optional; overrides unit's current location
 
@@ -30,4 +32,4 @@ EXAMPLE
   march 0-3 g               move units 0 through 3 left one step
 
 SEE ALSO
-  attack  btu  census  land  build
+  attack  btu  census  land  army  build

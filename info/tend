@@ -13,11 +13,13 @@ DESCRIPTION
   as long as both ships are in the same sector.
 
   <commodity>    - single letter: o=oil f=food c=civ m=mil l=lcm etc.
-  <tender-spec>  - ship uid, range (0-5), or * — the ship you're
-                   commanding to give or take cargo
+  <tender-spec>  - ship uid, range (0-5), comma list, *, ~ (unassigned
+                   ships), or a fleet letter (see 'info fleetadd') —
+                   the ship(s) you're commanding to give or take cargo
   <amount>       - positive: move FROM tender TO target
                    negative: move FROM target TO tender (tender pulls in)
-  <target-spec>  - ship uid, range, or * — the other ship(s) in the deal
+  <target-spec>  - same forms as <tender-spec> — the other ship(s) in
+                   the deal
 
   Both ships must be in the same sector.  You must own the tender.
   The target must be yours too, or owned by a nation you're on
@@ -45,4 +47,4 @@ WORKFLOW: KEEPING AN OIL RIG PARKED ON A RICH SPOT
   an update's production sailing back and forth.
 
 SEE ALSO
-  load  unload  navigate  ship  info navigate  info relations
+  load  unload  navigate  ship  fleetadd  info navigate  info relations

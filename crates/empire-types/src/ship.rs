@@ -44,6 +44,10 @@ bitflags::bitflags! {
         const BOARDED  = 0x08;
         const SCARED   = 0x10;
         const HELPLESS = 0x20;
+        /// Retreat as part of the fleet/army group's shared retreat plan
+        /// (RET_GROUP). Set/inherited by fleetadd when joining a unit
+        /// already sharing this flag at the same location.
+        const GROUP    = 0x40;
     }
 }
 impl serde::Serialize for RetreatFlags {

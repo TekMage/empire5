@@ -21,7 +21,9 @@
 //
 // Usage: march UNIT-SPEC ROUTE
 //
-// UNIT-SPEC: a land unit uid (e.g. "3"), or "*" for all owned units.
+// UNIT-SPEC: a land unit uid ("3"), a uid range ("0-5"), a comma list,
+//   "*" for all owned units, "~" for units with no army assigned, or a
+//   single letter naming an army (see 'info army').
 // ROUTE: either a direction string (e.g. "uujnb") using chars from
 //        geo::DIRCH, or a destination "X,Y" (player-relative) which
 //        triggers pathfinding.
@@ -34,6 +36,7 @@ use empire_types::coords::Coord;
 use empire_types::sector::SectorType;
 use crate::subs::geo::{DIROFF, DIRCH, DIR_FIRST, DIR_LAST, x_norm, y_norm, dir_from_char};
 use crate::subs::pathfind::find_path;
+use crate::subs::lndsub::land_spec_matches;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 
@@ -62,8 +65,8 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if unit.own == 0 {
             continue;
         }
-        // UID filter
-        if !unit_matches(unit_spec, unit.uid) {
+        // UID/army filter
+        if !land_spec_matches(unit_spec, &unit) {
             continue;
         }
         // Cannot march if loaded on a ship
@@ -178,18 +181,6 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
     out.push_str("0 march\n");
     out
-}
-
-/// Determine if a unit uid matches the spec.
-/// Spec may be "*" (all), an integer uid, or "#N" for uid N.
-fn unit_matches(spec: &str, uid: i32) -> bool {
-    if spec == "*" {
-        return true;
-    }
-    if let Ok(n) = spec.trim_start_matches('#').parse::<i32>() {
-        return uid == n;
-    }
-    false
 }
 
 /// Parse the route string into a sequence of direction indices (1–6).

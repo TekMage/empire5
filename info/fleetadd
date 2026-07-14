@@ -1,0 +1,50 @@
+FLEETADD
+  Assign ships to a fleet letter, so the fleet can be used as a group
+  designation on navigate, fire, torpedo, and tend.
+
+SYNTAX
+  fleetadd <fleet-letter> <ship-spec>
+  fleet    <fleet-letter> <ship-spec>
+
+DESCRIPTION
+  Sets the fleet letter on every owned ship matching <ship-spec>.
+  Once ships carry a fleet letter, that same letter can be used as
+  the ship-spec argument to 'navigate', 'fire', 'torpedo', or 'tend'
+  to select every ship currently in that fleet — no need to track
+  individual uids.
+
+  <fleet-letter> - a single letter a-z or A-Z naming the fleet, or
+                    "~" to clear the fleet assignment (return the
+                    ships to the null/unassigned fleet)
+  <ship-spec>    - which ships to (re)assign:
+                      "*"        every owned ship
+                      "5"        ship uid 5
+                      "0-5"      ship uids 0 through 5
+                      "2,14,23"  a comma list of uids
+                      "~"        every ship with no fleet assigned
+                      "c"        every ship currently in fleet c
+                                 (lets you rename/merge a fleet)
+
+  Fleet assignment has no effect on efficiency, mobility, or combat
+  strength — it is purely an organizational grouping, same as wings
+  for planes.
+
+  One difference from wings: if a ship joins a fleet and another of
+  your ships is already in that fleet at the exact same sector with
+  a group-retreat plan set, the joining ship inherits that retreat
+  plan. This mirrors 4.4.1's fleet mechanic, though it has no visible
+  effect yet in empire5 — retreat execution isn't implemented.
+
+EXAMPLE
+  fleetadd c *                put all owned ships into fleet c
+  fleetadd b 0-5               put ships 0-5 into fleet b
+  fleetadd d ~                 put all unassigned ships into fleet d
+  fleetadd e c                 rename/merge fleet c's ships into fleet e
+  fleetadd ~ c                 clear fleet c's ships back to unassigned
+  navigate c jjn                move every ship in fleet c three steps
+  fire ship c ship 12           every ship in fleet c fires on ship 12
+  torpedo c 12                  every ship in fleet c torpedoes ship 12
+  tend oil c 200 15             fleet c tenders 200 oil to ship 15
+
+SEE ALSO
+  ship  wingadd  army  navigate  fire  torpedo  tend  build

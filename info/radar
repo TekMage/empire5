@@ -9,6 +9,10 @@ COMMAND
   radar SECT-SPEC     Sweep radar sector(s) matching SECT-SPEC
   radar *             Sweep all your radar sectors
 
+  This command sweeps from radar STATION sectors only.  A land unit
+  with radar capability sweeps with the separate 'lradar' command
+  instead — see 'info lradar'.
+
 SECTOR TYPE
 -----------
   )   Radar  — the sector type that performs the sweep.
@@ -64,6 +68,8 @@ TIPS
 
 SEE ALSO
 --------
+  info lradar      Radar-capable land units, the unit-sourced counterpart
+  info satellite   Longer-range orbital recon, once a satellite is launched
   info map         View your fog-of-war map
   info sector-types  Full list of sector types
   info build       Build command (for placing ) sectors)

@@ -1,0 +1,66 @@
+SATELLITE
+  Get a report from a satellite you've launched into orbit.
+
+SYNTAX
+  satellite <plane-uid> [sect|ship|land]
+  sat       <plane-uid> [sect|ship|land]
+
+DESCRIPTION
+  Once a satellite-type plane is in orbit (see 'info launch') and has
+  fully regenerated its mobility, this command generates a report from
+  it. The optional type argument narrows the report to just sectors,
+  ships, or land units; omitted, you get the full combined report:
+  text rosters for whatever the satellite can detect, plus a terrain
+  map.
+
+  What a satellite can report depends on its type's capability:
+    SPY planes (e.g. a spysat)   — detailed text rosters: foreign
+                                    sector econ/military stats, ship
+                                    rosters, land unit rosters
+    IMAGE planes (e.g. a landsat) — a real terrain map (unlike radar,
+                                    no range/3 fogging — imaging sees
+                                    clearly across its whole range),
+                                    plus ship/unit blips on that map
+  A plane can have both capabilities, neither (then this command has
+  nothing to show), or just one — check 'show plane b' or a specific
+  plane's type description to see which your satellite has.
+
+  Range uses the same techfact-based formula as radar, with a fixed
+  spy-power of 20 (see 'info radar' for the general shape of the
+  formula) scaled by the satellite's current efficiency.
+
+  Efficiency below 100% adds "noise" to the transmission: contacts
+  are dropped from the report in a deterministic pattern tied to how
+  far below 100% the satellite's efficiency is (not literally random
+  each time — the same efficiency always drops the same slots — but
+  it interacts with which contacts happen to exist, so the practical
+  effect looks like static). Spy-report sector numbers are further
+  fuzzed by rounding to the nearest 5 (if the plane also has IMAGE)
+  or nearest 50 (SPY-only) — you get a ballpark, not exact figures.
+  Land units are additionally spotted probabilistically based on
+  their own efficiency (lower-effic units are more likely to be
+  missed entirely), and spy-type land units never show up at all —
+  they hide from satellites too. Submarines are excluded from ship
+  reports unless the satellite has both SPY and IMAGE.
+
+READINESS
+  A satellite must have regenerated to full mobility since launch
+  before it can be used — 'launch' tells you how many time units that
+  will take. No action needed, just wait for updates; check with
+  'satellite <uid>' and it'll tell you if it's not ready yet.
+
+KNOWN GAPS (v1)
+  - Sector reports always show road/rail/defense as 0 — those stats
+    aren't modeled per-sector in empire5 yet (same simplification as
+    the regular sector dump).
+  - Anti-satellite missiles aren't implemented, so there's currently
+    no way to shoot down an enemy's satellite.
+
+EXAMPLE
+  satellite 10               full combined report from satellite 10
+  satellite 10 sect          sector intel only
+  sat 10 ship                ship rosters/blips only
+  sat 10 land                land unit rosters/blips only
+
+SEE ALSO
+  launch  plane  radar  lradar  map

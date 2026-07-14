@@ -22,6 +22,10 @@
 //   amount > 0: move FROM tender(s) TO target(s)
 //   amount < 0: move FROM target(s) TO tender(s) (tender pulls in cargo)
 //
+// <tender-spec>/<target-spec> accept a uid, a uid range, a comma list,
+// "*", "~" (ships with no fleet assigned), or a single letter naming a
+// fleet (see 'info fleetadd').
+//
 // Both ships must be in the same sector.  The target must be yours, or
 // owned by a nation at Friendly relations or better (mirrors 4.4.1's
 // can_tend_to()).  Capacity is enforced per ship type (ShipChr::cargo_cap).
@@ -30,6 +34,7 @@ use empire_db::{relations, ships};
 use empire_types::commodity::Item;
 use empire_types::ship_chr::ShipChr;
 use super::ctx::CmdCtx;
+use crate::subs::shpsub::ship_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -57,14 +62,14 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     };
 
     let tender_uids: Vec<i32> = all_ships.iter()
-        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && matches_ship(s.uid, tender_spec))
+        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && ship_spec_matches(tender_spec, s))
         .map(|s| s.uid)
         .collect();
     if tender_uids.is_empty() {
         return format!("1 No ships match '{tender_spec}'\n0 tend\n");
     }
     let target_uids: Vec<i32> = all_ships.iter()
-        .filter(|s| matches_ship(s.uid, target_spec))
+        .filter(|s| ship_spec_matches(target_spec, s))
         .map(|s| s.uid)
         .collect();
     if target_uids.is_empty() {
@@ -176,17 +181,6 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
     out.push_str("0 tend\n");
     out
-}
-
-fn matches_ship(uid: i32, spec: &str) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Ok(n) = spec.parse::<i32>() { return uid == n; }
-    if let Some((lo, hi)) = spec.split_once('-') {
-        if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
-            return uid >= lo && uid <= hi;
-        }
-    }
-    false
 }
 
 fn parse_item(s: &str) -> Option<Item> {

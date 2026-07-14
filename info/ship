@@ -13,7 +13,9 @@ DESCRIPTION
     shp#      - ship uid (used in load, unload, navigate, etc.)
     ship type - name of ship type (frigate, destroyer, etc.)
     x,y       - current location (relative to your capital)
-    fl        - fleet letter (~ means not in a fleet)
+    fl        - fleet letter (~ means not in a fleet; see 'info fleetadd'
+                to assign ships to a fleet and use the letter as a
+                group selector on navigate/fire/torpedo/tend)
     eff       - efficiency 0-100%.  Ships sink if efficiency drops to 0
     civ       - civilians on board
     mil       - military on board
@@ -32,4 +34,4 @@ EXAMPLE
   ship 0-5                  ships 0 through 5
 
 SEE ALSO
-  sdump  build  navigate  load  unload  show  plane  land  fire  torpedo
+  sdump  build  navigate  load  unload  show  plane  land  fire  torpedo  fleetadd

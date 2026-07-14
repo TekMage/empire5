@@ -1,0 +1,85 @@
+LRADAR
+======
+
+The lradar command sweeps from a radar-capable land unit and reveals
+terrain in a radius around it, updating your fog-of-war map. It's the
+land-unit-sourced counterpart to 'radar' (which sweeps from radar
+STATION sectors — see 'info radar').
+
+COMMAND
+-------
+  lradar UNIT-SPEC    Sweep from radar-capable unit(s) matching UNIT-SPEC
+  lradar *            Sweep from every eligible owned unit
+  lradar c            Sweep from every unit in army c (see 'info army')
+
+UNIT-SPEC accepts a uid ("5"), a uid range ("0-5"), a comma list, "*"
+for all of yours, "~" for units with no army assigned, or a single
+letter naming an army.
+
+ELIGIBILITY
+-----------
+  The unit's type must have radar capability (check 'show land b' or
+  the unit's type description — not every land unit type can do this,
+  only ones flagged for it, same idea as a plane needing bomber
+  capability to bomb).
+  The unit must not be stowed on a ship or another land unit.
+  Efficiency and mobility do not gate whether a unit can sweep, but
+  low efficiency does reduce its range (see RANGE below).
+
+RANGE
+-----
+  Range is determined by your technology level, the unit's spy stat
+  (a per-type constant — better radar units see farther), and the
+  unit's current efficiency:
+
+    range = floor( spy * (50 + tech) / (200 + tech) * eff / 100 )
+    minimum range: 1
+
+  This is the exact same formula 'radar' uses for sectors, just with
+  the unit type's spy stat standing in for the radar sector's fixed
+  power-16 constant.
+
+  In practice this makes land radar units short-range mobile scouts,
+  not a substitute for a radar station: the "radar unit" type has
+  spy=3 (versus a radar sector's spy=16), so even at very high tech
+  its range tops out around 3, and at low-to-mid tech it's often
+  clamped to the minimum range of 1. Use it to see a little further
+  than your own sector as your army advances, not to map wide areas
+  — that's what a chain of radar sectors is for.
+
+WHAT YOU SEE
+------------
+  Same display rules as 'radar':
+  Within range/3 of the unit:    actual sector mnemonic
+  Beyond range/3 (outer ring):   '?' (something is there)
+  Own sectors, sea (~), mountains (^), wasteland (+):
+                                  always show actual mnemonic
+
+  The center (the unit's own sector) is marked '0' on the display.
+
+FOG OF WAR
+----------
+  Same fog-of-war rules as 'radar' — this sweep updates your bmap
+  for the area scanned, same as a sector-based sweep would.
+
+EXAMPLES
+--------
+  lradar *          Sweep from every eligible owned unit.
+  lradar 5          Sweep from unit 5 only.
+  lradar c          Sweep from every unit in army c.
+
+KNOWN GAPS (v1)
+----------------
+  4.4.1's real lradar command also accepts a sector-spec, letting it
+  sweep from radar STATION sectors too (redundant with 'radar', which
+  already covers that case) — not ported here, to keep the two
+  commands' roles distinct: 'radar' for sector-sourced sweeps,
+  'lradar' for unit-sourced ones.
+
+SEE ALSO
+--------
+  info radar       The sector-sourced counterpart
+  info satellite   Longer-range orbital recon, once a satellite is launched
+  info army        Group land units so a letter selects the whole group
+  info map         View your fog-of-war map
+  info land        List your land units and their types

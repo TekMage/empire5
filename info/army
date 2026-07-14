@@ -1,0 +1,50 @@
+ARMY
+  Assign land units to an army letter, so the army can be used as a
+  group designation on march, attack, and fire.
+
+SYNTAX
+  army <army-letter> <unit-spec>
+  armyadd <army-letter> <unit-spec>
+
+DESCRIPTION
+  Sets the army letter on every owned land unit matching <unit-spec>.
+  Once units carry an army letter, that same letter can be used as
+  the unit-spec argument to 'march', 'attack', or 'fire' to select
+  every unit currently in that army — no need to track individual
+  uids. (4.4.1 calls this command 'army'; 'armyadd' is provided as
+  an alias matching the naming of 'fleetadd'/'wingadd'.)
+
+  <army-letter> - a single letter a-z or A-Z naming the army, or
+                  "~" to clear the army assignment (return the
+                  units to the null/unassigned army)
+  <unit-spec>   - which units to (re)assign:
+                    "*"        every owned unit
+                    "5"        unit uid 5
+                    "0-5"      unit uids 0 through 5
+                    "2,14,23"  a comma list of uids
+                    "~"        every unit with no army assigned
+                    "c"        every unit currently in army c
+                               (lets you rename/merge an army)
+
+  Army assignment has no effect on efficiency, mobility, or combat
+  strength — it is purely an organizational grouping, same as wings
+  for planes and fleets for ships.
+
+  One difference from wings: if a unit joins an army and another of
+  your units is already in that army at the exact same sector with
+  a group-retreat plan set, the joining unit inherits that retreat
+  plan. This mirrors 4.4.1's army mechanic, though it has no visible
+  effect yet in empire5 — retreat execution isn't implemented.
+
+EXAMPLE
+  army c *                    put all owned land units into army c
+  army b 0-5                  put units 0-5 into army b
+  army d ~                    put all unassigned units into army d
+  army e c                    rename/merge army c's units into army e
+  army ~ c                    clear army c's units back to unassigned
+  march c jjn                 march every unit in army c three steps
+  attack 4,2 c                attack sector 4,2 with every unit in army c
+  fire land c sect 1,0        every unit in army c shells sector 1,0
+
+SEE ALSO
+  land  wingadd  fleetadd  march  attack  fire  lradar  build

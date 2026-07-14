@@ -17,7 +17,11 @@ DESCRIPTION
     fort  - a fortress sector (effic >= 5%) with >= 5 militia aboard
 
   <uid-spec> works like 'ship'/'land': a uid ("5"), a range ("0-5"),
-  or "*" for all of yours matching. <x,y> is your capital-relative
+  a comma list, or "*" for all of yours matching. For a ship firer,
+  it also accepts "~" (ships with no fleet assigned) or a single
+  letter naming a fleet (see 'info fleetadd'). For a land firer, it
+  also accepts "~" (units with no army assigned) or a single letter
+  naming an army (see 'info army'). <x,y> is your capital-relative
   sector coordinate.
 
   Unlike bombing or torpedoes, gunfire has NO miss chance: once a
@@ -54,6 +58,7 @@ EXAMPLE
   fire ship 0-2 sect 4,-1      ships 0-2 each shell sector 4,-1
   fire land 5 sect 1,0         artillery unit 5 shells sector 1,0
   fire fort 0,0 ship 7         your capital's fortress fires on ship 7
+  fire ship c ship 12          every ship in fleet c fires on ship 12
 
 SEE ALSO
-  torpedo  bomb  attack  ship  land  build
+  torpedo  bomb  attack  ship  land  fleetadd  army  build

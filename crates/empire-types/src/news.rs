@@ -31,6 +31,7 @@ pub enum NewsVerb {
     ShpShell     = 11,  // N_SHP_SHELL  — shells a ship
     TookUnocc    = 12,  // N_TOOK_UNOCC — takes unoccupied land
     SctBomb      = 16,  // N_SCT_BOMB   — planes bomb a sector
+    Launch       = 40,  // N_LAUNCH     — launches a satellite into orbit
     ShipTorp     = 52,  // N_SHIP_TORP  — ship torpedoed
     DeclAlly     = 26,  // N_DECL_ALLY  — announces alliance
     DeclWar      = 28,  // N_DECL_WAR   — declares war
@@ -88,6 +89,7 @@ impl NewsVerb {
             11 => Self::ShpShell,
             12 => Self::TookUnocc,
             16 => Self::SctBomb,
+            40 => Self::Launch,
             52 => Self::ShipTorp,
             26 => Self::DeclAlly,
             28 => Self::DeclWar,
@@ -110,7 +112,7 @@ impl NewsVerb {
             Self::WonSect | Self::SctLose | Self::TookUnocc | Self::SctShell => NewsPage::FrontLine,
             Self::AwonSect | Self::AloseSct | Self::ShpShell | Self::ShipTorp => NewsPage::Sea,
             Self::SentTel                                   => NewsPage::Telecom,
-            Self::SctBomb                                   => NewsPage::Sky,
+            Self::SctBomb | Self::Launch                    => NewsPage::Sky,
             _ /* declare / relations */                     => NewsPage::Foreign,
         }
     }
@@ -123,6 +125,7 @@ impl NewsVerb {
             Self::SentTel      =>  1,
             Self::TookUnocc    =>  0,
             Self::SctBomb      => -2,
+            Self::Launch       =>  0,
             Self::SctShell     => -2,
             Self::ShpShell     => -2,
             Self::ShipTorp     =>  0,
@@ -155,6 +158,8 @@ impl NewsVerb {
                                    "attacks unowned land for some reason"),
             Self::SctBomb      => ("planes dive-bomb one of %s's sectors",
                                    "bombers wreak havoc on %s"),
+            Self::Launch       => ("launches a satellite into orbit",
+                                   "continues its conquest of space with a successful launch"),
             Self::SctShell     => ("gunners bombard %s territory",
                                    "artillery fires on %s sectors"),
             Self::ShpShell     => ("shells a ship owned by %s",

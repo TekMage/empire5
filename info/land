@@ -13,7 +13,10 @@ DESCRIPTION
     lnd#           - land unit uid
     land unit type - name of unit type (infantry, armor, etc.)
     x,y            - current location (relative to your capital)
-    ar             - army letter (~ means not assigned to an army)
+    ar             - army letter (~ means not assigned to an army;
+                     see 'info army' to assign units to an army and
+                     use the letter as a group selector on
+                     march/attack/fire)
     eff            - efficiency 0-100%.  Builds up over time in any
                      owned sector, but only at full speed in a
                      headquarters or fortress -- everywhere else
@@ -31,4 +34,4 @@ EXAMPLE
   lnd 0-5                    land units 0 through 5
 
 SEE ALSO
-  ldump  build  ship  plane  fire  attack
+  ldump  build  ship  plane  fire  attack  army  lradar

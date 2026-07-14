@@ -2,13 +2,19 @@ ATTACK
   Launch a ground assault on an enemy sector.
 
 SYNTAX
-  attack <target-x,y> <attacking-sects> [land-units]
-  atta   <target-x,y> <attacking-sects> [land-units]
+  attack <target-x,y> <attacking-sects> [land-unit-spec]
+  atta   <target-x,y> <attacking-sects> [land-unit-spec]
 
 DESCRIPTION
   Attacks an adjacent enemy sector with military from one or more
   of your neighboring sectors.  The result depends on relative
   military strength, efficiency, and tech levels.
+
+  [land-unit-spec] optionally commits land units alongside the
+  sector militia: a uid, a uid range, a comma list, "*" for all
+  eligible units, "~" for units with no army assigned, or a single
+  letter naming an army (see 'info army'). Omit it to attack with
+  sector militia only.
 
   If the attack succeeds, you capture the sector.  It will have 0%
   efficiency under your control initially.  The previous owner's
@@ -32,4 +38,4 @@ EXAMPLE
   attack -2,2 -3,1 -1,1    attack from two adjacent sectors
 
 SEE ALSO
-  march  bomb  fire  torpedo  relations  declare  census
+  march  bomb  fire  torpedo  army  relations  declare  census

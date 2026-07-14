@@ -21,7 +21,10 @@
 // Usage: attack SECT [UNIT-SPEC] [EXTRA-MIL]
 //
 // SECT: target sector (player-relative "X,Y")
-// UNIT-SPEC: optional land unit spec ("*", single uid, or comma-separated uids)
+// UNIT-SPEC: optional land unit spec — a uid, a uid range, a comma list,
+//   "*" for all owned units, "~" for units with no army assigned, a
+//   single letter naming an army (see 'info army'), or omitted/"none"
+//   for sector militia only, no land units committed.
 // EXTRA-MIL: optional integer amount of extra military to commit
 
 use empire_db::{sectors, land_units, nations, relations};
@@ -34,6 +37,7 @@ use rand::rngs::StdRng;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 use crate::subs::attsub::{att_resolve, at_war};
+use crate::subs::lndsub::land_spec_matches;
 use crate::subs::takeover::takeover_sector;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -110,7 +114,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
                 && u.ship < 0
                 && u.carried_by_land < 0
                 && crate::subs::lndsub::lnd_can_attack(u)
-                && unit_matches(unit_spec, u.uid)
+                && land_spec_matches(unit_spec, u)
         })
         .cloned()
         .collect();
@@ -207,21 +211,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     out.push_str("0 attack\n");
     out
-}
-
-/// Return true if `uid` matches the unit spec string.
-/// Supports `*` (all), a single integer uid, or comma-separated uid list.
-fn unit_matches(spec: &str, uid: i32) -> bool {
-    if spec == "*" || spec == "none" {
-        return spec == "*"; // "none" means no units selected
-    }
-    for part in spec.split(',') {
-        let part = part.trim().trim_start_matches('#');
-        if let Ok(n) = part.parse::<i32>() {
-            if n == uid {
-                return true;
-            }
-        }
-    }
-    false
 }

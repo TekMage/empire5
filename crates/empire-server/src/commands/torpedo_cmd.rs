@@ -15,9 +15,14 @@
 
 // "torpedo" command — ships with torpedo capability attack an enemy ship.
 //
-// Usage: torpedo <ship-uid-spec> <target-ship-uid>
+// Usage: torpedo <ship-spec> <target-ship-uid>
 //   torpedo 3 12        fire ship #3's torpedoes at ship #12
 //   torp 0-2 12         ships 0-2 each take a shot at ship #12
+//   torp c 12           every ship in fleet c takes a shot at ship #12
+//
+// <ship-spec> accepts a uid, a uid range, a comma list, "*", "~" (ships
+// with no fleet assigned), or a single letter naming a fleet (see
+// 'info fleetadd').
 //
 // Unlike deck guns (`fire`), torpedoes always cost 3 shells and mobility
 // whether or not they hit — see info/torpedo for the full mechanics and
@@ -33,7 +38,7 @@ use empire_types::ship_chr::{ShipChr, ShipChrFlags};
 
 use super::ctx::CmdCtx;
 use crate::subs::geo::map_dist;
-use crate::subs::shpsub::{shp_can_torp, shp_torp_at_ship, shp_torp_range};
+use crate::subs::shpsub::{ship_spec_matches, shp_can_torp, shp_torp_at_ship, shp_torp_range};
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -51,7 +56,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     };
 
     let firer_uids: Vec<i32> = all_ships.iter()
-        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && matches_uid(s.uid, firer_spec))
+        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && ship_spec_matches(firer_spec, s))
         .map(|s| s.uid)
         .collect();
     if firer_uids.is_empty() {
@@ -143,15 +148,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
     out.push_str("0 torpedo\n");
     out
-}
-
-fn matches_uid(uid: i32, spec: &str) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Ok(n) = spec.parse::<i32>() { return uid == n; }
-    if let Some((lo, hi)) = spec.split_once('-') {
-        if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
-            return uid >= lo && uid <= hi;
-        }
-    }
-    false
 }

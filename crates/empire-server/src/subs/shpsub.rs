@@ -133,6 +133,52 @@ pub fn shp_is_afloat(ship: &Ship) -> bool {
     ship.effic > 0
 }
 
+/// Return true if `ship` matches a ship-selector spec string. Shared by
+/// navigate, fire, torpedo, tend, and fleetadd so a fleet letter works as a
+/// selector everywhere ships are chosen, matching 4.4.1's <SHIP/FLEET>
+/// convention (mirrors `plnsub::plane_spec_matches` for wings).
+///
+/// Accepted forms:
+///   "*"        — every ship
+///   "~"        — every ship with no fleet assigned (the "null fleet")
+///   "c"        — every ship currently in fleet 'c' (any single letter)
+///   "5"        — ship uid 5
+///   "0-5"      — ship uids 0 through 5
+///   "2,14,23"  — ship uids 2, 14, and 23 (comma list; ranges allowed too)
+pub fn ship_spec_matches(spec: &str, ship: &Ship) -> bool {
+    let spec = spec.trim();
+    if spec.is_empty() || spec == "*" {
+        return true;
+    }
+    if spec == "~" {
+        return ship.fleet == ' ' || ship.fleet == '\0';
+    }
+    if spec.len() == 1 {
+        if let Some(c) = spec.chars().next() {
+            if c.is_ascii_alphabetic() {
+                return ship.fleet == c;
+            }
+        }
+    }
+    for part in spec.split(',') {
+        let part = part.trim().trim_start_matches('#');
+        if let Ok(n) = part.parse::<i32>() {
+            if n == ship.uid {
+                return true;
+            }
+            continue;
+        }
+        if let Some((lo, hi)) = part.split_once('-') {
+            if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
+                if ship.uid >= lo && ship.uid <= hi {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 /// Result of one ship-vs-ship gunnery exchange.
 pub struct GunneryResult {
     pub damage_dealt: i32,
@@ -458,5 +504,43 @@ mod tests {
         assert!(!result.hit);
         assert_eq!(attacker.items.get(Item::Shell), 7, "3 shells spent regardless of hit");
         assert_eq!(defender.effic, 100);
+    }
+
+    fn make_ship_uf(uid: i32, fleet: char) -> Ship {
+        let mut s = make_ship(100, 100);
+        s.uid = uid;
+        s.fleet = fleet;
+        s
+    }
+
+    #[test]
+    fn ship_spec_star_matches_any_fleet_or_uid() {
+        assert!(ship_spec_matches("*", &make_ship_uf(42, 'c')));
+        assert!(ship_spec_matches("*", &make_ship_uf(0, ' ')));
+    }
+
+    #[test]
+    fn ship_spec_tilde_matches_only_null_fleet() {
+        assert!(ship_spec_matches("~", &make_ship_uf(1, ' ')));
+        assert!(!ship_spec_matches("~", &make_ship_uf(1, 'c')));
+    }
+
+    #[test]
+    fn ship_spec_letter_matches_fleet_not_uid() {
+        let ship = make_ship_uf(5, 'c');
+        assert!(ship_spec_matches("c", &ship));
+        assert!(!ship_spec_matches("d", &ship));
+        let other = make_ship_uf(99, ' ');
+        assert!(!ship_spec_matches("c", &other));
+    }
+
+    #[test]
+    fn ship_spec_uid_and_range_and_list() {
+        assert!(ship_spec_matches("5", &make_ship_uf(5, ' ')));
+        assert!(!ship_spec_matches("5", &make_ship_uf(6, ' ')));
+        assert!(ship_spec_matches("0-5", &make_ship_uf(3, ' ')));
+        assert!(!ship_spec_matches("0-5", &make_ship_uf(6, ' ')));
+        assert!(ship_spec_matches("2,14,23", &make_ship_uf(14, ' ')));
+        assert!(!ship_spec_matches("2,14,23", &make_ship_uf(15, ' ')));
     }
 }

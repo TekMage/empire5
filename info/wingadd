@@ -37,4 +37,4 @@ EXAMPLE
   fly c -3,1                 fly every plane in wing c to -3,1
 
 SEE ALSO
-  plane  bomb  fly  build
+  plane  bomb  fly  fleetadd  army  build

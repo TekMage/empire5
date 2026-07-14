@@ -24,6 +24,10 @@
 //   fire fort <x,y>       ship <target-uid>
 //   fire fort <x,y>       sect <x,y>
 //
+// <firer-id> for ship/land also accepts a fleet/army letter, "~"
+// (unassigned units), a uid range, or a comma list — see 'info fleetadd'
+// and 'info army'.
+//
 // Unlike bombing/torpedoes, gunnery has no miss chance — damage lands
 // unconditionally once the firer is in range and eligible. A ship target
 // that survives and still has usable guns fires back once (a simplified
@@ -46,10 +50,10 @@ use super::sector_sel::parse_rel_xy;
 use crate::subs::damage;
 use crate::subs::fortsub::{fort_can_fire, fort_gun_range, fortgun_damage};
 use crate::subs::geo::map_dist;
-use crate::subs::lndsub::{lnd_can_fire, lnd_fire_shot, lnd_gun_range};
+use crate::subs::lndsub::{land_spec_matches, lnd_can_fire, lnd_fire_shot, lnd_gun_range};
 use crate::subs::shpsub::{
-    seagun_damage, shp_can_fire, shp_damage, shp_fire_at_ship, shp_gun_range,
-    shp_guns_after_ammo, shp_guns_fired, shp_in_range, shp_shells_needed,
+    seagun_damage, ship_spec_matches, shp_can_fire, shp_damage, shp_fire_at_ship,
+    shp_gun_range, shp_guns_after_ammo, shp_guns_fired, shp_in_range, shp_shells_needed,
 };
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -72,17 +76,6 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         "fort" => fire_from_fort(firer_id, target_kind, target_id, ctx).await,
         _ => format!("10 Unknown firer type '{firer_kind}' (want ship|land|fort)\n"),
     }
-}
-
-fn matches_uid(uid: i32, spec: &str) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Ok(n) = spec.parse::<i32>() { return uid == n; }
-    if let Some((lo, hi)) = spec.split_once('-') {
-        if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
-            return uid >= lo && uid <= hi;
-        }
-    }
-    false
 }
 
 // ── Target resolution ─────────────────────────────────────────────────────────
@@ -140,7 +133,7 @@ async fn fire_from_ships(firer_spec: &str, target_kind: &str, target_id: &str, c
     };
 
     let firer_uids: Vec<i32> = all_ships.iter()
-        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && matches_uid(s.uid, firer_spec))
+        .filter(|s| (s.own == ctx.cnum || ctx.is_deity) && ship_spec_matches(firer_spec, s))
         .map(|s| s.uid)
         .collect();
     if firer_uids.is_empty() {
@@ -269,7 +262,7 @@ async fn fire_from_land(firer_spec: &str, target_kind: &str, target_id: &str, ct
     };
 
     let firer_uids: Vec<i32> = all_units.iter()
-        .filter(|u| (u.own == ctx.cnum || ctx.is_deity) && matches_uid(u.uid, firer_spec))
+        .filter(|u| (u.own == ctx.cnum || ctx.is_deity) && land_spec_matches(firer_spec, u))
         .map(|u| u.uid)
         .collect();
     if firer_uids.is_empty() {
