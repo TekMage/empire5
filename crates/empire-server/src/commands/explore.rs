@@ -159,7 +159,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
                 out.push_str(&format!("1 DB error claiming {dest_rel}: {e}\n"));
                 break;
             }
-            out.push_str(&format!("1 {dest_rel} claimed\n"));
+            out.push_str(&format!("1 Sector {dest_rel} is now yours.\n"));
         }
 
         mobility_left -= step_cost;
