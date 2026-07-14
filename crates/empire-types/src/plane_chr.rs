@@ -378,6 +378,55 @@ static PLCHR: &[PlaneChr] = &[
         acc: 50, load: 0, att: 0, def: 31, range: 12, fuel: 0, stealth: 0,
         flags: PlaneChrFlags::from_bits_truncate(V.bits() | M.bits() | N.bits()),
     },
+    // --- Modern tier (tech 335-460): current fighters/bombers above top
+    // out around tech 325 (F-117A Nighthawk, B-2 stealth bomber). These
+    // sit above that ceiling, following the same tech-vs-accuracy trade
+    // established by every existing lineage (fighters: Sopwith Camel
+    // acc 90 -> F-117A acc 45; bombers: B-26 acc 90 -> B-2 acc 25) --
+    // higher tech buys stealth/att/def/range at the cost of accuracy.
+    //
+    // 35: fa18 — F/A-18 Super Hornet
+    PlaneChr {
+        name: "F/A-18 Super Hornet", sname: "fa18",
+        lcm: 14, hcm: 5, mil: 2, bwork: 46, tech: 335, cost: 1800,
+        acc: 40, load: 4, att: 20, def: 20, range: 16, fuel: 3, stealth: 0,
+        flags: PlaneChrFlags::from_bits_truncate(T.bits() | F.bits() | L.bits()),
+    },
+    // 36: b52h — B-52H Stratofortress
+    PlaneChr {
+        name: "B-52H Stratofortress", sname: "b52h",
+        lcm: 28, hcm: 14, mil: 5, bwork: 75, tech: 350, cost: 3600,
+        acc: 85, load: 13, att: 0, def: 13, range: 40, fuel: 6, stealth: 0,
+        flags: B,
+    },
+    // 37: f35 — F-35 Lightning II
+    PlaneChr {
+        name: "F-35 Lightning II", sname: "f35",
+        lcm: 18, hcm: 7, mil: 3, bwork: 55, tech: 380, cost: 4500,
+        acc: 35, load: 5, att: 24, def: 24, range: 18, fuel: 4, stealth: 70,
+        flags: PlaneChrFlags::from_bits_truncate(T.bits() | F.bits() | V.bits() | L.bits()),
+    },
+    // 38: f22 — F-22 Raptor
+    PlaneChr {
+        name: "F-22 Raptor", sname: "f22",
+        lcm: 16, hcm: 6, mil: 2, bwork: 50, tech: 405, cost: 5500,
+        acc: 30, load: 2, att: 30, def: 30, range: 16, fuel: 4, stealth: 85,
+        flags: F,
+    },
+    // 39: b21 — B-21 Raider
+    PlaneChr {
+        name: "B-21 Raider", sname: "b21",
+        lcm: 20, hcm: 8, mil: 3, bwork: 60, tech: 425, cost: 6000,
+        acc: 15, load: 10, att: 0, def: 22, range: 32, fuel: 5, stealth: 95,
+        flags: PlaneChrFlags::from_bits_truncate(B.bits() | T.bits()),
+    },
+    // 40: f47 — F-47
+    PlaneChr {
+        name: "F-47", sname: "f47",
+        lcm: 20, hcm: 8, mil: 3, bwork: 58, tech: 460, cost: 7000,
+        acc: 20, load: 3, att: 35, def: 35, range: 22, fuel: 5, stealth: 92,
+        flags: F,
+    },
 ];
 
 impl PlaneChr {
