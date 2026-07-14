@@ -22,12 +22,14 @@ DESCRIPTION
     planes      - must be in a friendly airfield at >=60% efficiency
     land units  - must be in a friendly (same-owner) sector
 
-  This doesn't delete the underlying record -- it sets efficiency to
-  0%, same as any other destroyed unit. If the sector still has
-  LCM/HCM flowing to it, ordinary production will rebuild the unit
-  from scratch at the next update, exactly as it would a freshly laid
-  keel. If you don't want it coming back, scrap it somewhere without
-  spare LCM/HCM, or make sure the sector isn't distributing those in.
+  Ships: scrapping drops efficiency below 20% (SHIP_MINEFF), which
+  sinks it -- ownership is cleared immediately, so it disappears from
+  your fleet for good and can't be rebuilt or re-scrapped. Planes and
+  land units don't have this rule (matches 4.4.1): they persist at 0%
+  efficiency and *will* rebuild from scratch if their sector still has
+  LCM/HCM flowing to it, exactly like a freshly laid keel. If you
+  don't want a scrapped plane/land unit coming back, scrap it
+  somewhere without spare LCM/HCM, or stop distributing those in.
 
   Use 'scuttle' instead if you don't care about recovering materials
   and just want it gone regardless of where it is.

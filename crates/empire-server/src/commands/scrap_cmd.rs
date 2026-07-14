@@ -29,13 +29,15 @@
 // tracks lcm/hcm (see build.rs), so that's all that comes back, unlike
 // 4.4.1's full per-item material vector.
 //
-// Doesn't delete the DB row -- sets efficiency to 0, same as any other
-// destroyed unit. If the sector still has LCM/HCM flowing to it,
-// ordinary production (prod_ships/prod_planes/prod_land) will rebuild
-// it from scratch next update, exactly as it would a freshly laid
-// keel -- this is real 4.4.1 behavior, not a bug, but worth knowing:
-// scrapping something you don't want back means also cutting its
-// supply, or scrapping it somewhere with none.
+// Ships: setting effic to 0 sinks it -- empire_db::ships::put() clears
+// ownership below SHIP_MINEFF (20%), matching 4.4.1's shp_prewrite()
+// hook, so it's gone from the fleet immediately and prod_ships (which
+// skips own==0) will never revive it. Planes and land units have no
+// such rule (confirmed against 4.4.1's planerepair()/landrepair() --
+// no special-case for 0%), so they persist and *will* rebuild from
+// scratch if their sector still has LCM/HCM flowing to it. Scrapping
+// one of those you don't want back means also cutting its supply, or
+// scrapping it somewhere with none.
 
 use empire_db::{land_units, planes, sectors, ships};
 use empire_types::commodity::Item;

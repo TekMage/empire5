@@ -26,9 +26,12 @@ DESCRIPTION
   distance-based economy isn't ported yet, so scuttling a trade ship
   here just destroys it for nothing, same as any other ship.
 
-  Like 'scrap', this doesn't delete the record, just zeroes
-  efficiency — see 'info scrap' for what that means if the sector can
-  still produce LCM/HCM.
+  Ships: scuttling sinks it immediately -- ownership is cleared
+  (efficiency below 20% always sinks a ship, matching 4.4.1), so it's
+  gone from your fleet for good. Planes and land units don't sink the
+  same way -- they persist at 0% and will rebuild from scratch if
+  their sector still has LCM/HCM flowing to it (see 'info scrap' for
+  what that means in practice).
 
 EXAMPLE
   scuttle s 12               scuttle ship 12, wherever it is

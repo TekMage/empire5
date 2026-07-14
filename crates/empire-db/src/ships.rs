@@ -111,7 +111,19 @@ pub async fn get_at_xy(db: &Db, x: Coord, y: Coord) -> DbResult<Vec<Ship>> {
     .fetch_all(db.pool()).await?.into_iter().map(Ship::from).collect())
 }
 
+/// Minimum ship efficiency (SHIP_MINEFF in ship.h). Ported from
+/// 4.4.1's shp_prewrite(), a hook that runs on *every* ship write: if
+/// efficiency would land below this, ownership is cleared and
+/// efficiency floored to 0 -- the ship sinks. Applied here in `put()`
+/// so it's universal (combat damage, scrap, scuttle, anything else
+/// that zeroes a ship's efficiency) rather than something every
+/// caller has to remember to do -- otherwise a "destroyed" ship just
+/// sits there owned at 0%, and ordinary production revives it given
+/// LCM/HCM, since nothing else marks it as actually gone.
+pub const SHIP_MINEFF: i8 = 20;
+
 pub async fn put(db: &Db, s: &Ship) -> DbResult<()> {
+    let (own, effic) = if s.effic < SHIP_MINEFF { (0, 0) } else { (s.own, s.effic) };
     sqlx::query(
         "INSERT OR REPLACE INTO ships \
          (uid,own,x,y,ship_type,effic,mobil,off,tech,fleet,opx,opy,\
@@ -119,8 +131,8 @@ pub async fn put(db: &Db, s: &Ship) -> DbResult<()> {
           orig_x,orig_y,orig_own,retreat_flags,retreat_path,updated_at) \
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
     )
-    .bind(s.uid).bind(s.own as i64).bind(s.x as i64).bind(s.y as i64)
-    .bind(s.ship_type as i64).bind(s.effic as i64).bind(s.mobil as i64)
+    .bind(s.uid).bind(own as i64).bind(s.x as i64).bind(s.y as i64)
+    .bind(s.ship_type as i64).bind(effic as i64).bind(s.mobil as i64)
     .bind(s.off as i64).bind(s.tech as i64).bind(s.fleet.to_string())
     .bind(s.opx as i64).bind(s.opy as i64)
     .bind(s.mission as i64).bind(s.mission_radius as i64)
