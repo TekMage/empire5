@@ -14,19 +14,29 @@
 // Ported from: src/lib/commands/load.c
 
 // "load"/"unload" commands — transfer commodities between a ship and
-// the harbor sector it is docked in.
+// the harbor sector it is docked in, or (see load_plane below) put
+// planes aboard/off a carrier or missile sub.
 //
 // Usage: load  <commodity> <ship-spec> <amount>
 //        unload <commodity> <ship-spec> <amount>
+//        load  plane <ship-spec> <plane-spec>
+//        unload plane <ship-spec> <plane-spec>
 //
 // The ship must be in a harbor (type 'h') sector owned by the player,
-// and that harbor must be ≥2% efficient.
+// and that harbor must be ≥2% efficient. Loading/unloading *planes*
+// (see load_plane) has no harbor requirement -- only commodities do.
 
-use empire_db::{sectors, ships};
+use empire_db::{planes, sectors, ships};
 use empire_types::commodity::Item;
+use empire_types::plane::Plane;
+use empire_types::plane_chr::PlaneChr;
 use empire_types::sector::SectorType;
+use empire_types::ship::Ship;
 use empire_types::ship_chr::ShipChr;
 use super::ctx::CmdCtx;
+use crate::subs::shipcarry;
+use crate::subs::shpsub::ship_spec_matches;
+use crate::subs::plnsub::plane_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     run_inner(args, ctx, false).await
@@ -41,6 +51,10 @@ async fn run_inner(args: &str, ctx: &CmdCtx<'_>, unload: bool) -> String {
     if parts.len() < 3 {
         let cmd = if unload { "unload" } else { "load" };
         return format!("10 Usage: {cmd} <commodity> <ship-spec> <amount>\n");
+    }
+
+    if parts[0].eq_ignore_ascii_case("plane") {
+        return run_plane_load(&parts, ctx, unload).await;
     }
 
     let item = match Item::from_mnemonic(parts[0].chars().next().unwrap_or(' ')) {
@@ -187,6 +201,141 @@ async fn run_inner(args: &str, ctx: &CmdCtx<'_>, unload: bool) -> String {
                 "1 Loaded {} {} onto ship {} from {xy}\n",
                 actual, item.name(), ship.uid
             ));
+        }
+    }
+
+    if out.is_empty() {
+        out.push_str(&format!("1 Nothing to {cmd_name}\n"));
+    }
+    out.push_str(&format!("0 {cmd_name}\n"));
+    out
+}
+
+/// `load plane <ship-spec> <plane-spec>` / `unload plane <ship-spec> <plane-spec>`.
+///
+/// Ported from load_plane_ship() in load.c / could_be_on_ship() and
+/// put_plane_on_ship() in plnsub.c. Unlike commodities, loading a
+/// plane has no harbor requirement -- only that the plane and ship
+/// currently share a coordinate (open sea is fine).
+///
+/// Once aboard, a plane's x/y is kept in sync with the ship's by
+/// navigate.rs whenever the ship moves (see 'info navigate').
+async fn run_plane_load(parts: &[&str], ctx: &CmdCtx<'_>, unload: bool) -> String {
+    let cmd_name = if unload { "unload" } else { "load" };
+    if parts.len() < 3 {
+        return format!("10 Usage: {cmd_name} plane <ship-spec> <plane-spec>\n");
+    }
+    let ship_spec = parts[1];
+    let plane_spec = parts[2];
+
+    let all_ships = match ships::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 DB error: {e}\n"),
+    };
+    let all_planes = match planes::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 DB error: {e}\n"),
+    };
+    let ship_chrs = ShipChr::all();
+    let plane_chrs = PlaneChr::all();
+
+    let mut matching_ships: Vec<Ship> = all_ships
+        .into_iter()
+        .filter(|s| s.own == ctx.cnum || ctx.is_deity)
+        .filter(|s| ship_spec_matches(ship_spec, s))
+        .collect();
+    matching_ships.sort_by_key(|s| s.uid);
+    if matching_ships.is_empty() {
+        return format!("1 No ships match '{ship_spec}'\n0 {cmd_name}\n");
+    }
+
+    let mut matching_planes: Vec<Plane> = all_planes
+        .into_iter()
+        .filter(|p| p.own == ctx.cnum || ctx.is_deity)
+        .filter(|p| plane_spec_matches(plane_spec, p))
+        .collect();
+    matching_planes.sort_by_key(|p| p.uid);
+    if matching_planes.is_empty() {
+        return format!("1 No planes match '{plane_spec}'\n0 {cmd_name}\n");
+    }
+
+    let mut out = String::new();
+    let mut placed: std::collections::HashSet<i32> = std::collections::HashSet::new();
+
+    for ship in &matching_ships {
+        let Some(ship_chr) = ship_chrs.get(ship.ship_type as usize) else { continue };
+
+        // Running manifest for this ship: seeded from the DB, then
+        // updated in-memory as planes are placed within this call so
+        // capacity is enforced correctly across multiple loads at once.
+        let mut manifest = match planes::get_on_ship(ctx.db, ship.uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                out.push_str(&format!("1 DB error: {e}\n"));
+                continue;
+            }
+        };
+
+        for plane in matching_planes.iter_mut() {
+            if placed.contains(&plane.uid) {
+                continue;
+            }
+            if unload {
+                if plane.ship != ship.uid {
+                    continue;
+                }
+            } else if plane.x != ship.x || plane.y != ship.y {
+                continue;
+            }
+
+            let Some(chr) = plane_chrs.get(plane.plane_type as usize) else { continue };
+
+            if unload {
+                plane.ship = -1;
+                plane.x = ship.x;
+                plane.y = ship.y;
+                if let Err(e) = planes::put(ctx.db, plane).await {
+                    out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+                    continue;
+                }
+                manifest.retain(|p| p.uid != plane.uid);
+                out.push_str(&format!(
+                    "1 Unloaded plane #{} ({}) from {} #{}\n",
+                    plane.uid, chr.name, ship_chr.name, ship.uid
+                ));
+                placed.insert(plane.uid);
+                continue;
+            }
+
+            if shipcarry::classify_plane(chr.flags).is_none() {
+                out.push_str(&format!(
+                    "1 Plane #{}: only light planes, helos, xtra-light, or missiles can load onto ships\n",
+                    plane.uid
+                ));
+                placed.insert(plane.uid); // ineligible by type -- don't retry other ships
+                continue;
+            }
+            if !shipcarry::ship_can_carry(ship_chr, &manifest, plane_chrs, chr.flags) {
+                out.push_str(&format!(
+                    "1 {} #{} has no room for plane #{}\n",
+                    ship_chr.name, ship.uid, plane.uid
+                ));
+                continue; // full/wrong bucket on this ship -- try the next one
+            }
+
+            plane.ship = ship.uid;
+            plane.x = ship.x;
+            plane.y = ship.y;
+            if let Err(e) = planes::put(ctx.db, plane).await {
+                out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+                continue;
+            }
+            manifest.push(plane.clone());
+            out.push_str(&format!(
+                "1 Loaded plane #{} ({}) onto {} #{}\n",
+                plane.uid, chr.name, ship_chr.name, ship.uid
+            ));
+            placed.insert(plane.uid);
         }
     }
 

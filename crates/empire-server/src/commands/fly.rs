@@ -16,7 +16,8 @@
 //    Dave Pare, 1986
 //    Ken Stevens, 1995
 
-// "fly" command — move planes to a friendly destination airfield or harbor.
+// "fly" command — move planes to a friendly destination airfield or
+// harbor, or land aboard a friendly carrier sitting there.
 //
 // Usage: fly PLANE-SPEC DEST-SECT
 //
@@ -25,17 +26,26 @@
 // letter naming a wing (see 'info wingadd').
 // DEST-SECT: destination sector (player-relative "X,Y").
 //
-// Planes can only land at friendly sectors with airfield (a), naval base (n),
-// or harbor (*) types, or their own carrier ship.
+// Planes can only land at friendly sectors with airfield or harbor
+// types, or aboard a friendly CARRIER-flagged ship sitting at that
+// coordinate (>=50% efficient -- see shipcarry::SHIP_AIROPS_EFF).
+// Carriers are tried first (matching 4.4.1, which offers carriers
+// before falling back to the sector itself); a plane that fits no
+// carrier and isn't a valid sector landing has nowhere to go and
+// crashes. See 'info fly' for the v1 no-carrier-picker simplification
+// (eligible carriers are filled in uid order, no interactive choice).
 
-use empire_db::{planes, sectors};
+use empire_db::{planes, sectors, ships};
+use empire_types::plane::Plane;
 use empire_types::plane_chr::PlaneChr;
 use empire_types::sector::SectorType;
+use empire_types::ship_chr::ShipChr;
 
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 use crate::subs::geo::map_dist;
 use crate::subs::plnsub::{pln_capable, pln_use_fuel, plane_spec_matches};
+use crate::subs::shipcarry;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.split_whitespace().collect();
@@ -50,31 +60,34 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let dx = ctx.x_abs(rx);
     let dy = ctx.y_abs(ry);
 
-    // Validate destination sector
     let dest = match sectors::get_at(ctx.db, dx, dy).await {
-        Ok(Some(s)) => s,
-        Ok(None) => return format!("10 Sector {} doesn't exist\n", ctx.format_xy(dx, dy)),
-        Err(e)   => return format!("10 DB error: {e}\n"),
+        Ok(v) => v,
+        Err(e) => return format!("10 DB error: {e}\n"),
     };
+    let ships_here = match ships::get_at_xy(ctx.db, dx, dy).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 DB error: {e}\n"),
+    };
+    let ship_chrs = ShipChr::all();
+    let carriers = shipcarry::eligible_carriers(&ships_here, ship_chrs, ctx.cnum, ctx.is_deity, dx, dy);
 
-    // Destination must be friendly (owned by player or allied) and a valid landing site
-    let friendly = dest.own == ctx.cnum || ctx.is_deity;
-    if !friendly {
-        return format!(
-            "10 {} is not a friendly sector — planes cannot land there.\n",
-            ctx.format_xy(dx, dy),
-        );
-    }
+    let sector_ok = dest.as_ref().is_some_and(|s| {
+        (s.own == ctx.cnum || ctx.is_deity)
+            && matches!(s.sector_type, SectorType::Airfield | SectorType::Harbor)
+    });
 
-    let can_land = matches!(
-        dest.sector_type,
-        SectorType::Airfield | SectorType::Harbor
-    );
-    if !can_land {
-        return format!(
-            "10 {} is not a valid airfield/harbor — planes cannot land there.\n",
-            ctx.format_xy(dx, dy),
-        );
+    if !sector_ok && carriers.is_empty() {
+        return match &dest {
+            None => format!("10 Sector {} doesn't exist\n", ctx.format_xy(dx, dy)),
+            Some(s) if s.own != ctx.cnum && !ctx.is_deity => format!(
+                "10 {} is not a friendly sector — planes cannot land there.\n",
+                ctx.format_xy(dx, dy),
+            ),
+            Some(_) => format!(
+                "10 {} is not a valid airfield/harbor — planes cannot land there.\n",
+                ctx.format_xy(dx, dy),
+            ),
+        };
     }
 
     // Load planes
@@ -101,8 +114,17 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         ctx.format_xy(dx, dy),
     ));
 
+    // Per-carrier manifest, seeded from the DB and updated in-memory as
+    // planes land within this same command so capacity is enforced
+    // correctly across the whole batch, not just per plane.
+    let mut manifests: Vec<Vec<Plane>> = Vec::with_capacity(carriers.len());
+    for c in &carriers {
+        manifests.push(planes::get_on_ship(ctx.db, c.uid).await.unwrap_or_default());
+    }
+
     let mut flew = 0u32;
     let mut grounded = 0u32;
+    let mut crashed = 0u32;
 
     for mut plane in selected {
         let Some(chr) = chrs.get(plane.plane_type as usize) else {
@@ -136,14 +158,48 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         // Deduct fuel
         pln_use_fuel(&mut plane, chr, dist);
 
-        // Move plane to destination
-        plane.x = dx;
-        plane.y = dy;
+        // Try carriers first (matches 4.4.1's landing-offer order),
+        // then the sector, then the plane has nowhere to land.
+        let mut landed_on = None;
+        for (i, c) in carriers.iter().enumerate() {
+            let Some(c_chr) = ship_chrs.get(c.ship_type as usize) else { continue };
+            if shipcarry::ship_can_carry(c_chr, &manifests[i], chrs, chr.flags) {
+                landed_on = Some(i);
+                break;
+            }
+        }
 
-        if let Err(e) = planes::put(ctx.db, &plane).await {
-            out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+        if let Some(i) = landed_on {
+            let c = carriers[i];
+            plane.ship = c.uid;
+            plane.x = c.x;
+            plane.y = c.y;
+            if let Err(e) = planes::put(ctx.db, &plane).await {
+                out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+            } else {
+                manifests[i].push(plane.clone());
+                out.push_str(&format!("1 Plane #{} landed aboard ship #{}\n", plane.uid, c.uid));
+                flew += 1;
+            }
+        } else if sector_ok {
+            plane.x = dx;
+            plane.y = dy;
+            if let Err(e) = planes::put(ctx.db, &plane).await {
+                out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+            } else {
+                flew += 1;
+            }
         } else {
-            flew += 1;
+            plane.effic = 0;
+            if let Err(e) = planes::put(ctx.db, &plane).await {
+                out.push_str(&format!("1 Plane #{}: save error: {e}\n", plane.uid));
+            } else {
+                out.push_str(&format!(
+                    "1 Plane #{}: no room to land — crashes and burns\n",
+                    plane.uid
+                ));
+                crashed += 1;
+            }
         }
     }
 
@@ -152,6 +208,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
     if grounded > 0 {
         out.push_str(&format!("1 {grounded} plane(s) could not fly.\n"));
+    }
+    if crashed > 0 {
+        out.push_str(&format!("1 {crashed} plane(s) had nowhere to land and crashed.\n"));
     }
 
     out.push_str("0 fly\n");

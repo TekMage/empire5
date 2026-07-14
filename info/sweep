@@ -1,0 +1,35 @@
+SWEEP
+  Same reconnaissance mission as 'recon', with one addition: at every
+  sea sector overflown, sweep-capable planes get a chance to clear
+  naval mines. See 'info recon' for the full mission mechanics (path
+  syntax, spy-vs-generic reports, landing rules, v1 gaps).
+
+SYNTAX
+  sweep <spy-plane-spec> <escort-plane-spec> <ap-sect> <path|dest>
+
+DESCRIPTION
+  Everything about 'recon' applies unchanged — same report format,
+  same interception handling, same landing rules. The only difference:
+  at each sea sector along the route, every still-alive plane in
+  <spy-plane-spec> (the mission list — escorts don't participate) that
+  is minesweeper-capable gets one roll to clear a mine, if the sector
+  has any. A plane's own accuracy stat drives the odds: a more advanced
+  sweeper (higher tech surplus over its type's minimum) is actually
+  *less* accurate for this purpose and so *more* likely to trigger a
+  mine per pass — same tech-scaling formula 4.4.1 uses for bombing
+  accuracy, just inverted to a "chance to hit a mine" outcome.
+
+  Only a handful of plane types carry sweep capability (anti-sub
+  plane, naval plane, AH-1 Cobra as of this writing — check 'show p b'
+  and look for planes with mine-related flags). The E2-C Hawkeye does
+  not: it's spy-only, exactly as in 4.4.1's plane.config, so flying a
+  Hawkeye-only 'sweep' behaves exactly like 'recon' — nothing gets
+  swept, because the Hawkeye can't do it.
+
+  This version has no way to lay mines yet, so a sea sector's mine
+  count is normally always zero — sweep's mine-clearing is implemented
+  and mechanically correct, but there's nothing to test it against
+  without manually seeding a sector's mine count.
+
+SEE ALSO
+  recon  bomb  fly  wingadd  satellite

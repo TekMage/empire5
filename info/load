@@ -1,13 +1,15 @@
 LOAD
-  Move a commodity from a harbor sector onto a ship.
+  Move a commodity from a harbor sector onto a ship, or put a plane
+  aboard a carrier or missile sub.
 
 SYNTAX
   load <commodity> <ship-spec> <amount>
+  load plane <ship-spec> <plane-spec>
 
 DESCRIPTION
-  Transfers goods from a harbor sector into a ship's hold.  The
-  ship must be located in a harbor sector (type 'h') that you own,
-  and the harbor must be at least 2% efficient.
+  COMMODITIES: transfers goods from a harbor sector into a ship's
+  hold.  The ship must be located in a harbor sector (type 'h') that
+  you own, and the harbor must be at least 2% efficient.
 
   <commodity>  - single letter: f=food c=civ m=mil l=lcm etc.
   <ship-spec>  - ship uid, range (0-5), or * for all matching ships
@@ -16,14 +18,45 @@ DESCRIPTION
   The ship takes up to <amount> from whatever the harbor has.  If
   the harbor has fewer than <amount>, it loads what it can.
 
-  Use 'info ship' to find ship uids.
-  Use 'info navigate' to move a ship to a harbor first.
-  Use 'info unload' to take goods back off.
+  PLANES: 'load plane' puts a plane aboard a ship instead — no harbor
+  needed, just that the plane and ship are currently at the same
+  sector (open sea is fine; fly the plane there first with 'fly').
+
+  <ship-spec>   - ship uid, range, comma list, "*", "~" (unfleeted),
+                  or a fleet letter (see 'info fleetadd')
+  <plane-spec>  - same forms as 'fly'/'recon' accept
+
+  Only plane types flagged LIGHT, XLIGHT, HELO, or MISSILE can go
+  aboard a ship at all (use 'show plane' to check a type's flags —
+  most bombers/fighters/spy planes are land-based only). Within that,
+  each ship type has separate capacity for regular (LIGHT) planes,
+  extra-light planes, and choppers, plus an overall ceiling; missile
+  planes (Harpoon, Sea Sparrow, Trident) count against the ceiling
+  too, but need the ship flagged either CARRIER *or* MISSILE.
+
+  This is the only way to get a plane onto a MISSILE-flagged ship
+  (missile sub, nuc missile sub) — those never show up as an option
+  when just flying to a carrier's sector (see 'info fly'), since that
+  only offers CARRIER-flagged ships.  Build the missile at an airfield
+  like any other plane (missiles have no separate harbor-build rule),
+  fly it to the sub's sector, then 'load plane' it aboard.
+
+  Regular carriers accept plane loading this way too — 'fly' straight
+  onto a carrier's sector also works and is usually more convenient,
+  but 'load plane' is the fallback if you need explicit control (e.g.
+  a specific carrier among several at the same sector).
+
+  Use 'info ship'/'show ship' to find ship uids and types.
+  Use 'info unload' to take a commodity or plane back off.
 
 EXAMPLE
   load food 0 500           load 500 food onto ship 0
   load civ 1 200            load 200 civilians onto ship 1
   load lcm * 50             load up to 50 LCM onto each ship in harbor
+  load plane 14 5           load plane 5 onto ship 14 (same sector)
+  load plane 19 20-25       load planes 20-25 onto ship 19 (a missile
+                            sub, say — only planes flagged MISSILE or
+                            otherwise carrier-eligible actually fit)
 
 SEE ALSO
-  unload  tend  ship  navigate  build  harbor
+  unload  fly  recon  tend  ship  navigate  build  harbor

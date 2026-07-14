@@ -1,14 +1,16 @@
 UNLOAD
-  Move a commodity from a ship back into a harbor sector.
+  Move a commodity from a ship back into a harbor sector, or take a
+  plane back off a carrier/sub.
 
 SYNTAX
   unload <commodity> <ship-spec> <amount>
   unlo   <commodity> <ship-spec> <amount>
+  unload plane <ship-spec> <plane-spec>
 
 DESCRIPTION
-  Transfers goods from a ship's hold into the harbor sector where
-  the ship is currently docked.  The ship must be in a harbor
-  sector (type 'h') that you own, at least 2% efficient.
+  COMMODITIES: transfers goods from a ship's hold into the harbor
+  sector where the ship is currently docked.  The ship must be in a
+  harbor sector (type 'h') that you own, at least 2% efficient.
 
   <commodity>  - single letter: f=food c=civ m=mil l=lcm etc.
   <ship-spec>  - ship uid, range (0-5), or * for all ships in harbor
@@ -16,10 +18,16 @@ DESCRIPTION
 
   If the ship has fewer than <amount>, it unloads what it has.
 
+  PLANES: 'unload plane' takes a plane back off a ship it's currently
+  aboard (matched via <ship-spec>) — no harbor needed. The plane ends
+  up sitting at the ship's current sector, free-standing again; use
+  'fly' from there if it needs to go somewhere else.
+
 EXAMPLE
   unload food 0 200         take 200 food off ship 0
   unload civ 1 50           disembark 50 civilians from ship 1
   unload oil * 100          unload up to 100 oil from every ship
+  unload plane 14 5         take plane 5 off ship 14
 
 SEE ALSO
-  load  ship  navigate  build
+  load  fly  recon  ship  navigate  build

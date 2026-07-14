@@ -1,0 +1,73 @@
+RECON
+  Fly a reconnaissance mission along a path, reporting on every sector
+  overflown, then land at the destination.
+
+SYNTAX
+  recon <spy-plane-spec> <escort-plane-spec> <ap-sect> <path|dest>
+  sweep <spy-plane-spec> <escort-plane-spec> <ap-sect> <path|dest>
+
+DESCRIPTION
+  Unlike bomb/fly, which only care about the final target, recon's
+  entire value is reporting on every sector along the way. This is how
+  spy-capable planes (like the E2-C Hawkeye) actually get used — they
+  can't bomb or launch, they fly recon instead.
+
+  <spy-plane-spec>    - planes intended to do the reporting. "none" or
+                         "~" for no planes of this role, or anything
+                         'plane' accepts: a uid, a uid range, a comma
+                         list, "*", or a wing letter (see 'info wingadd').
+  <escort-plane-spec>  - fighter/escort planes flying along for defense.
+                         Same spec forms, or "none"/"~" for no escorts.
+  <ap-sect>            - assembly point, player-relative "X,Y". Both
+                         plane lists must currently be sitting exactly
+                         at this sector (see KNOWN GAPS).
+  <path|dest>          - a direction-string route (u/j/n/b/g/y, 'h' to
+                         stop early) or a destination "X,Y" to auto-path
+                         toward, same as 'navigate'/'march'.
+
+  Report detail at each sector depends on which capable planes are
+  still alive in the flight — this is recomputed at every step, so
+  losing your spy plane partway through downgrades the rest of the
+  report to the generic form:
+    SPY-capable survivors present  - full intel report: sector econ/
+                                     military stats (fuzzed the same
+                                     way a satellite's spy report is —
+                                     see 'info satellite'), plus ship
+                                     and land unit rosters at that
+                                     exact sector
+    no SPY capability              - generic report: just the sector's
+                                     type and a rounded efficiency
+                                     estimate, plus a bare notice if a
+                                     foreign nation has ships or land
+                                     units there (no numbers, no roster)
+    sea sectors                    - always just "flying over water",
+                                     regardless of capability
+
+  At the end of the path, surviving planes land — the destination must
+  be a friendly airfield or harbor, same requirement as 'fly'.
+
+KNOWN GAPS (v1)
+  - No assembly-point range-gathering: 4.4.1 lets planes anywhere
+    within range of the assembly point join the mission. Here, planes
+    must already be sitting exactly at <ap-sect>.
+  - No Anti-Sub Patrol report variant (a plane with ASW capability
+    but no SPY capability gets the generic report, not a specialized
+    submarine-patrol one).
+  - A single combined interception check happens at the destination
+    only, not per-hex flak/interception along the route (same
+    simplification 'bomb' already makes).
+  - No news event is filed for recon missions (matches 4.4.1 — it
+    doesn't file one either).
+
+  'sweep' is not just an alias: it additionally attempts to clear
+  naval mines from sea sectors overflown. See 'info sweep' for that
+  mechanic — it doesn't change anything described above.
+
+EXAMPLE
+  recon 5 none 0,0 jjn              plane 5 alone, no escort, from your
+                                     capital, flies right-right-lower-right
+  recon 5 6 0,0 4,2                 plane 5 with escort 6, auto-path to 4,2
+  sweep c none 0,0 jj                every plane in wing c flies sweep
+
+SEE ALSO
+  bomb  fly  wingadd  satellite  plane  build

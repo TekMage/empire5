@@ -16,14 +16,28 @@ DESCRIPTION
 
   The destination must be within the plane's range.
   Planes consume fuel (petrol) during flight.
-  Planes must land at a friendly airfield (type '*') at >=40% eff
-  unless they are dropped as paratroopers.
+
+  Planes must land at a friendly airfield (type '*') at >=40% eff,
+  unless they are dropped as paratroopers — OR aboard a friendly
+  carrier ship sitting at the destination.  Carriers are tried first:
+  if one is there, has room, and is >=50% efficient, the plane lands
+  aboard it instead of the sector (works even over open sea, as long
+  as a carrier is present).  A plane that fits no carrier falls back
+  to the sector rule above; one that fits neither has nowhere to land
+  and crashes.  See 'info load' for how planes get *onto* a carrier or
+  missile sub in the first place, and which plane types qualify.
 
   Planes require at least 40% efficiency to fly.
+
+  v1 gap: no interactive "which carrier?" choice if several are
+  present at the destination — eligible carriers are filled in uid
+  order.
 
 EXAMPLE
   fly * 4,2                 rebase all planes to airfield at 4,2
   fly 0 -6,0                move plane 0 to the western airfield
+  fly 5 -2,-6               fly plane 5 to wherever your carrier is —
+                            it lands aboard if there's room
 
 SEE ALSO
-  bomb  wingadd  launch  mission  build  navigate
+  bomb  wingadd  launch  recon  load  mission  build  navigate

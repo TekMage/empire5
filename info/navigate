@@ -10,7 +10,8 @@ DESCRIPTION
   Ships consume mobility with each step.  A ship must have at least
   1 mobility point to move.
 
-  <ship-spec>  - ship uid, range (0-5), or * for all
+  <ship-spec>  - ship uid, range (0-5), comma list, * for all, ~ for
+                 unassigned ships, or a fleet letter (see 'info fleetadd')
   <path>       - string of hex direction letters
 
   Direction letters:
@@ -22,6 +23,10 @@ DESCRIPTION
   Ships can only pass through sea sectors or under bridges.
   A ship at a harbor can load/unload using 'load' and 'unload'.
   Ships at sea recover mobility slowly each update.
+
+  Any planes loaded aboard a carrier or missile sub (see 'info load')
+  travel with it — their position updates to wherever the ship ends up
+  once the route completes.
 
   'v' does not move the ship and costs no mobility -- it just reports
   the CURRENT sector's contents relevant to the ship's capabilities:
@@ -40,4 +45,4 @@ EXAMPLE
   navigate 0 vjjv           report here, move 2 hexes right, report there
 
 SEE ALSO
-  ship  load  unload  tend  build  btu
+  ship  load  unload  tend  fleetadd  build  btu

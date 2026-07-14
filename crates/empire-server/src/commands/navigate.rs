@@ -21,20 +21,28 @@
 //
 // Usage: navigate SHIP-SPEC ROUTE
 //
-// SHIP-SPEC: a ship uid (e.g. "3"), or "*" for all owned ships.
+// SHIP-SPEC: a ship uid ("5"), a uid range ("0-5"), a comma list, "*" for
+//   all owned ships, "~" for ships with no fleet assigned, or a single
+//   letter naming a fleet (see 'info fleetadd').
 // ROUTE: a direction string (e.g. "uujnb") or a destination "X,Y"
 //        (player-relative) which triggers pathfinding.
 //
 // Ships can move through sea, harbor, and naval base sectors.
 // Mobility cost per step: 1 mob unit (simplified).
+//
+// Any planes aboard (see 'info load') travel with the ship — their
+// x/y is synced to the ship's final position once the route
+// completes, matching the ship itself only persisting once at the
+// end rather than per intermediate step.
 
-use empire_db::{sectors, ships};
+use empire_db::{planes, sectors, ships};
 use empire_types::coords::Coord;
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::SectorChr;
 use empire_types::ship_chr::{ShipChr, ShipChrFlags};
 use crate::subs::geo::{DIROFF, DIRCH, DIR_FIRST, DIR_LAST, x_norm, y_norm, dir_from_char};
 use crate::subs::pathfind::find_path;
+use crate::subs::shpsub::ship_spec_matches;
 use super::ctx::CmdCtx;
 use super::sector_sel::parse_rel_xy;
 
@@ -66,7 +74,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         if ship.own == 0 {
             continue;
         }
-        if !ship_matches(ship_spec, ship.uid) {
+        if !ship_spec_matches(ship_spec, &ship) {
             continue;
         }
 
@@ -150,6 +158,28 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
             if let Err(e) = ships::put(ctx.db, &ship).await {
                 out.push_str(&format!("1 Ship {}: save error: {e}\n", ship.uid));
+            } else {
+                // Planes aboard travel with the ship — sync their
+                // position to wherever it ended up (only the final
+                // position, matching the ship itself only persisting
+                // once at the end of the route, not per intermediate step).
+                match planes::get_on_ship(ctx.db, ship.uid).await {
+                    Ok(aboard) => {
+                        for mut plane in aboard {
+                            plane.x = ship.x;
+                            plane.y = ship.y;
+                            if let Err(e) = planes::put(ctx.db, &plane).await {
+                                out.push_str(&format!(
+                                    "1 Plane #{} (aboard ship {}): save error: {e}\n",
+                                    plane.uid, ship.uid
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => out.push_str(&format!(
+                        "1 Warning: could not load planes aboard ship {}: {e}\n", ship.uid
+                    )),
+                }
             }
         }
     }
@@ -167,16 +197,6 @@ fn is_navigable(st: SectorType) -> bool {
 }
 
 /// Determine if a ship uid matches the spec.
-fn ship_matches(spec: &str, uid: i32) -> bool {
-    if spec == "*" {
-        return true;
-    }
-    if let Ok(n) = spec.trim_start_matches('#').parse::<i32>() {
-        return uid == n;
-    }
-    false
-}
-
 /// Parse the route string into a sequence of direction indices (1–6).
 /// If the route looks like "X,Y" coordinates, use pathfinding.
 async fn build_route(

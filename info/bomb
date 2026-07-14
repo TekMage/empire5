@@ -29,4 +29,4 @@ EXAMPLE
   bomb 0-3 2,4 t            planes 0-3 do tactical bombing at 2,4
 
 SEE ALSO
-  fly  wingadd  launch  mission  build  attack  fire  torpedo
+  fly  wingadd  launch  recon  mission  build  attack  fire  torpedo

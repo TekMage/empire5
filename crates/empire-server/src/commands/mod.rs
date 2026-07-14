@@ -48,6 +48,7 @@ mod torpedo_cmd;
 mod fly;
 mod launch;
 mod satellite_cmd;
+mod recon_cmd;
 mod mission;
 mod sell;
 mod buy;
@@ -158,6 +159,8 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "army" | "armyadd"          => army_cmd::run(args, &ctx).await,
         "launch"    | "lnch"        => launch::run(args, &ctx).await,
         "satellite" | "sat"         => satellite_cmd::run(args, &ctx).await,
+        "recon"                     => recon_cmd::run(args, &ctx, false).await,
+        "sweep"                     => recon_cmd::run(args, &ctx, true).await,
         "mission"   | "miss"        => mission::run(args, &ctx).await,
 
         "sell"              => sell::run(args, &ctx).await,
