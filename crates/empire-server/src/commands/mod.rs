@@ -83,6 +83,8 @@ mod prod_cmd;
 mod radar_cmd;
 mod lradar_cmd;
 mod name_cmd;
+mod scrap_cmd;
+mod scuttle_cmd;
 
 use crate::state::GameState;
 use crate::protocol::{code, response};
@@ -199,6 +201,8 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "production" | "prod" => prod_cmd::run(args, &ctx).await,
         "radar" | "rada"    => radar_cmd::run(args, &ctx).await,
         "lradar"            => lradar_cmd::run(args, &ctx).await,
+        "scrap"             => scrap_cmd::run(args, &ctx).await,
+        "scuttle"           => scuttle_cmd::run(args, &ctx).await,
 
         _ => response(code::BADCMD, &format!("Unknown command: {cmd}")),
     }

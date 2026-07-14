@@ -1,0 +1,41 @@
+SCRAP
+  Destroy a ship, plane, or land unit and recover some of its build
+  materials into the sector it's standing in.
+
+SYNTAX
+  scrap s <ship-spec>
+  scrap p <plane-spec>
+  scrap l <land-spec>
+
+DESCRIPTION
+  Recovers 2/3 of the unit's LCM/HCM build cost, scaled by its current
+  efficiency, dumped into the sector it's in. Any cargo the unit is
+  carrying (ships, land units) spills into the sector too.
+
+  <ship-spec>/<plane-spec>/<land-spec> - uid, uid range, comma list,
+                 "*" for all owned, "~" for units with no fleet/wing/
+                 army assigned, or a fleet/wing/army letter (see
+                 'info fleetadd'/'info wingadd'/'info army').
+
+  Requirements depend on type:
+    ships       - must be in a friendly harbor at >=60% efficiency
+    planes      - must be in a friendly airfield at >=60% efficiency
+    land units  - must be in a friendly (same-owner) sector
+
+  This doesn't delete the underlying record -- it sets efficiency to
+  0%, same as any other destroyed unit. If the sector still has
+  LCM/HCM flowing to it, ordinary production will rebuild the unit
+  from scratch at the next update, exactly as it would a freshly laid
+  keel. If you don't want it coming back, scrap it somewhere without
+  spare LCM/HCM, or make sure the sector isn't distributing those in.
+
+  Use 'scuttle' instead if you don't care about recovering materials
+  and just want it gone regardless of where it is.
+
+EXAMPLE
+  scrap s 12                scrap ship 12 in its harbor
+  scrap p 5-8                scrap planes 5 through 8
+  scrap l a                 scrap every land unit in army 'a'
+
+SEE ALSO
+  scuttle  build  ship  plane  land  fleetadd  wingadd  army

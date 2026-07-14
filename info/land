@@ -34,4 +34,4 @@ EXAMPLE
   lnd 0-5                    land units 0 through 5
 
 SEE ALSO
-  ldump  build  ship  plane  fire  attack  army  lradar
+  ldump  build  ship  plane  fire  attack  army  lradar  scrap  scuttle

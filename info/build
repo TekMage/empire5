@@ -35,4 +35,4 @@ EXAMPLE
   show s b                  list all ship types and requirements
 
 SEE ALSO
-  show  ship  census  resource  designate  sector-types
+  show  ship  census  resource  designate  sector-types  scrap  scuttle

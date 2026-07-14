@@ -1,0 +1,39 @@
+SCUTTLE
+  Destroy a ship, plane, or land unit outright — no location or
+  efficiency requirement. See 'info scrap' for the alternative that
+  recovers build materials but only works in a friendly harbor/
+  airfield/sector.
+
+SYNTAX
+  scuttle s <ship-spec>
+  scuttle p <plane-spec>
+  scuttle l <land-spec>
+
+DESCRIPTION
+  Sets the unit's efficiency to 0% with no material recovery — usable
+  anywhere, friendly or not, any efficiency. Cargo aboard (ships, land
+  units) spills into the current sector if you still own it there;
+  otherwise it's lost with the unit.
+
+  <ship-spec>/<plane-spec>/<land-spec> - same forms as 'scrap' accepts.
+
+  Land units currently loaded onto a ship can't be scuttled — unload
+  them first.
+
+  v1 gap: in 4.4.1, scuttling a trade ship pays real cash scaled by
+  how far it's sailed from its origin port (the actual trade-ship
+  profit mechanic, separate from the opt_MARKET trading block). That
+  distance-based economy isn't ported yet, so scuttling a trade ship
+  here just destroys it for nothing, same as any other ship.
+
+  Like 'scrap', this doesn't delete the record, just zeroes
+  efficiency — see 'info scrap' for what that means if the sector can
+  still produce LCM/HCM.
+
+EXAMPLE
+  scuttle s 12               scuttle ship 12, wherever it is
+  scuttle p 9                scuttle plane 9
+  scuttle l 4                scuttle land unit 4 (must not be shipboard)
+
+SEE ALSO
+  scrap  build  ship  plane  land  fleetadd  wingadd  army

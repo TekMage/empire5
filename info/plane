@@ -27,4 +27,4 @@ EXAMPLE
   pln 0-5                    planes 0 through 5
 
 SEE ALSO
-  pdump  build  ship  land  wingadd  bomb  fly  launch  satellite  recon  load
+  pdump  build  ship  land  wingadd  bomb  fly  launch  satellite  recon  load  scrap  scuttle
