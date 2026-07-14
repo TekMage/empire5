@@ -50,13 +50,19 @@ All major game systems are implemented. The server is running live on **TekBot**
 | `navigate` | ✅ Ship navigation (direction string or X,Y destination) |
 | `attack` | ✅ Ground combat with att/def strength, tech bonus, takeover on win |
 | `bomb` / `fly` / `launch` / `mission` | ✅ Air combat — bomb, relocate planes, fire missiles, standing orders |
+| `fire` / `torpedo` | ✅ Ship/land/fort gunnery and submarine torpedo combat, no-miss shelling with return fire |
+| `satellite` / `launch` (orbital) / `lradar` | ✅ Launch and query orbital recon satellites; long-range radar via satellite |
+| `recon` / `sweep` | ✅ Multi-sector reconnaissance flight (SPY-vs-generic report per hex); sweep additionally clears naval mines |
+| `fleetadd` / `army` | ✅ Group ships/land units by letter, addressable from navigate/fire/torpedo/tend/march/attack |
+| `load` / `unload` (plane) | ✅ Put planes aboard (or off) a carrier or missile sub; `fly`/`recon`/`sweep` also land directly on a friendly carrier at the destination |
 | `sell` / `buy` / `trade` / `loan` | ✅ Commodity market and P2P lending |
 | `show` | ✅ Build cost/stat tables for sectors, ships, land units, planes, items |
 | `power` | ✅ Nation power rankings |
 | `news` | ✅ In-game news feed of recent world events |
+| `telegram` / `read` / `announce` | ✅ Player-to-player messages and broadcast announcements |
 | `add` / `capital` / `newcap` | ✅ Deity nation management |
 | `enable` / `disable` / `shutdown` | ✅ Deity server control |
-| `info` | ✅ 51 help pages including bridge and radar |
+| `info` | ✅ 76 help pages covering every implemented command |
 | `xdump` | ✅ Structured data export (nations, sectors, relations, ships, planes, units) |
 | `version` | ✅ Server version, world dimensions, ETU |
 | Docker deployment | ✅ Multi-stage Dockerfile, named volume, container running on TekBot |
@@ -77,7 +83,7 @@ empire5/
 ├── docker/
 │   ├── empire.toml            ← TekBot production config (96×64 world)
 │   └── entrypoint.sh          ← container startup script
-├── info/                      ← 49 official Empire help pages
+├── info/                      ← 76 official Empire help pages
 ├── migrations/                ← top-level SQLite migration scripts
 ├── reference/
 │   └── include/               ← original C headers (read-only reference)
@@ -192,9 +198,15 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `navigate` — ship navigation
 - [x] `attack` — ground combat
 - [x] `bomb` / `fly` / `launch` / `mission` — air operations
+- [x] `fire` / `torpedo` — ship/land/fort gunnery, submarine torpedoes
+- [x] `satellite` / `lradar` — orbital reconnaissance, long-range radar
+- [x] `recon` / `sweep` — multi-sector reconnaissance flight, minesweeping
+- [x] `fleetadd` / `army` — group ships/land units for letter-based targeting
+- [x] `load` / `unload` (plane) — put planes aboard carriers/missile subs
 - [x] `sell` / `buy` / `trade` / `loan` — market and finance
 - [x] `explore` — move civilians into adjacent wilderness to claim territory
 - [x] `move` — move commodities between owned sectors
+- [x] `telegram` / `read` / `announce` — player messaging and broadcasts
 
 ### Phase 6 — World Generator & Utilities ✅
 - [x] `empire-world` — full port of `fairland.c` (1,681 lines) + `files.c`
@@ -215,7 +227,7 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `docker/empire.toml` — production config: 96×64 world, 6 nations, 60 ETU
 - [x] `docker/entrypoint.sh` — auto-runs world gen on first start, then starts server
 - [x] Live deployment on TekBot (192.168.40.95:6665), 6 active player slots
-- [x] 49 official Wolfpack Empire info pages installed in `info/`
+- [x] 76 official Wolfpack Empire info pages installed in `info/`
 
 ### Phase 8 — Open Items
 - [ ] `resource` / `report` / `commodity` commands (stubs in dispatch; output incomplete)
@@ -245,10 +257,14 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] Radar command — sweep `)` sectors, tech-scaled range
 - [x] Production simulation — `prod` command
 - [x] News feed — `news` command with correct schema migration
-- [ ] Naval combat (board, torpedo, fire)
+- [x] Naval/land/fort gunnery and torpedo combat (`fire`, `torpedo`)
+- [x] Orbital reconnaissance and long-range radar (`satellite`, `lradar`)
+- [x] Fleet/army grouping for letter-based unit targeting (`fleetadd`, `army`)
+- [x] Multi-sector recon flights and naval minesweeping (`recon`, `sweep`)
+- [x] Carrier and missile-sub plane loading (`load`/`unload` plane, carrier landing on `fly`/`recon`/`sweep`)
+- [x] Telegrams / player messaging (`telegram`, `read`, `announce`)
 - [ ] Nuclear weapons: build, arm, launch, detonate, fallout
 - [ ] Standing missions firing during update
-- [ ] Telegrams / news feed
 - [ ] `edit` command (deity sector/nation/unit editing)
 
 ---
