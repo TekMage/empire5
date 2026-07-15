@@ -123,13 +123,51 @@ impl SectSpec {
 }
 
 /// Check if `v` is in the range [lo..=hi] with wrap-around at `wrap`.
-fn in_range_wrap(v: i16, lo: i16, hi: i16, wrap: i16) -> bool {
+/// `pub(crate)`: also used by plane_cmd.rs/ship_cmd.rs/land_cmd.rs for
+/// their own `?realm=N` filter (unit specs already use `#N` to mean
+/// "uid N" -- see plane_spec_matches et al -- so realm filtering for
+/// units is spelled `?realm=N` instead, to avoid `#N` meaning two
+/// different things depending on which command it's typed into).
+pub(crate) fn in_range_wrap(v: i16, lo: i16, hi: i16, wrap: i16) -> bool {
     if hi >= lo {
         v >= lo && v <= hi
     } else {
         // Wrapped range: lo..wrap + 0..hi
         v >= lo || v <= hi
     }
+}
+
+/// Split a unit spec into its base (uid/range/list/wildcard/letter) part
+/// and a `?key=value&key2=value2` condition suffix, used by
+/// plane_cmd.rs/ship_cmd.rs/land_cmd.rs for `?realm=N` and `?type=X`.
+pub(crate) fn parse_unit_filters(spec: &str) -> (&str, Vec<(&str, &str)>) {
+    match spec.split_once('?') {
+        Some((base, cond)) => {
+            let filters = cond.split('&')
+                .filter_map(|kv| kv.split_once('='))
+                .map(|(k, v)| (k.trim(), v.trim()))
+                .collect();
+            (base, filters)
+        }
+        None => (spec, Vec::new()),
+    }
+}
+
+/// Look up a realm by number from a parsed filter list, if a `realm=N`
+/// filter is present. Returns `Ok(None)` if there's no realm filter,
+/// `Err` if `realm=N` was given but isn't a valid/set realm number.
+pub(crate) async fn resolve_realm_filter(
+    filters: &[(&str, &str)], ctx: &CmdCtx<'_>,
+) -> Result<Option<empire_types::nation::Realm>, String> {
+    let Some((_, v)) = filters.iter().find(|(k, _)| *k == "realm") else {
+        return Ok(None);
+    };
+    let n: u16 = v.parse().map_err(|_| format!("Bad realm number: realm={v}"))?;
+    let realms = empire_db::nations::get_realms(ctx.db, ctx.cnum).await
+        .map_err(|e| format!("DB error: {e}"))?;
+    realms.into_iter().find(|r| r.realm == n)
+        .map(Some)
+        .ok_or_else(|| format!("Realm #{n} not set"))
 }
 
 fn parse_condition(cond: Option<&str>) -> Option<char> {

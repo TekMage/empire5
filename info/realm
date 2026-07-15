@@ -21,6 +21,12 @@ DESCRIPTION
   realm N.  You can combine a realm with a ?condition by appending
   it with no space: #1?des=m
 
+  'plane'/'ship'/'land' (the listing commands) can filter by realm
+  too, but spell it ?realm=N instead of #N -- those commands already
+  use #N to mean "uid N" (see 'info plane'/'info ship'/'info land'),
+  so realm filtering there is a separate ?realm=N suffix rather than
+  overloading '#'.
+
 SECTOR CONDITIONS
   A ?condition can be appended directly to any sector spec (no space).
   This filters sectors matched by the spec:
@@ -30,6 +36,10 @@ SECTOR CONDITIONS
                    ?des=h  (harbors),    ?des=f  (food factories)
 
   See 'info syntax' for the full list of designation letters.
+
+  plane/ship/land use ?realm=N/&type=X instead (see their info pages)
+  -- the suffix key names differ by command since sectors filter on
+  designation while units filter on realm and/or unit type.
 
 EXAMPLE
   realm 1 -5:5,-5:5         define realm 1 as area near capital
@@ -43,4 +53,4 @@ EXAMPLE
   distribute #2 4,6         point all realm 2 sectors to warehouse
 
 SEE ALSO
-  census  map  syntax  threshold  deliver  distribute
+  census  map  syntax  threshold  deliver  distribute  plane  ship  land

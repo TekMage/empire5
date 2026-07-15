@@ -14,18 +14,38 @@
 // Ported from: src/lib/commands/shi.c
 
 // "ship" command — list owned ships in human-readable table form.
-// Usage: ship [uid-spec]
-//   ship *           — all owned ships
-//   ship 0           — ship uid 0
-//   ship 0-5         — ships 0 through 5
+// Usage: ship [uid-spec][?realm=N][&type=X]
+//   ship *                 — all owned ships
+//   ship 0                 — ship uid 0
+//   ship 0-5               — ships 0 through 5
+//   ship a                 — every ship in fleet 'a'
+//   ship ~                 — ships with no fleet assigned
+//   ship *?realm=2         — all ships currently within realm 2's
+//                            bounding box (see 'info realm')
+//   ship *?type=can        — all ships of type 'can' (nuc carrier) --
+//                            matches sname or a case-insensitive
+//                            substring of the full name, e.g. "carrier"
+//   ship *?realm=2&type=can — both filters combined
+//
+// uid-spec uses the same grammar as navigate/fire/torpedo (see shpsub::
+// ship_spec_matches) -- #N there means "uid N", so realm filtering
+// uses a separate ?realm=N suffix instead of overloading '#'.
 
 use empire_db::ships;
 use empire_types::commodity::Item;
 use empire_types::ship_chr::ShipChr;
 use super::ctx::CmdCtx;
+use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
+use crate::subs::shpsub::ship_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
-    let spec = args.trim();
+    let (base_spec, filters) = parse_unit_filters(args.trim());
+
+    let realm = match resolve_realm_filter(&filters, ctx).await {
+        Ok(r) => r,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let type_filter = filters.iter().find(|(k, _)| *k == "type").map(|(_, v)| *v);
 
     let all = match ships::get_all(ctx.db).await {
         Ok(v) => v,
@@ -34,7 +54,19 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let mine: Vec<_> = all.into_iter()
         .filter(|s| s.own == ctx.cnum || ctx.is_deity)
-        .filter(|s| matches_ship(s.uid, spec))
+        .filter(|s| ship_spec_matches(base_spec, s))
+        .filter(|s| match &realm {
+            Some(r) => in_range_wrap(s.x, r.xl, r.xh, ctx.world_x as i16)
+                && in_range_wrap(s.y, r.yl, r.yh, ctx.world_y as i16),
+            None => true,
+        })
+        .filter(|s| match type_filter {
+            Some(t) => ShipChr::for_type(s.ship_type as usize)
+                .map(|c| c.sname.eq_ignore_ascii_case(t)
+                    || c.name.to_lowercase().contains(&t.to_lowercase()))
+                .unwrap_or(false),
+            None => true,
+        })
         .collect();
 
     let mut out = String::new();
@@ -67,15 +99,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     out.push_str(&format!("1 {n} ship{}\n", if n == 1 { "" } else { "s" }));
     out.push_str("0 ship\n");
     out
-}
-
-fn matches_ship(uid: i32, spec: &str) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Ok(n) = spec.parse::<i32>() { return uid == n; }
-    if let Some((lo, hi)) = spec.split_once('-') {
-        if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
-            return uid >= lo && uid <= hi;
-        }
-    }
-    true
 }

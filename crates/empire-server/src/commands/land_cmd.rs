@@ -14,18 +14,38 @@
 // Ported from: src/lib/commands/lan.c
 
 // "land" command — list owned land units in human-readable table form.
-// Usage: land [uid-spec]
-//   land *          — all owned land units
-//   land 0          — land unit uid 0
-//   land 0-5        — land units 0 through 5
+// Usage: land [uid-spec][?realm=N][&type=X]
+//   land *                — all owned land units
+//   land 0                — land unit uid 0
+//   land 0-5              — land units 0 through 5
+//   land a                — every unit in army 'a'
+//   land ~                — units with no army assigned
+//   land *?realm=2        — all units currently within realm 2's
+//                           bounding box (see 'info realm')
+//   land *?type=cav       — all units of type 'cav' (cavalry) --
+//                           matches sname or a case-insensitive
+//                           substring of the full name
+//   land *?realm=2&type=cav — both filters combined
+//
+// uid-spec uses the same grammar as march/attack/fire (see lndsub::
+// land_spec_matches) -- #N there means "uid N", so realm filtering
+// uses a separate ?realm=N suffix instead of overloading '#'.
 
 use empire_db::land_units;
 use empire_types::commodity::Item;
 use empire_types::land_chr::LandChr;
 use super::ctx::CmdCtx;
+use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
+use crate::subs::lndsub::land_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
-    let spec = args.trim();
+    let (base_spec, filters) = parse_unit_filters(args.trim());
+
+    let realm = match resolve_realm_filter(&filters, ctx).await {
+        Ok(r) => r,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let type_filter = filters.iter().find(|(k, _)| *k == "type").map(|(_, v)| *v);
 
     let all = match land_units::get_all(ctx.db).await {
         Ok(v) => v,
@@ -34,7 +54,19 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let mine: Vec<_> = all.into_iter()
         .filter(|u| u.own == ctx.cnum || ctx.is_deity)
-        .filter(|u| matches_uid(u.uid, spec))
+        .filter(|u| land_spec_matches(base_spec, u))
+        .filter(|u| match &realm {
+            Some(r) => in_range_wrap(u.x, r.xl, r.xh, ctx.world_x as i16)
+                && in_range_wrap(u.y, r.yl, r.yh, ctx.world_y as i16),
+            None => true,
+        })
+        .filter(|u| match type_filter {
+            Some(t) => LandChr::for_type(u.land_type as usize)
+                .map(|c| c.sname.eq_ignore_ascii_case(t)
+                    || c.name.to_lowercase().contains(&t.to_lowercase()))
+                .unwrap_or(false),
+            None => true,
+        })
         .collect();
 
     let mut out = String::new();
@@ -65,15 +97,4 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     out.push_str(&format!("1 {n} unit{}\n", if n == 1 { "" } else { "s" }));
     out.push_str("0 land\n");
     out
-}
-
-fn matches_uid(uid: i32, spec: &str) -> bool {
-    if spec.is_empty() || spec == "*" { return true; }
-    if let Ok(n) = spec.parse::<i32>() { return uid == n; }
-    if let Some((lo, hi)) = spec.split_once('-') {
-        if let (Ok(lo), Ok(hi)) = (lo.trim().parse::<i32>(), hi.trim().parse::<i32>()) {
-            return uid >= lo && uid <= hi;
-        }
-    }
-    true
 }

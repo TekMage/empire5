@@ -2,12 +2,28 @@ SHIP
   List your ships in a human-readable table.
 
 SYNTAX
-  ship [<ship-spec>]
-  shp  [<ship-spec>]
+  ship [<ship-spec>][?realm=N][&type=X]
+  shp  [<ship-spec>][?realm=N][&type=X]
 
 DESCRIPTION
   Displays a table of ships you own.  With no argument shows all
   your ships.
+
+  <ship-spec> - a uid, uid range, comma list, "*" for all, "~" for
+                ships with no fleet assigned, or a fleet letter (see
+                'info fleetadd').  Note that "#N" here means uid N
+                (not a realm), same as navigate/fire/torpedo.
+
+  Two optional filters can be appended after '?' (and combined with
+  '&'), matching the sector-spec '?condition' convention (info realm):
+
+    ?realm=N    - only ships currently within realm N's bounding box
+                  (see 'info realm'; ships use ?realm=N rather than
+                  #N, since #N already means "uid N" here)
+    ?type=X     - only ships of type X -- matches the short type
+                  code shown in 'show ship' (e.g. "can" for nuc
+                  carrier) or a case-insensitive substring of the
+                  full name (e.g. "carrier")
 
   Column meanings:
     shp#      - ship uid (used in load, unload, navigate, etc.)
@@ -32,6 +48,9 @@ EXAMPLE
   ship *                    all your ships
   ship 0                    ship number 0 only
   ship 0-5                  ships 0 through 5
+  ship *?realm=2            all ships within realm 2
+  ship *?type=can           all nuc carriers, wherever they are
+  ship *?realm=2&type=can   nuc carriers within realm 2 only
 
 SEE ALSO
-  sdump  build  navigate  load  unload  show  plane  land  fire  torpedo  fleetadd  scrap  scuttle
+  sdump  build  navigate  load  unload  show  plane  land  fire  torpedo  fleetadd  scrap  scuttle  realm

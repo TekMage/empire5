@@ -2,12 +2,27 @@ LAND
   List your land units in a human-readable table.
 
 SYNTAX
-  land [<uid-spec>]
-  lnd  [<uid-spec>]
+  land [<uid-spec>][?realm=N][&type=X]
+  lnd  [<uid-spec>][?realm=N][&type=X]
 
 DESCRIPTION
   Displays a table of land units you own.  With no argument shows
   all your land units.
+
+  <uid-spec>  - a uid, uid range, comma list, "*" for all, "~" for
+                units with no army assigned, or an army letter (see
+                'info army').  Note that "#N" here means uid N (not
+                a realm), same as march/attack/fire.
+
+  Two optional filters can be appended after '?' (and combined with
+  '&'), matching the sector-spec '?condition' convention (info realm):
+
+    ?realm=N    - only units currently within realm N's bounding box
+                  (see 'info realm'; units use ?realm=N rather than
+                  #N, since #N already means "uid N" here)
+    ?type=X     - only units of type X -- matches the short type
+                  code shown in 'show land' or a case-insensitive
+                  substring of the full name
 
   Column meanings:
     lnd#           - land unit uid
@@ -32,6 +47,9 @@ EXAMPLE
   land *                     all your land units
   lnd 0                      land unit number 0 only
   lnd 0-5                    land units 0 through 5
+  land *?realm=2             all units within realm 2
+  land *?type=cav            all cavalry, wherever they are
+  land *?realm=2&type=cav    cavalry within realm 2 only
 
 SEE ALSO
-  ldump  build  ship  plane  fire  attack  army  lradar  scrap  scuttle
+  ldump  build  ship  plane  fire  attack  army  lradar  scrap  scuttle  realm

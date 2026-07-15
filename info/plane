@@ -2,12 +2,31 @@ PLANE
   List your planes in a human-readable table.
 
 SYNTAX
-  plane [<uid-spec>]
-  pln   [<uid-spec>]
+  plane [<uid-spec>][?realm=N][&type=X]
+  pln   [<uid-spec>][?realm=N][&type=X]
 
 DESCRIPTION
   Displays a table of planes you own.  With no argument shows all
   your planes.
+
+  <uid-spec>  - a uid ("5"), a uid range ("0-5"), a comma list, "*"
+                for all, "~" for planes with no wing assigned, or a
+                single letter naming a wing (see 'info wingadd').
+                Same grammar 'fly'/'bomb'/'recon' accept -- note that
+                "#N" here means uid N (not a realm), same as those
+                commands.
+
+  Two optional filters can be appended after '?' (and combined with
+  '&'), matching the sector-spec '?condition' convention (info realm):
+
+    ?realm=N    - only planes currently within realm N's bounding box
+                  (see 'info realm' to define realms; unlike sector
+                  specs, planes use ?realm=N rather than #N, since #N
+                  already means "uid N" for plane/ship/land specs)
+    ?type=X     - only planes of type X -- matches the short type
+                  code shown in 'show plane' (e.g. "f35") or a
+                  case-insensitive substring of the full name (e.g.
+                  "raptor" matches "F-22 Raptor")
 
   Column meanings:
     pln#        - plane uid
@@ -25,6 +44,9 @@ EXAMPLE
   plane *                    all your planes
   pln 0                      plane number 0 only
   pln 0-5                    planes 0 through 5
+  plane *?realm=2            all planes within realm 2
+  plane *?type=f35           all F-35s, wherever they are
+  plane *?realm=2&type=f35   F-35s within realm 2 only
 
 SEE ALSO
-  pdump  build  ship  land  wingadd  bomb  fly  launch  satellite  recon  load  scrap  scuttle
+  pdump  build  ship  land  wingadd  bomb  fly  launch  satellite  recon  load  scrap  scuttle  realm
