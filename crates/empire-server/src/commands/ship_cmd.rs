@@ -31,11 +31,13 @@
 // ship_spec_matches) -- #N there means "uid N", so realm filtering
 // uses a separate ?realm=N suffix instead of overloading '#'.
 
-use empire_db::ships;
+use empire_db::{land_units, planes, ships};
 use empire_types::commodity::Item;
+use empire_types::plane_chr::PlaneChr;
 use empire_types::ship_chr::ShipChr;
 use super::ctx::CmdCtx;
 use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
+use crate::subs::shipcarry::{classify_plane, CarryBucket};
 use crate::subs::shpsub::ship_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -72,6 +74,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let mut out = String::new();
     out.push_str("1 shp#     ship type       x,y   fl   eff civ mil  uw  fd pn he xl ln mob tech\n");
 
+    let plane_chrs = PlaneChr::all();
     for s in &mine {
         let type_name = ShipChr::for_type(s.ship_type as usize)
             .map(|c| c.name)
@@ -85,12 +88,30 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         let uw   = s.items.get(Item::Uw);
         let food = s.items.get(Item::Food);
 
-        // Placeholder zero counts for planes/helicopters/xlight/land
-        // (full cargo tracking added when those unit types are populated)
+        // Planes/choppers/xlight aboard, classified the same way
+        // shipcarry's capacity buckets are (missiles count against the
+        // same "pn" fixed-wing pool they share capacity with). Land
+        // units aboard are a plain headcount.
+        let (mut pn, mut he, mut xl) = (0u32, 0u32, 0u32);
+        if let Ok(aboard) = planes::get_on_ship(ctx.db, s.uid).await {
+            for p in &aboard {
+                let Some(chr) = plane_chrs.get(p.plane_type as usize) else { continue };
+                match classify_plane(chr.flags) {
+                    Some(CarryBucket::Chopper) => he += 1,
+                    Some(CarryBucket::XLight) => xl += 1,
+                    Some(CarryBucket::Missile) | Some(CarryBucket::FixedWing) => pn += 1,
+                    None => {}
+                }
+            }
+        }
+        let ln = land_units::get_on_ship(ctx.db, s.uid).await
+            .map(|v| v.len()).unwrap_or(0);
+
         out.push_str(&format!(
-            "1 {:4}  {:16} {:4},{:<4} {}  {:3}% {:3} {:3} {:3} {:3}  0  0  0  0 {:3} {:4}\n",
+            "1 {:4}  {:16} {:4},{:<4} {}  {:3}% {:3} {:3} {:3} {:3} {:2} {:2} {:2} {:2} {:3} {:4}\n",
             s.uid, type_name, rx, ry, fl, s.effic,
             civ, mil, uw, food,
+            pn, he, xl, ln,
             s.mobil, s.tech,
         ));
     }
