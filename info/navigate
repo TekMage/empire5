@@ -28,6 +28,14 @@ DESCRIPTION
   travel with it — their position updates to wherever the ship ends up
   once the route completes.
 
+  Every ship passively sweeps terrain as it moves, revealing sectors
+  within its type's visual range (bigger/newer hulls see farther) —
+  no radar sector or 'radar' command needed. This is the same
+  fog-of-war intel that 'map'/'bmap' draw on, so sailing a ship out
+  past your own coastline is how you find unclaimed land to colonize
+  (via 'explore' once you're adjacent, or 'assault' to take it by
+  force — see 'info explore'/'info assault').
+
   'v' does not move the ship and costs no mobility -- it just reports
   the CURRENT sector's contents relevant to the ship's capabilities:
     - oil exploration boats and oil derricks show [oil:N] (the sea
@@ -45,4 +53,4 @@ EXAMPLE
   navigate 0 vjjv           report here, move 2 hexes right, report there
 
 SEE ALSO
-  ship  load  unload  tend  fleetadd  build  btu
+  ship  load  unload  tend  fleetadd  build  btu  map  radar  explore  assault

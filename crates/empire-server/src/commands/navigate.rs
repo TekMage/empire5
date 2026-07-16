@@ -35,7 +35,7 @@
 // completes, matching the ship itself only persisting once at the
 // end rather than per intermediate step.
 
-use empire_db::{planes, sectors, ships};
+use empire_db::{bmap, planes, sectors, ships};
 use empire_types::coords::Coord;
 use empire_types::sector::SectorType;
 use empire_types::sector_chr::SectorChr;
@@ -44,6 +44,7 @@ use crate::subs::geo::{DIROFF, DIRCH, DIR_FIRST, DIR_LAST, x_norm, y_norm, dir_f
 use crate::subs::pathfind::find_path;
 use crate::subs::shpsub::ship_spec_matches;
 use super::ctx::CmdCtx;
+use super::radar_cmd::{build_coord_map, sweep_bmap};
 use super::sector_sel::parse_rel_xy;
 
 /// Sentinel pushed into the direction sequence for a 'v' token — "view the
@@ -63,6 +64,11 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
     };
+    let all_sectors = match sectors::get_all(ctx.db).await {
+        Ok(v) => v,
+        Err(e) => return format!("10 database error: {e}\n"),
+    };
+    let coord_map = build_coord_map(&all_sectors);
 
     let mut out = String::new();
     let mut processed = 0u32;
@@ -95,6 +101,22 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
                 ctx.format_xy(ship.x, ship.y),
             ));
             continue;
+        }
+
+        // Passive terrain reveal: every ship sweeps from its own position
+        // using its type's visual range, mirroring 4.4.1's unit_rad_map_set()
+        // (called both before movement and after each step in unit_move()).
+        // No radar sector required — see sweep_bmap() in radar_cmd.rs.
+        let spy = ShipChr::for_type(ship.ship_type as usize)
+            .map(|c| c.vrnge as f64)
+            .unwrap_or(0.0);
+        let mut bm = bmap::get_bmap(ctx.db, ship.own, ctx.world_x as usize, ctx.world_y as usize)
+            .await
+            .ok();
+        if let Some(b) = bm.as_mut() {
+            sweep_bmap(&coord_map, &all_sectors, ship.x, ship.y,
+                ship.effic, ship.tech as f64, spy, ship.own,
+                ctx.world_x, ctx.world_y, b);
         }
 
         let mut path_taken: Vec<char> = Vec::new();
@@ -146,6 +168,16 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             ship.x = nx;
             ship.y = ny;
             path_taken.push(DIRCH[dir_idx as usize]);
+
+            if let Some(b) = bm.as_mut() {
+                sweep_bmap(&coord_map, &all_sectors, ship.x, ship.y,
+                    ship.effic, ship.tech as f64, spy, ship.own,
+                    ctx.world_x, ctx.world_y, b);
+            }
+        }
+
+        if let Some(b) = bm.as_ref() {
+            let _ = bmap::put_bmap(ctx.db, ship.own, b).await;
         }
 
         if !path_taken.is_empty() {

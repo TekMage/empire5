@@ -194,7 +194,7 @@ pub(crate) fn render_radar_sweep(
 ///   own sectors, water, mountain, wasteland: always show actual mnemonic
 ///   within range/3: show actual mnemonic
 ///   otherwise: '?'
-fn radar_char(s: &Sector, dist: i32, range: i32, cnum: u8) -> char {
+pub(crate) fn radar_char(s: &Sector, dist: i32, range: i32, cnum: u8) -> char {
     if s.own == cnum
         || s.sector_type == SectorType::Sea
         || s.sector_type == SectorType::Mountain
@@ -205,6 +205,47 @@ fn radar_char(s: &Sector, dist: i32, range: i32, cnum: u8) -> char {
     } else {
         '?'
     }
+}
+
+/// Silently sweep terrain into `bm` centered at (cx,cy) — same range and
+/// visibility rule as `render_radar_sweep`, but with no textual output.
+/// Used by ship navigation to passively reveal terrain as a ship moves,
+/// mirroring 4.4.1's rad_map_set() (called via unit_rad_map_set() from
+/// unit_move() in unitsub.c) — every ship sweeps from its own position
+/// using its type's visual range (m_vrnge/ShipChr::vrnge) as "spy" power,
+/// no dedicated radar sector required.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn sweep_bmap(
+    coord_map: &HashMap<(Coord, Coord), usize>,
+    all_sectors: &[Sector],
+    cx: Coord, cy: Coord,
+    effic: i8, tech: f64, spy: f64,
+    owner: u8,
+    world_x: i32, world_y: i32,
+    bm: &mut Bmap,
+) {
+    let range = radar_range(effic, tech, spy);
+    let disp_lx = x_norm(cx - (2 * range) as Coord, world_x);
+    let disp_ly = y_norm(cy - range as Coord, world_y);
+    let disp_w = (4 * range + 1).min(world_x) as usize;
+    let disp_h = (2 * range + 1).min(world_y) as usize;
+
+    for row in 0..disp_h {
+        let abs_y = y_norm(disp_ly + row as Coord, world_y);
+        for col in 0..disp_w {
+            let abs_x = x_norm(disp_lx + col as Coord, world_x);
+            if (abs_x as i32 + abs_y as i32) % 2 != 0 { continue; }
+            let dist = map_dist(cx, cy, abs_x, abs_y, world_x, world_y);
+            if dist > range { continue; }
+            let ch = if let Some(&si) = coord_map.get(&(abs_x, abs_y)) {
+                radar_char(&all_sectors[si], dist, range, owner)
+            } else {
+                '.'
+            };
+            bm.set(abs_x, abs_y, ch as u8);
+        }
+    }
+    bm.set(cx, cy, b'0');
 }
 
 pub(crate) fn render_radar_border(out: &mut String, rel_lx: i32, width: usize, world_x: i32) {
