@@ -3,8 +3,8 @@ FLEETADD
   designation on navigate, fire, torpedo, and tend.
 
 SYNTAX
-  fleetadd <fleet-letter> <ship-spec>
-  fleet    <fleet-letter> <ship-spec>
+  fleetadd <fleet-letter> <ship-spec>[?realm=N][&type=X]
+  fleet    <fleet-letter> <ship-spec>[?realm=N][&type=X]
 
 DESCRIPTION
   Sets the fleet letter on every owned ship matching <ship-spec>.
@@ -25,6 +25,13 @@ DESCRIPTION
                       "c"        every ship currently in fleet c
                                  (lets you rename/merge a fleet)
 
+  <ship-spec> also accepts the same ?realm=N/&type=X suffix filters
+  as 'ship' (see 'info ship'/'info realm'):
+    ?realm=N    only ships currently within realm N's bounding box
+    ?type=X     only ships of type X -- matches the short type code
+                (e.g. "can" for nuc carrier) or a substring of the
+                full name
+
   Fleet assignment has no effect on efficiency, mobility, or combat
   strength — it is purely an organizational grouping, same as wings
   for planes.
@@ -41,10 +48,11 @@ EXAMPLE
   fleetadd d ~                 put all unassigned ships into fleet d
   fleetadd e c                 rename/merge fleet c's ships into fleet e
   fleetadd ~ c                 clear fleet c's ships back to unassigned
+  fleetadd c *?realm=2&type=can   put your nuc carriers in realm 2 into fleet c
   navigate c jjn                move every ship in fleet c three steps
   fire ship c ship 12           every ship in fleet c fires on ship 12
   torpedo c 12                  every ship in fleet c torpedoes ship 12
   tend oil c 200 15             fleet c tenders 200 oil to ship 15
 
 SEE ALSO
-  ship  wingadd  army  navigate  fire  torpedo  tend  build
+  ship  wingadd  army  navigate  fire  torpedo  tend  realm  build

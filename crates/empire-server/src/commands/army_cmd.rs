@@ -30,11 +30,17 @@
 // restricted here to your own units only, same as fleetadd. Since
 // empire5 has no retreat-execution engine yet, this inheritance is inert
 // data-only for now.
+//
+// UNIT-SPEC also accepts the same ?realm=N/&type=X suffix filters as
+// 'land' (see 'info land'/'info realm'), e.g.:
+//   army c *?realm=2&type=cav   put your cavalry in realm 2 into army c
 
 use empire_db::land_units;
+use empire_types::land_chr::LandChr;
 use empire_types::ship::RetreatFlags;
 
 use super::ctx::CmdCtx;
+use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
 use crate::subs::lndsub::land_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -44,7 +50,12 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
 
     let letter_arg = parts[0];
-    let unit_spec = parts[1];
+    let (unit_spec, filters) = parse_unit_filters(parts[1]);
+    let realm = match resolve_realm_filter(&filters, ctx).await {
+        Ok(r) => r,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let type_filter = filters.iter().find(|(k, _)| *k == "type").map(|(_, v)| *v);
 
     let new_army = if letter_arg == "~" {
         ' '
@@ -63,6 +74,18 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let target_uids: Vec<i32> = all_units.iter()
         .filter(|u| u.own == ctx.cnum && land_spec_matches(unit_spec, u))
+        .filter(|u| match &realm {
+            Some(r) => in_range_wrap(u.x, r.xl, r.xh, ctx.world_x as i16)
+                && in_range_wrap(u.y, r.yl, r.yh, ctx.world_y as i16),
+            None => true,
+        })
+        .filter(|u| match type_filter {
+            Some(t) => LandChr::for_type(u.land_type as usize)
+                .map(|c| c.sname.eq_ignore_ascii_case(t)
+                    || c.name.to_lowercase().contains(&t.to_lowercase()))
+                .unwrap_or(false),
+            None => true,
+        })
         .map(|u| u.uid)
         .collect();
 

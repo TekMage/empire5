@@ -3,8 +3,8 @@ ARMY
   group designation on march, attack, and fire.
 
 SYNTAX
-  army <army-letter> <unit-spec>
-  armyadd <army-letter> <unit-spec>
+  army <army-letter> <unit-spec>[?realm=N][&type=X]
+  armyadd <army-letter> <unit-spec>[?realm=N][&type=X]
 
 DESCRIPTION
   Sets the army letter on every owned land unit matching <unit-spec>.
@@ -26,6 +26,12 @@ DESCRIPTION
                     "c"        every unit currently in army c
                                (lets you rename/merge an army)
 
+  <unit-spec> also accepts the same ?realm=N/&type=X suffix filters
+  as 'land' (see 'info land'/'info realm'):
+    ?realm=N    only units currently within realm N's bounding box
+    ?type=X     only units of type X -- matches the short type code
+                or a substring of the full name
+
   Army assignment has no effect on efficiency, mobility, or combat
   strength — it is purely an organizational grouping, same as wings
   for planes and fleets for ships.
@@ -42,9 +48,10 @@ EXAMPLE
   army d ~                    put all unassigned units into army d
   army e c                    rename/merge army c's units into army e
   army ~ c                    clear army c's units back to unassigned
+  army c *?realm=2&type=cav   put your cavalry in realm 2 into army c
   march c jjn                 march every unit in army c three steps
   attack 4,2 c                attack sector 4,2 with every unit in army c
   fire land c sect 1,0        every unit in army c shells sector 1,0
 
 SEE ALSO
-  land  wingadd  fleetadd  march  attack  fire  lradar  build
+  land  wingadd  fleetadd  march  attack  fire  lradar  realm  build

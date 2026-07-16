@@ -3,8 +3,8 @@ WINGADD
   designation on bomb and fly missions.
 
 SYNTAX
-  wingadd <wing-letter> <plane-spec>
-  wing    <wing-letter> <plane-spec>
+  wingadd <wing-letter> <plane-spec>[?realm=N][&type=X]
+  wing    <wing-letter> <plane-spec>[?realm=N][&type=X]
 
 DESCRIPTION
   Sets the wing letter on every owned plane matching <plane-spec>.
@@ -24,6 +24,12 @@ DESCRIPTION
                     "c"        every plane currently in wing c
                                (lets you rename/merge a wing)
 
+  <plane-spec> also accepts the same ?realm=N/&type=X suffix filters
+  as 'plane' (see 'info plane'/'info realm'):
+    ?realm=N    only planes currently within realm N's bounding box
+    ?type=X     only planes of type X -- matches the short type code
+                (e.g. "f35") or a substring of the full name
+
   Wing assignment has no effect on efficiency, mobility, or combat —
   it is purely an organizational grouping.
 
@@ -33,8 +39,9 @@ EXAMPLE
   wingadd d ~                put all unassigned planes into wing d
   wingadd e c                rename/merge wing c's planes into wing e
   wingadd ~ c                clear wing c's planes back to unassigned
+  wingadd e *?realm=2&type=f35   put your F-35s in realm 2 into wing e
   bomb c 4,2 s               bomb sector 4,2 with every plane in wing c
   fly c -3,1                 fly every plane in wing c to -3,1
 
 SEE ALSO
-  plane  bomb  fly  fleetadd  army  build
+  plane  bomb  fly  fleetadd  army  realm  build

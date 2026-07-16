@@ -18,17 +18,23 @@
 // "wingadd" command — assign a group of planes to a wing letter, so the
 // wing letter can later be used as a PLANE-SPEC on bomb/fly missions.
 //
-// Usage: wingadd WING-LETTER PLANE-SPEC
+// Usage: wingadd WING-LETTER PLANE-SPEC[?realm=N][&type=X]
 //
 // WING-LETTER: a single letter (a-z/A-Z) to name the wing, or "~" to
 // clear the wing assignment (put the planes back in the null wing).
 // PLANE-SPEC: any spec accepted by bomb/fly — "*", a uid, a uid range
 // ("0-5"), a comma list, "~" (planes with no wing), or another wing
 // letter (merges/renames that wing's planes into the new one).
+//
+// PLANE-SPEC also accepts the same ?realm=N/&type=X suffix filters as
+// 'plane' (see 'info plane'/'info realm'), e.g.:
+//   wingadd e *?realm=2&type=f35   put your F-35s in realm 2 into wing e
 
 use empire_db::planes;
+use empire_types::plane_chr::PlaneChr;
 
 use super::ctx::CmdCtx;
+use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
 use crate::subs::plnsub::plane_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -38,7 +44,12 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
 
     let letter_arg = parts[0];
-    let plane_spec = parts[1];
+    let (plane_spec, filters) = parse_unit_filters(parts[1]);
+    let realm = match resolve_realm_filter(&filters, ctx).await {
+        Ok(r) => r,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let type_filter = filters.iter().find(|(k, _)| *k == "type").map(|(_, v)| *v);
 
     let new_wing = if letter_arg == "~" {
         ' '
@@ -58,6 +69,18 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let selected: Vec<_> = all_planes
         .into_iter()
         .filter(|p| p.own == ctx.cnum && plane_spec_matches(plane_spec, p))
+        .filter(|p| match &realm {
+            Some(r) => in_range_wrap(p.x, r.xl, r.xh, ctx.world_x as i16)
+                && in_range_wrap(p.y, r.yl, r.yh, ctx.world_y as i16),
+            None => true,
+        })
+        .filter(|p| match type_filter {
+            Some(t) => PlaneChr::for_type(p.plane_type as usize)
+                .map(|c| c.sname.eq_ignore_ascii_case(t)
+                    || c.name.to_lowercase().contains(&t.to_lowercase()))
+                .unwrap_or(false),
+            None => true,
+        })
         .collect();
 
     if selected.is_empty() {

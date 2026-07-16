@@ -31,11 +31,18 @@
 // nation lookup at that step reads as an oversight rather than intent).
 // Since empire5 has no retreat-execution engine yet, this inheritance is
 // inert data-only for now, same as the fields themselves.
+//
+// SHIP-SPEC also accepts the same ?realm=N/&type=X suffix filters as
+// 'ship' (see 'info ship'/'info realm'), e.g.:
+//   fleetadd c *?realm=2&type=can   put your nuc carriers in realm 2
+//                                   into fleet c
 
 use empire_db::ships;
 use empire_types::ship::RetreatFlags;
+use empire_types::ship_chr::ShipChr;
 
 use super::ctx::CmdCtx;
+use super::sector_sel::{in_range_wrap, parse_unit_filters, resolve_realm_filter};
 use crate::subs::shpsub::ship_spec_matches;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
@@ -45,7 +52,12 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     }
 
     let letter_arg = parts[0];
-    let ship_spec = parts[1];
+    let (ship_spec, filters) = parse_unit_filters(parts[1]);
+    let realm = match resolve_realm_filter(&filters, ctx).await {
+        Ok(r) => r,
+        Err(e) => return format!("10 {e}\n"),
+    };
+    let type_filter = filters.iter().find(|(k, _)| *k == "type").map(|(_, v)| *v);
 
     let new_fleet = if letter_arg == "~" {
         ' '
@@ -64,6 +76,18 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
     let target_uids: Vec<i32> = all_ships.iter()
         .filter(|s| s.own == ctx.cnum && ship_spec_matches(ship_spec, s))
+        .filter(|s| match &realm {
+            Some(r) => in_range_wrap(s.x, r.xl, r.xh, ctx.world_x as i16)
+                && in_range_wrap(s.y, r.yl, r.yh, ctx.world_y as i16),
+            None => true,
+        })
+        .filter(|s| match type_filter {
+            Some(t) => ShipChr::for_type(s.ship_type as usize)
+                .map(|c| c.sname.eq_ignore_ascii_case(t)
+                    || c.name.to_lowercase().contains(&t.to_lowercase()))
+                .unwrap_or(false),
+            None => true,
+        })
         .map(|s| s.uid)
         .collect();
 
