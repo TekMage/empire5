@@ -30,7 +30,9 @@ pub enum NewsVerb {
     SctShell     = 10,  // N_SCT_SHELL  — gunners bombard a sector
     ShpShell     = 11,  // N_SHP_SHELL  — shells a ship
     TookUnocc    = 12,  // N_TOOK_UNOCC — takes unoccupied land
+    ShpBomb      = 17,  // N_SHP_BOMB   — planes bomb a ship
     SctBomb      = 16,  // N_SCT_BOMB   — planes bomb a sector
+    SubBomb      = 53,  // N_SUB_BOMB   — planes bomb a submarine
     Launch       = 40,  // N_LAUNCH     — launches a satellite into orbit
     ShipTorp     = 52,  // N_SHIP_TORP  — ship torpedoed
     DeclAlly     = 26,  // N_DECL_ALLY  — announces alliance
@@ -89,6 +91,8 @@ impl NewsVerb {
             11 => Self::ShpShell,
             12 => Self::TookUnocc,
             16 => Self::SctBomb,
+            17 => Self::ShpBomb,
+            53 => Self::SubBomb,
             40 => Self::Launch,
             52 => Self::ShipTorp,
             26 => Self::DeclAlly,
@@ -110,7 +114,8 @@ impl NewsVerb {
     pub fn page(self) -> NewsPage {
         match self {
             Self::WonSect | Self::SctLose | Self::TookUnocc | Self::SctShell => NewsPage::FrontLine,
-            Self::AwonSect | Self::AloseSct | Self::ShpShell | Self::ShipTorp => NewsPage::Sea,
+            Self::AwonSect | Self::AloseSct | Self::ShpShell | Self::ShipTorp
+                | Self::ShpBomb | Self::SubBomb                => NewsPage::Sea,
             Self::SentTel                                   => NewsPage::Telecom,
             Self::SctBomb | Self::Launch                    => NewsPage::Sky,
             _ /* declare / relations */                     => NewsPage::Foreign,
@@ -125,6 +130,8 @@ impl NewsVerb {
             Self::SentTel      =>  1,
             Self::TookUnocc    =>  0,
             Self::SctBomb      => -2,
+            Self::ShpBomb      => -2,
+            Self::SubBomb      =>  0,
             Self::Launch       =>  0,
             Self::SctShell     => -2,
             Self::ShpShell     => -2,
@@ -158,6 +165,10 @@ impl NewsVerb {
                                    "attacks unowned land for some reason"),
             Self::SctBomb      => ("planes dive-bomb one of %s's sectors",
                                    "bombers wreak havoc on %s"),
+            Self::ShpBomb      => ("dive-bombs a ship flying the flag of %s",
+                                   "air force bombs %s ships"),
+            Self::SubBomb      => ("planes bomb a skulking %s submarine",
+                                   "planes drop depth-charges on a %s sub"),
             Self::Launch       => ("launches a satellite into orbit",
                                    "continues its conquest of space with a successful launch"),
             Self::SctShell     => ("gunners bombard %s territory",

@@ -1,32 +1,72 @@
 BOMB
-  Order planes to bomb enemy or neutral sectors or ships.
+  Order planes to bomb an enemy or neutral sector, or pin-point a
+  specific ship sitting in one.
 
 SYNTAX
-  bomb <plane-spec> <target-x,y> <type>
+  bomb <plane-spec> <target-x,y> [<commodity>]
+  bomb <plane-spec> <target-x,y> ship <ship-uid>
 
 DESCRIPTION
-  Sends planes on a bombing mission against a target.  Planes must
-  be in an airfield within range of the target.
+  Sends planes on a bombing mission against a target sector. Planes
+  fly from wherever they're currently based, and must be within
+  range (see 'info fly'/'info wingadd' for how range/fuel work).
 
-  <plane-spec>  - plane uid ("5"), range ("0-5"), comma list ("2,14"),
-                  "*" for all eligible planes, "~" for planes with no
-                  wing assigned, or a single letter naming a wing
-                  (see 'info wingadd' to group planes into a wing)
-  <target-x,y>  - the target sector or ship location
-  <type>        - 's' for strategic (sector), 't' for tactical (units)
+  <plane-spec>   - plane uid ("5"), range ("0-5"), comma list ("2,14"),
+                   "*" for all eligible planes, "~" for planes with no
+                   wing assigned, or a single letter naming a wing
+                   (see 'info wingadd' to group planes into a wing)
+  <target-x,y>   - the target sector, player-relative coordinates
+  <commodity>    - accepted but not yet implemented (see KNOWN GAPS) --
+                   bombing always damages the sector's efficiency
+  <ship-uid>     - pin-point a specific ship sitting AT <target-x,y>
+                   instead of damaging the sector
 
-  Strategic bombing damages the sector's efficiency and stockpiles.
-  Tactical bombing targets land units and ships in the sector.
+  Any interceptors based near the target scramble first (see 'info
+  fly' for how interception/air combat resolves) -- planes that don't
+  survive that pass never reach the target and do no damage.
 
-  Planes use fuel (petrol) and suffer casualties based on AA
-  defenses and enemy interceptors.  Planes must return to base
-  after the mission; ensure the airfield is within range.
+  Sector bombing: total damage is the sum of surviving planes' bomb
+  loads (scaled by their own efficiency) times a random 0.5x-1.5x
+  multiplier, applied to the sector's efficiency.
 
-  Planes require at least 40% efficiency to fly.
+  Ship bombing ('ship <uid>'): same damage formula, but doubled --
+  pin-point bombing a single ship is more accurate than carpet-bombing
+  a whole sector, matching 4.4.1's precision-bombing bonus. You must
+  already know the ship's uid; if you don't, use 'satellite' or
+  'recon' with a SPY-flagged plane near it first (a plain 'sat' image
+  only shows a shape, not the owner or uid). The ship must currently
+  be sitting in <target-x,y> -- if it's moved, the mission fails
+  ("not spotted") rather than searching for it elsewhere.
+
+  A submarine can only be pin-pointed by a flight that includes at
+  least one ASW-capable plane -- non-ASW planes can't find it at all,
+  matching 4.4.1's asw_shipsatxy() gate.
+
+  Planes require at least 40% efficiency to fly, and burn fuel making
+  the trip.
+
+KNOWN GAPS (v1)
+  - The <commodity> argument is accepted for compatibility but has no
+    effect yet -- sector bombing always targets efficiency, never a
+    specific stockpiled commodity (4.4.1's 'c' bomb-what mode).
+  - No land-unit bombing mode yet (4.4.1's 'l' bomb-what mode).
+  - No flak: a targeted ship's own guns don't shoot back at the
+    bombers the way a fortress's guns do during 'fire'/navigate
+    gauntlet -- see 'info navigate' for the fort gauntlet that DOES
+    model return fire.
+  - No strategic/nuclear bombing mode (4.4.1's 's' mission distinct
+    from 'p' pinpoint) -- this command is 4.4.1's pinpoint bombing
+    only.
+  - Real 4.4.1 lets you target a sector without knowing what's there
+    in advance -- it lists the ships/planes/units present and lets
+    you pick interactively. This port requires the ship uid up front
+    since empire5 commands don't do multi-step interactive prompts.
 
 EXAMPLE
-  bomb * -3,2 s             all planes bomb sector -3,2 strategically
-  bomb 0-3 2,4 t            planes 0-3 do tactical bombing at 2,4
+  bomb * -3,2               all eligible planes bomb sector -3,2
+  bomb 0-3 2,4 ship 34       planes 0-3 pin-point bomb ship #34 at 2,4
+  bomb c 16,18 ship 21       wing c bombs ship #21 (needs ASW if it's a sub)
 
 SEE ALSO
-  fly  wingadd  launch  recon  mission  build  attack  fire  torpedo
+  fly  wingadd  launch  recon  satellite  mission  build  attack  fire
+  torpedo
