@@ -29,6 +29,7 @@ mod designate;
 mod threshold;
 mod relations_cmd;
 mod declare;
+mod toggle_cmd;
 mod sector_sel;
 mod add;
 mod capital;
@@ -140,6 +141,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
 
         "add"                       => add::run(args, &ctx).await,
         "capital"   | "capi"        => capital::run(args, &ctx).await,
+        "toggle"    | "togg"        => toggle_cmd::run(args, &ctx).await,
         "newcap"                    => capital::run_newcap(args, &ctx).await,
         "enable"    | "enab"        => enable::run_enable(&ctx).await,
         "disable"   | "disa"        => enable::run_disable(&ctx).await,

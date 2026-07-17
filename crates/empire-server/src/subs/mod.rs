@@ -30,3 +30,4 @@ pub mod satsub;
 pub mod aircombat;
 pub mod attsub;
 pub mod shipcarry;
+pub mod interdict;

@@ -20,9 +20,27 @@ DESCRIPTION
     g  left             y  upper-left
     h  stop (halt)      v  view oil/fertility at current sector
 
-  Ships can only pass through sea sectors or under bridges.
+  Ships can only pass through sea sectors, harbors, or under bridges.
+  A harbor needs >=2% efficiency before ships can enter it; a bridge
+  span needs >=60% (below threshold you're stuck at "under
+  construction," not permanently blocked -- come back after the
+  sector builds up more). Bridge navigability has nothing to do with
+  who owns the bridge -- any nation's ships, friendly or hostile, can
+  cross a sufficiently-built span someone else built.
   A ship at a harbor can load/unload using 'load' and 'unload'.
   Ships at sea recover mobility slowly each update.
+
+  Every step also runs the passive coastal-defense gauntlet: any
+  Fortress sector whose owner is Hostile (or At War) toward you, and
+  in gun range, opens fire automatically -- no attack command needed
+  on either side, and no radar/prior detection required to trigger
+  it (range and relations are the only gates). A hit halts the rest
+  of that navigate order for the ship, whether or not it sinks.
+  Separately, any nation with the coastwatch flag on (see 'info
+  toggle') gets a telegram if one of their sectors has you in vision
+  range, as long as their relation to you is Neutral or worse --
+  this is pure intel and never damages or stops you. Submarines are
+  invisible to both of these entirely.
 
   Any planes loaded aboard a carrier or missile sub (see 'info load')
   travel with it — their position updates to wherever the ship ends up

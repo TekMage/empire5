@@ -227,7 +227,7 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `docker/empire.toml` — production config: 96×64 world, 6 nations, 60 ETU
 - [x] `docker/entrypoint.sh` — auto-runs world gen on first start, then starts server
 - [x] Live deployment on TekBot (192.168.40.95:6665), 6 active player slots
-- [x] 76 official Wolfpack Empire info pages installed in `info/`
+- [x] 79 official Wolfpack Empire info pages installed in `info/`
 
 ### Phase 8 — Open Items
 - [ ] `resource` / `report` / `commodity` commands (stubs in dispatch; output incomplete)

@@ -1,0 +1,50 @@
+TOGGLE
+  Set or report your nation's behavior flags.
+
+SYNTAX
+  toggle
+  toggle <flag>
+  toggle <flag> on|off
+  togg   <flag> [on|off]
+
+DESCRIPTION
+  With no argument, reports the on/off status of every flag.
+  With just a flag name, flips it (on->off, off->on).
+  With a flag name and on/off, forces it to that state.
+
+  <flag> matches on the first letter too, same as 4.4.1 (e.g. "c" for
+  coastwatch).
+
+  FLAGS
+    inform      i   notify inline when a telegram arrives
+    flash       f   client-side hint: flash on incoming message
+    beep        b   client-side hint: beep on incoming message
+    coastwatch  c   sectors passively watch for foreign ships (below)
+    sonar       s   client-side hint: enable sonar-related alerts
+    techlists   t   client-side hint: show tech-transfer lists
+
+  Of these, only coastwatch currently changes server behavior. The
+  others are stored and reported for client use, matching their
+  mostly client-hint role in 4.4.1 -- toggling them costs nothing and
+  is safe to leave on.
+
+  COASTWATCH
+  When on, every owned sector passively reports sighting a foreign
+  ship within its vision range (baseline 4 hexes, or 14 for a radar
+  installation, tech/efficiency-scaled) -- as long as your relation
+  to that ship's owner is Neutral or worse. You get a telegram
+  ("<Nation> <ship type> sighted at X,Y") once per sighting nation
+  per step; it never reveals the ship's uid, only its owner and
+  type. This is purely informational and separate from whether a
+  fortress will actually fire on that ship (see 'info navigate' for
+  the fort auto-fire gauntlet, which is gated on Hostile relations,
+  not on coastwatch or any sighting at all).
+
+EXAMPLE
+  toggle                  show status of all six flags
+  toggle coastwatch       flip coastwatch
+  toggle c on             force coastwatch on
+  toggle coastwatch off   force coastwatch off
+
+SEE ALSO
+  navigate  relations  declare  fire  telegram

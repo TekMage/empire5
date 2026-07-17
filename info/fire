@@ -46,12 +46,25 @@ DESCRIPTION
   Friendly fire (hitting your own ship or sector) does not generate
   a news item.
 
+  This command is you deliberately ordering a firer to shoot -- it
+  does not check diplomatic relations at all (see 'info relations'),
+  so it will happily fire on anyone in range regardless of your
+  standing with them. That's separate from the PASSIVE fortress
+  auto-fire that runs automatically while a hostile ship navigates
+  near your fort (no 'fire' command needed on your part) -- see
+  'info navigate' for that gauntlet, which IS gated on Hostile
+  relations.
+
 KNOWN GAPS (v1)
   - No auto-resupply of shells from a nearby sector/warehouse before
     firing; a unit with 0 shells on hand simply can't fire.
   - Return fire is a single reprisal shot, not 4.4.1's full
     multi-defender pooled return fire from everyone in range.
   - Damaged ships/units do not automatically retreat.
+  - This command has no relations check (see above) -- 4.4.1 doesn't
+    gate the explicit 'fire' command on relations either, so this
+    matches, but combined with the gap above it means a fort can be
+    ordered to fire on a Friendly/Allied ship with no warning.
 
 EXAMPLE
   fire ship 3 ship 12          ship 3 fires on ship 12
@@ -61,4 +74,5 @@ EXAMPLE
   fire ship c ship 12          every ship in fleet c fires on ship 12
 
 SEE ALSO
-  torpedo  bomb  attack  ship  land  fleetadd  army  build
+  torpedo  bomb  attack  ship  land  fleetadd  army  build  navigate
+  relations  toggle
