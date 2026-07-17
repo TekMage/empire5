@@ -159,7 +159,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             }
         }
         if spy {
-            out.push_str(&format!("1   {count} sectors\n\n"));
+            out.push_str(&format!("1   {count} sectors\n1 \n"));
         }
     }
 
@@ -208,7 +208,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             }
         }
         if spy {
-            out.push_str(&format!("1   {count} ships\n\n"));
+            out.push_str(&format!("1   {count} ships\n1 \n"));
         }
     }
 
@@ -255,7 +255,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
             }
         }
         if spy {
-            out.push_str(&format!("1   {count} units\n\n"));
+            out.push_str(&format!("1   {count} units\n1 \n"));
         }
     }
 
