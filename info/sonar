@@ -1,0 +1,76 @@
+SONAR
+=====
+
+The sonar command is an active sweep from a sonar-equipped ship: it
+sweeps terrain like 'sradar' (a shorter-ranged formula, capped at 7
+hexes), and separately pings nearby ships — including submarines,
+which neither 'sradar' nor 'look' can ever find. If a pinged ship's
+owner has the sonar flag on (see 'info toggle'), they get a telegram
+telling them someone pinged them.
+
+COMMAND
+-------
+  sonar SHIP-SPEC     Sweep from ship(s) matching SHIP-SPEC
+  sonar *             Sweep from every eligible owned ship
+
+SHIP-SPEC accepts a uid, a uid range, a comma list, "*", "~", or a
+fleet letter.
+
+It's also available inline, mid-route, as the 's' token in a
+'navigate' command (ships only) — see 'info navigate'.
+
+ELIGIBILITY
+-----------
+  The ship's type must have sonar capability (not every ship does —
+  check 'show ship b' or the type's description). The ship must
+  currently be sitting in a sea sector.
+
+RANGE
+-----
+    range  = vrnge * (50 + tech) / (200 + tech)
+    srange = min(7, 7 * range * effic / 200)
+
+  Shorter and more tightly capped than 'sradar'/'radar' — sonar
+  trades reach for the ability to find submerged subs at all.
+
+WHAT YOU SEE
+------------
+  Terrain sweep: same display rules as 'radar' (actual mnemonic
+  within range/3, '?' beyond, own/sea/mountain/wasteland always
+  shown), rendered as a grid centered on your ship.
+
+  Ship pings: any foreign ship within ping range shows as "Sonar
+  detects Nation #N <shiptype> @ x,y" — except a HOSTILE-or-worse
+  submarine, which is partly or fully obscured depending on how your
+  ship's own visual range compares to the sub's stealth: sometimes
+  you only get "Sonar detects sub #N", sometimes just the ship type
+  with no nation, sometimes the full nation+type. A Friendly-or-
+  better sub is always shown in full, same as any other ship.
+
+  Ping range and terrain-sweep range are computed separately, so a
+  ship can sometimes be pinged (and its owner notified) slightly
+  outside the area actually rendered on your grid, or vice versa —
+  matches the original mechanic exactly.
+
+KNOWN GAPS (v1)
+---------------
+  4.4.1's sonar additionally requires an unobstructed all-water line
+  of sight to each contact — land, or another ship, blocks the ping.
+  Not modeled here; this is a plain radius sweep, same fidelity level
+  as 'radar'/'sradar'/'lradar'. Mine detection at very high tech is
+  also not ported — no mine-laying/sweeping mechanic exists in
+  empire5 yet at all (see 'info bomb' for the same gap noted against
+  the inline nav tokens).
+
+EXAMPLES
+--------
+  sonar *          Sweep from every eligible owned ship.
+  sonar 5          Sweep from ship 5 only.
+
+SEE ALSO
+--------
+  info sradar      Longer-range terrain sweep, no active pinging, no subs
+  info look        Short-range lookout from any ship, can't find subs either
+  info toggle      The sonar flag that gates ping notifications
+  info navigate    Ship movement, including the inline 'r'/'l'/'s' tokens
+  info relations   Diplomatic stance, which gates how much a sub sighting reveals

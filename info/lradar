@@ -79,6 +79,8 @@ KNOWN GAPS (v1)
 SEE ALSO
 --------
   info radar       The sector-sourced counterpart
+  info sradar      The ship-sourced counterpart
+  info llook       Short-range lookout from a land unit, no terrain sweep
   info satellite   Longer-range orbital recon, once a satellite is launched
   info army        Group land units so a letter selects the whole group
   info map         View your fog-of-war map

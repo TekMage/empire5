@@ -1,0 +1,56 @@
+LLOOK
+=====
+
+The llook ("llookout") command is a land unit's short-range "eyes on
+the ground" check — the land-unit counterpart to 'look'/'lookout'
+(ships, see 'info look'). It reveals the 7 hexes immediately around
+the unit (itself plus its 6 neighbors, land only), and separately
+reports any foreign land units and grounded planes nearby.
+
+COMMAND
+-------
+  llook UNIT-SPEC     Look out from unit(s) matching UNIT-SPEC
+  llookout UNIT-SPEC  Same command, long name
+  llook *             Look out from every eligible owned unit
+  llook c             Look out from every unit in army c
+
+UNIT-SPEC accepts a uid, a uid range, a comma list, "*", "~" (units
+with no army assigned), or a single letter naming an army.
+
+ELIGIBILITY
+-----------
+  The unit needs at least 1 militia aboard to look out, UNLESS it's a
+  spy-flagged unit (spies don't need militia). It must not be stowed
+  on a ship or another land unit.
+
+WHAT IT SHOWS
+-------------
+  1. The 7-hex patch around the unit (self + 6 neighbors), for any
+     non-water tile — same as 'look', see 'info look' for the exact
+     ownership/rounding rules. Updates your bmap for those tiles.
+
+  2. Any foreign land unit within visual range: "Nation #N <type>
+     (approx N mil) @ x,y" — militia count is always shown rounded
+     to the nearest 20, never exact, even for your own recon. Spy
+     units are only sometimes detected (worse odds the more efficient
+     the spy is).
+
+  3. Any foreign plane within visual range, as long as it's grounded
+     (not stowed on a ship/unit, not currently on a mission):
+     "Nation #N <planetype> @ x,y".
+
+  Range depends on your unit's own spy stat (a per-type constant,
+  tech-scaled) and current efficiency. Target land units additionally
+  use their own type's visibility stat; planes use a fixed value.
+
+EXAMPLES
+--------
+  llook *          Look out from every eligible owned unit.
+  llook 5          Look out from unit 5 only.
+  llook c          Look out from every unit in army c.
+
+SEE ALSO
+--------
+  info look        The ship counterpart
+  info lradar      Longer-range terrain sweep, no enemy-unit detail
+  info army        Group land units so a letter selects the whole group

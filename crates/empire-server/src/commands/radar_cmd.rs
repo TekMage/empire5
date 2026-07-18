@@ -114,7 +114,8 @@ pub(crate) fn radar_range(eff: i8, tech: f64, spy: f64) -> i32 {
 }
 
 /// Render one radar sweep centered at (cx,cy) into `out`, updating `bm`.
-/// Shared by `radar` (sector-sourced) and `lradar` (land-unit-sourced).
+/// Shared by `radar` (sector-sourced), `lradar` (land-unit-sourced), and
+/// `sradar` (ship-sourced) -- all three use the same radar range formula.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn render_radar_sweep(
     ctx: &CmdCtx<'_>,
@@ -127,12 +128,31 @@ pub(crate) fn render_radar_sweep(
     out: &mut String,
     bm: &mut Bmap,
 ) {
+    let range = radar_range(effic, tech, spy);
+    render_sweep_grid(ctx, all_sectors, coord_map, cx, cy, range, effic, "Radar", out, bm);
+}
+
+/// Render one sweep grid centered at (cx,cy) into `out`, updating `bm`, for
+/// an already-computed `range` -- the part `render_radar_sweep` and
+/// `sonar`'s different range formula both need. `label` is purely cosmetic
+/// ("Radar"/"Sonar" in the header line).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn render_sweep_grid(
+    ctx: &CmdCtx<'_>,
+    all_sectors: &[Sector],
+    coord_map: &HashMap<(Coord, Coord), usize>,
+    cx: Coord, cy: Coord,
+    range: i32,
+    effic: i8,
+    label: &str,
+    out: &mut String,
+    bm: &mut Bmap,
+) {
     let wx = ctx.world_x;
     let wy = ctx.world_y;
-    let range = radar_range(effic, tech, spy);
 
     out.push_str(&format!(
-        "1 Radar at {} efficiency {}%, max range {}\n",
+        "1 {label} at {} efficiency {}%, max range {}\n",
         ctx.format_xy(cx, cy), effic, range
     ));
 

@@ -19,6 +19,8 @@ DESCRIPTION
     n  lower-right      b  lower-left
     g  left             y  upper-left
     h  stop (halt)      v  view oil/fertility at current sector
+    r  radar sweep here (no move)   l  lookout here (no move)
+    s  sonar sweep here (no move, ships only, needs sonar capability)
 
   Ships can only pass through sea sectors, harbors, or under bridges.
   A harbor needs >=2% efficiency before ships can enter it; a bridge
@@ -63,12 +65,39 @@ DESCRIPTION
   Sail an oil exploration boat around checking 'v' at each stop to find
   a rich spot before committing a slower, pricier oil derrick to it.
 
+  'r'/'l'/'s' are the same trick: take a sensing reading mid-route
+  without ending the move or spending mobility, then keep going --
+  sail a couple of hexes, check radar, continue, all in one command.
+    - 'r' runs a radar sweep from the ship's current position (same
+      as standalone 'sradar' -- see 'info sradar'), using whatever
+      terrain-reveal bmap this route is already updating.
+    - 'l' runs a lookout from the current position (same as
+      standalone 'look' -- see 'info look'): the immediate 7-hex
+      patch plus any foreign ships in visual range.
+    - 's' runs a sonar sweep (same as standalone 'sonar' -- see
+      'info sonar'), but only works if the ship type has sonar
+      capability and is currently in open water; otherwise it just
+      reports that it can't, and the route continues.
+
+  KNOWN GAPS (v1): 4.4.1 also has 'M'/'B' (map/bmap of the area),
+  'i' (list every ship in the convoy), 'f' (switch which ship leads
+  the route), and 'd'/'m' (drop/sweep mines) as inline tokens. 'M'/'B'
+  are just the standalone 'map'/'bmap' commands, already reachable
+  outside a route. 'i'/'f' don't have a clean equivalent here --
+  4.4.1 moves a whole convoy behind one leader ship, whereas this
+  port moves each matching ship through the route independently, so
+  there's no single "convoy" to list or switch leadership within.
+  'd'/'m' aren't ported because no mine-laying/sweeping mechanic
+  exists in empire5 at all yet.
+
 EXAMPLE
   navigate 0 jjjj           move ship 0 four sectors east
   navigate * h              halt all ships (stop in place)
   navigate 0 njjju          curved path south then northeast
   navigate 0 uuv            move ship 0 two hexes, then report oil/fert there
   navigate 0 vjjv           report here, move 2 hexes right, report there
+  navigate 0 jjrjjl         move 2 east, radar, move 2 more, look
 
 SEE ALSO
-  ship  load  unload  tend  fleetadd  build  btu  map  radar  explore  assault
+  ship  load  unload  tend  fleetadd  build  btu  map  radar  sradar
+  lradar  look  llook  sonar  explore  assault

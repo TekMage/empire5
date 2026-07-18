@@ -42,16 +42,28 @@ use empire_types::sector_chr::SectorChr;
 use empire_types::ship_chr::{ShipChr, ShipChrFlags};
 use crate::subs::geo::{DIROFF, DIRCH, DIR_FIRST, DIR_LAST, x_norm, y_norm, dir_from_char};
 use crate::subs::interdict;
+use crate::subs::lookout::{look_neighbors, look_ship_contacts};
 use crate::subs::pathfind::find_path;
 use crate::subs::shpsub::ship_spec_matches;
 use super::ctx::CmdCtx;
-use super::radar_cmd::{build_coord_map, sweep_bmap};
+use super::radar_cmd::{build_coord_map, render_radar_sweep, sweep_bmap};
 use super::sector_sel::parse_rel_xy;
+use super::sonar_cmd::{is_sonar_eligible, sonar_sweep_one};
 
-/// Sentinel pushed into the direction sequence for a 'v' token — "view the
-/// current sector's oil/fertility without moving," matching 4.4.1's
-/// unit_view(). Not a real direction, so it's outside the 1-6 range.
+/// Sentinels pushed into the direction sequence for non-directional route
+/// tokens — inline sensing/status checks that don't move the ship or cost
+/// mobility, matching 4.4.1's `unit_move_non_dir()`. All outside the 1-6
+/// direction range. 4.4.1 also has `M`/`B` (map/bmap), `i` (list units),
+/// `f` (switch flagship), and `d`/`m` (mine drop/sweep) — not ported here:
+/// `navigate` moves each matching ship independently rather than as a
+/// convoy behind one leader, so there's no flagship/list-the-convoy concept
+/// to hook `i`/`f` into, and no mine-laying/sweeping mechanic exists at all
+/// yet for `d`/`m` to call. `M`/`B` are just the standalone `map`/`bmap`
+/// commands, already reachable outside a navigate route.
 const VIEW_MARKER: u8 = 255;
+const RADAR_MARKER: u8 = 254;
+const LOOK_MARKER: u8 = 253;
+const SONAR_MARKER: u8 = 252;
 
 pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
     let parts: Vec<&str> = args.splitn(2, ' ').collect();
@@ -65,6 +77,10 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
     };
+    // Read-only snapshot for the inline 'l'/'s' contact scans below, which
+    // need to see every ship (including ones already advanced this same
+    // command) while `all_ships` itself is consumed by the owned loop.
+    let ships_snapshot = all_ships.clone();
     let mut all_sectors = match sectors::get_all(ctx.db).await {
         Ok(v) => v,
         Err(e) => return format!("10 database error: {e}\n"),
@@ -124,6 +140,45 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         for dir_idx in directions {
             if dir_idx == VIEW_MARKER {
                 out.push_str(&view_line(ctx, &ship).await);
+                continue;
+            }
+            if dir_idx == RADAR_MARKER {
+                if let Some(b) = bm.as_mut() {
+                    render_radar_sweep(ctx, &all_sectors, &coord_map,
+                        ship.x, ship.y, ship.effic, ship.tech as f64, spy,
+                        &mut out, b);
+                }
+                continue;
+            }
+            if dir_idx == LOOK_MARKER {
+                out.push_str(&format!(
+                    "1 Lookout from ship {} @ {}\n", ship.uid, ctx.format_xy(ship.x, ship.y)
+                ));
+                if let Some(b) = bm.as_mut() {
+                    for line in look_neighbors(ctx, &all_sectors, &coord_map, ship.x, ship.y, b) {
+                        out.push_str(&format!("1 {line}\n"));
+                    }
+                }
+                if let Some(chr) = ShipChr::for_type(ship.ship_type as usize) {
+                    for line in look_ship_contacts(ctx, &ships_snapshot, &all_sectors, &coord_map, &ship, chr) {
+                        out.push_str(&format!("1 {line}\n"));
+                    }
+                }
+                continue;
+            }
+            if dir_idx == SONAR_MARKER {
+                match ShipChr::for_type(ship.ship_type as usize) {
+                    Some(chr) if is_sonar_eligible(&ship, chr, &all_sectors, &coord_map) => {
+                        if let Some(b) = bm.as_mut() {
+                            sonar_sweep_one(ctx, &ships_snapshot, &all_sectors, &coord_map,
+                                &ship, chr, &mut out, b).await;
+                        }
+                    }
+                    _ => out.push_str(&format!(
+                        "1 Ship {} can't use sonar here (needs sonar capability and open water)\n",
+                        ship.uid
+                    )),
+                }
                 continue;
             }
             if ship.mobil <= 0 {
@@ -328,6 +383,9 @@ async fn build_route(
             Some(d) if d >= DIR_FIRST && d <= DIR_LAST => dirs.push(d as u8),
             Some(0) => break, // DIR_STOP ('h')
             _ if ch == 'v' => dirs.push(VIEW_MARKER),
+            _ if ch == 'r' => dirs.push(RADAR_MARKER),
+            _ if ch == 'l' => dirs.push(LOOK_MARKER),
+            _ if ch == 's' => dirs.push(SONAR_MARKER),
             _ => return Err(format!("unknown direction character '{ch}'")),
         }
     }

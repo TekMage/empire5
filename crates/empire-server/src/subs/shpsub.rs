@@ -128,6 +128,15 @@ pub fn shp_damage(ship: &mut Ship, dam: i32, armor_pct: i32) -> bool {
     ship.effic <= 0
 }
 
+/// How visible `ship` is to other nations' lookouts/sonar: a hull built above
+/// its type's base tech requirement gets progressively stealthier. Mirrors
+/// `shp_visib()`/`m_visib()`/`SHP_VIS(b,t) = b*(1-sqrt(t)/50)` in
+/// src/lib/global/ship.c, where `t = max(0, ship.tech - mchr.tech)`.
+pub fn shp_visib(ship: &Ship, mchr: &ShipChr) -> f64 {
+    let tech_above = (ship.tech as f64 - mchr.tech as f64).max(0.0);
+    mchr.visib as f64 * (1.0 - tech_above.sqrt() / 50.0)
+}
+
 /// Return true if the ship is still afloat (effic > 0).
 pub fn shp_is_afloat(ship: &Ship) -> bool {
     ship.effic > 0
@@ -542,5 +551,30 @@ mod tests {
         assert!(!ship_spec_matches("0-5", &make_ship_uf(6, ' ')));
         assert!(ship_spec_matches("2,14,23", &make_ship_uf(14, ' ')));
         assert!(!ship_spec_matches("2,14,23", &make_ship_uf(15, ' ')));
+    }
+
+    #[test]
+    fn visib_at_base_tech_equals_raw_stat() {
+        let chr = battleship_chr(); // tech: 45
+        let ship = make_ship(100, 45);
+        assert_eq!(shp_visib(&ship, &chr), chr.visib as f64);
+    }
+
+    #[test]
+    fn visib_decreases_above_base_tech() {
+        let chr = battleship_chr(); // tech: 45
+        let low = make_ship(100, 45);
+        let high = make_ship(100, 45 + 100); // 100 tech above base -> sqrt(100)/50 = 0.2
+        let vis_low = shp_visib(&low, &chr);
+        let vis_high = shp_visib(&high, &chr);
+        assert!(vis_high < vis_low);
+        assert_eq!(vis_high, chr.visib as f64 * 0.8);
+    }
+
+    #[test]
+    fn visib_never_uses_negative_tech_gap() {
+        let chr = battleship_chr(); // tech: 45
+        let ship = make_ship(100, 0); // below the type's base tech requirement
+        assert_eq!(shp_visib(&ship, &chr), chr.visib as f64);
     }
 }

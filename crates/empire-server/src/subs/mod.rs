@@ -31,3 +31,4 @@ pub mod aircombat;
 pub mod attsub;
 pub mod shipcarry;
 pub mod interdict;
+pub mod lookout;

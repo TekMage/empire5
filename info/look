@@ -1,0 +1,57 @@
+LOOK
+====
+
+The look ("lookout") command is a ship's short-range "eyes on deck"
+check — very different from radar. It doesn't sweep a wide area of
+terrain; it reveals only the 7 hexes immediately around the ship
+(itself plus its 6 neighbors, land only — water isn't reported), and
+separately reports any *foreign* ships nearby within visual range.
+It's the ship counterpart to 'llook' (land units) — see 'info llook'.
+
+COMMAND
+-------
+  look SHIP-SPEC      Look out from ship(s) matching SHIP-SPEC
+  lookout SHIP-SPEC   Same command, long name
+  look *              Look out from every owned ship
+  look c              Look out from every ship in fleet c
+
+SHIP-SPEC accepts a uid, a uid range, a comma list, "*", "~" (ships
+with no fleet assigned), or a single letter naming a fleet.
+
+It's also available inline, mid-route, as the 'l' token in a
+'navigate' command — see 'info navigate'.
+
+WHAT IT SHOWS
+-------------
+  1. The 7-hex patch around the ship (self + 6 neighbors), for any
+     non-water tile: "Your <type> N% efficient with N civ with N mil
+     @ x,y" for your own sectors, or an approximate (rounded to the
+     nearest 10) version for a foreign nation's. This also updates
+     your bmap for those tiles.
+
+  2. Any foreign ship within visual range: "Nation #N <shiptype> @
+     x,y". Range depends on how far YOUR ship can see (its own
+     visual range/tech/efficiency) and how VISIBLE the target is
+     (its own type's visibility stat, reduced if it's built well
+     above its type's base tech requirement — a stealthier hull).
+
+SUBMARINES
+----------
+  A submarine sitting at sea is invisible to a plain look — only
+  'sonar' can find a submerged sub (see 'info sonar'). Looking FROM a
+  submarine also caps your own range to 1 hex, matching how
+  submarines trade reach for stealth.
+
+EXAMPLES
+--------
+  look *          Look out from every owned ship.
+  look 5          Look out from ship 5 only.
+  look c          Look out from every ship in fleet c.
+
+SEE ALSO
+--------
+  info llook       The land-unit counterpart
+  info sradar      Longer-range terrain sweep, no enemy-unit detail
+  info sonar       Active sonar pinging — the only way to find subs
+  info navigate    Ship movement, including the inline 'r'/'l'/'s' tokens
+  info fleetadd    Group ships so a letter selects the whole fleet

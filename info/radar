@@ -11,7 +11,11 @@ COMMAND
 
   This command sweeps from radar STATION sectors only.  A land unit
   with radar capability sweeps with the separate 'lradar' command
-  instead — see 'info lradar'.
+  instead — see 'info lradar'.  A ship (any ship, no radar-station
+  designation needed — every hull has a visual range stat) sweeps
+  with 'sradar' — see 'info sradar'.  It's also available inline,
+  mid-route, as the 'r' token in a 'navigate' command — see
+  'info navigate'.
 
 SECTOR TYPE
 -----------
@@ -69,6 +73,9 @@ TIPS
 SEE ALSO
 --------
   info lradar      Radar-capable land units, the unit-sourced counterpart
+  info sradar      Ship-sourced radar — any ship, no station needed
+  info look        Short-range lookout: nearby enemy units, not terrain
+  info sonar       Sonar-equipped ships: active pinging, finds submarines
   info satellite   Longer-range orbital recon, once a satellite is launched
   info map         View your fog-of-war map
   info sector-types  Full list of sector types

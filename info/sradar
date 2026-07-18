@@ -1,0 +1,73 @@
+SRADAR
+======
+
+The sradar command sweeps from a ship and reveals terrain in a radius
+around it, updating your fog-of-war map. It's the ship-sourced
+counterpart to 'radar' (radar STATION sectors) and 'lradar' (radar-
+capable land units) — see 'info radar'/'info lradar'.
+
+COMMAND
+-------
+  sradar SHIP-SPEC    Sweep from ship(s) matching SHIP-SPEC
+  sradar *            Sweep from every owned ship
+  sradar c            Sweep from every ship in fleet c (see 'info fleetadd')
+
+SHIP-SPEC accepts a uid ("5"), a uid range ("0-5"), a comma list, "*"
+for all of yours, "~" for ships with no fleet assigned, or a single
+letter naming a fleet.
+
+It's also available inline, mid-route, as the 'r' token in a
+'navigate' command — sail a couple of hexes, take a radar reading,
+keep going, all in one command. See 'info navigate'.
+
+ELIGIBILITY
+-----------
+  Unlike 'lradar' (which needs a specific radar-capable land unit
+  type), EVERY ship can sweep — there's no capability flag to check.
+  Each hull just uses its own visual range stat (higher on more
+  advanced ships). Sonar-equipped ships get no bonus here; their
+  extra reach for finding submarines specifically is the separate
+  'sonar' command (see 'info sonar').
+
+RANGE
+-----
+  Range is determined by your technology level, the ship's visual
+  range stat (a per-type constant), and the ship's current
+  efficiency — same formula as 'radar'/'lradar':
+
+    range = floor( vrnge * (50 + tech) / (200 + tech) * eff / 100 )
+    minimum range: 1
+
+WHAT YOU SEE
+------------
+  Same display rules as 'radar'/'lradar':
+  Within range/3 of the ship:    actual sector mnemonic
+  Beyond range/3 (outer ring):   '?' (something is there)
+  Own sectors, sea, mountains, wasteland: always show actual mnemonic
+
+  The center (the ship's own sector) is marked '0' on the display.
+
+FOG OF WAR
+----------
+  Same fog-of-war rules as 'radar' — this sweep updates your bmap for
+  the area scanned. Note this is separate from (and in addition to)
+  the passive terrain reveal every ship already does automatically
+  on each step of 'navigate' — 'sradar' just lets you take an
+  on-demand reading without moving, or check a ship that's been
+  sitting still.
+
+EXAMPLES
+--------
+  sradar *          Sweep from every owned ship.
+  sradar 5          Sweep from ship 5 only.
+  sradar c          Sweep from every ship in fleet c.
+
+SEE ALSO
+--------
+  info radar       Sector-sourced radar (radar STATION sectors)
+  info lradar      Land-unit-sourced radar
+  info sonar       Sonar-equipped ships: active pinging, finds submarines
+  info look        Short-range lookout: nearby enemy units, not terrain
+  info navigate    Ship movement, including the inline 'r'/'l'/'s' tokens
+  info fleetadd    Group ships so a letter selects the whole fleet
+  info map         View your fog-of-war map
