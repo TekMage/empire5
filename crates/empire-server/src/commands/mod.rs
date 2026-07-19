@@ -43,6 +43,7 @@ mod build;
 mod march;
 mod navigate;
 mod attack;
+mod board_cmd;
 mod bomb;
 mod fire_cmd;
 mod torpedo_cmd;
@@ -159,6 +160,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "march"                     => march::run(args, &ctx).await,
         "navigate"  | "nav"         => navigate::run(args, &ctx).await,
         "attack"    | "atta"        => attack::run(args, &ctx).await,
+        "board"     | "boar"        => board_cmd::run(args, &ctx).await,
         "bomb"                      => bomb::run(args, &ctx).await,
         "fire"                      => fire_cmd::run(args, &ctx).await,
         "torpedo" | "torp"          => torpedo_cmd::run(args, &ctx).await,

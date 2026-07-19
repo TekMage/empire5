@@ -1,0 +1,51 @@
+BOARD
+  Board and capture another ship.
+
+SYNTAX
+  board <victim-ship#> <boarder-ship#> [mil]
+  boar  <victim-ship#> <boarder-ship#> [mil]
+
+DESCRIPTION
+  Sends military from one of your ships to board and capture another
+  ship in the same sector. [mil] is how many troops to commit
+  (default: all military aboard the boarder).
+
+  If the victim has NO military aboard, it is captured automatically
+  with no fight at all — zero defender strength always means an
+  instant, casualty-free capture. This is the headline mechanic: an
+  empty ship (crew all lost to earlier combat, or just never
+  garrisoned) is always free for the taking.
+
+  If the victim DOES have military aboard, it's a real fight, same
+  strength math as 'attack':
+    Attacker strength = boarding mil x your tech factor x boarder's efficiency
+    Defender strength = victim's mil  x its tech factor  x victim's efficiency
+  Casualties are taken on both sides regardless of outcome. On victory,
+  the victim's remaining defenders are wiped, ownership transfers to
+  you, and a single mil moves aboard as a token prize crew (the rest of
+  your boarding party stays on your ship). On defeat, both sides just
+  take losses — no ownership change.
+
+  Requirements:
+    - You must own the boarder ship (deity exempt)
+    - Both ships must be in the same sector
+    - You must be at war with the victim's owner, unless it's unowned
+      (deity is exempt from the war requirement)
+
+KNOWN GAPS (v1)
+----------------
+  4.4.1's real boar.c also lets you launch a boarding party from a
+  sector's own militia or land units, not just from another ship, with
+  a mobility-gated "approach" phase where nearby hostile coastal
+  defense can fire back before the fight — not ported here, same scope
+  cut already made for 'attack'/'assault''s approach-phase mechanics.
+  Combat is a single round with proportional random casualties (same
+  simplification 'attack' already uses), not the reference's granular
+  one-casualty-at-a-time loop with recalculated odds.
+
+EXAMPLE
+  board 12 5           board ship #12 using all mil aboard ship #5
+  board 12 5 20         board ship #12 using 20 mil from ship #5
+
+SEE ALSO
+  attack  assault  fire  torpedo  relations  declare  ship

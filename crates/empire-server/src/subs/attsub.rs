@@ -161,6 +161,88 @@ pub fn at_war(att_status: NatStatus, relation: Relation) -> bool {
     att_status == NatStatus::Deity || relation == Relation::AtWar
 }
 
+/// Result of a ship-boarding engagement.
+#[derive(Debug)]
+pub struct BoardResult {
+    /// True if the boarding party captured the victim ship.
+    pub attacker_wins: bool,
+    /// Military casualties taken by the boarding party.
+    pub att_casualties: i32,
+    /// Military casualties taken by the victim's defenders.
+    pub def_casualties: i32,
+    /// Human-readable combat log for the issuing player.
+    pub log: Vec<String>,
+}
+
+/// Resolve a ship-boarding action — mirrors att_fight() under combat mode
+/// A_BOARD in attsub.c, simplified to one boarding ship vs one victim ship
+/// (the reference also supports boarding parties assembled from a sector's
+/// own militia/land units; not modeled here).
+///
+/// If the victim has no military aboard, boarding always succeeds with no
+/// casualties on either side — mirrors the real rule exactly: attsub.c's
+/// att_fight() computes `dtotal` (defender strength) and does
+/// `if (!dtotal) success = 1;` *before* the casualty loop, and that loop
+/// is guarded by `while (!success && ototal)`, so a zero-strength defender
+/// means the loop never runs at all.
+pub fn att_resolve_board(
+    att_mil: i32,
+    att_effic: i8,
+    tech_att: f64,
+    def_mil: i32,
+    def_effic: i8,
+    tech_def: f64,
+    rng: &mut impl Rng,
+) -> BoardResult {
+    let mut log = Vec::new();
+
+    if def_mil <= 0 {
+        log.push("Victim ship is undefended — boarded without a fight.".to_string());
+        return BoardResult {
+            attacker_wins: true,
+            att_casualties: 0,
+            def_casualties: 0,
+            log,
+        };
+    }
+
+    let att_str = att_mil as f64 * tech_att * (att_effic as f64 / 100.0);
+    let def_str = def_mil as f64 * tech_def * (def_effic as f64 / 100.0);
+
+    log.push(format!(
+        "Board: Att strength {:.1} vs Def strength {:.1}",
+        att_str, def_str
+    ));
+
+    let roll_att: f64 = rng.gen_range(CASUALTY_LO..=CASUALTY_HI);
+    let roll_def: f64 = rng.gen_range(CASUALTY_LO..=CASUALTY_HI);
+
+    let att_casualties = (def_str * roll_att) as i32;
+    let def_casualties = (att_str * roll_def) as i32;
+
+    log.push(format!(
+        "Casualties: Att {att_casualties}, Def {def_casualties}"
+    ));
+
+    let remaining_att = (att_str - att_casualties as f64).max(0.0);
+    let remaining_def = (def_str - def_casualties as f64).max(0.0);
+
+    let attacker_wins = remaining_att > remaining_def * WIN_RATIO;
+
+    if attacker_wins {
+        log.push("Boarding party wins!".to_string());
+    } else {
+        log.push("Boarding repelled!".to_string());
+    }
+
+    BoardResult {
+        attacker_wins,
+        att_casualties,
+        def_casualties,
+        log,
+    }
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -238,5 +320,28 @@ mod tests {
             100, 1.0, 1.0, &mut rng,
         );
         assert!(result.log.iter().any(|l| l.contains("fort bonus")));
+    }
+
+    #[test]
+    fn undefended_ship_boards_free() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(1);
+        let result = att_resolve_board(10, 100, 1.0, 0, 100, 1.0, &mut rng);
+        assert!(result.attacker_wins);
+        assert_eq!(result.att_casualties, 0);
+        assert_eq!(result.def_casualties, 0);
+    }
+
+    #[test]
+    fn overwhelming_board_wins() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let result = att_resolve_board(5000, 100, 2.0, 100, 100, 1.0, &mut rng);
+        assert!(result.attacker_wins, "5000 mil should overwhelm 100 mil");
+    }
+
+    #[test]
+    fn weak_board_fails() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let result = att_resolve_board(10, 100, 1.0, 1000, 100, 1.0, &mut rng);
+        assert!(!result.attacker_wins, "10 mil cannot beat 1000 mil");
     }
 }
