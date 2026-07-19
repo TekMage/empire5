@@ -37,13 +37,19 @@
 //   1. journal_update
 //   2. init per-nation budget (money, level counters, civ counts)
 //   3. prepare_sects  (tax, bank income, pay reserve, feed, populace)
-//   4. prod_ship/plane/land (0 = maintenance pass)
-//   5. produce_sect   (sector production)
-//   6. prod_ship/plane/land (1 = build pass)
-//   7. finish_sects   (avail rollover)
-//   8. prod_nat       (tech/res/edu/hap accumulation)
-//   9. age_levels     (tech/res decay, best-tech floor)
-//  10. mob_inc_all    (mobility accrual for all game objects)
+//   4. produce_sect   (sector production)
+//   5. finish_sects   (avail rollover)
+//   6. prod_ship/plane/land (repair/build units — must run before #7:
+//      prod_nat is what writes the budget balance into Nation.money, and
+//      real 4.4.1 runs prod_ship/plane/land before prod_nat for the same
+//      reason, so these costs are counted before the treasury is finalized)
+//   7. prod_nat       (tech/res/edu/hap accumulation, writes nat.money)
+//   8. age_levels     (tech/res decay, best-tech floor)
+//   9. mob_inc_all    (mobility accrual for all game objects)
+//
+// Simplification vs. 4.4.1: the reference does two prod_ship/plane/land
+// passes (a maintenance pass, then produce_sect, then a build pass) — this
+// port does a single combined pass after produce_sect instead.
 
 use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Reverse;
@@ -119,7 +125,25 @@ pub struct BudgetItem {
     pub money: f64,
 }
 
-#[derive(Debug, Default, Clone)]
+/// Index into `Budget::bm` — mirrors `bm_name[]` in budg.c exactly, in the
+/// same display order the real budget report uses.
+pub mod bm_idx {
+    pub const SHIP_BUILD:   usize = 0;
+    pub const SHIP_MAINT:   usize = 1;
+    pub const PLANE_BUILD:  usize = 2;
+    pub const PLANE_MAINT:  usize = 3;
+    pub const UNIT_BUILD:   usize = 4;
+    pub const UNIT_MAINT:   usize = 5;
+    pub const SECTOR_BUILD: usize = 6;
+    pub const SECTOR_MAINT: usize = 7;
+    pub const COUNT: usize = 8;
+}
+
+/// Sized to cover every `SectorType` discriminant (highest is BridgeTower =
+/// 33) — indexed directly by `sector_type as usize`.
+pub const SECTOR_TYPE_SLOTS: usize = 34;
+
+#[derive(Debug, Clone)]
 pub struct Budget {
     /// Money at start of tick (for delta reporting).
     pub start_money: f64,
@@ -134,6 +158,35 @@ pub struct Budget {
     pub mil:   BudgetItem,
     pub uw:    BudgetItem,
     pub bars:  BudgetItem,
+    /// Ship/plane/unit/sector building & maintenance costs — see `bm_idx`.
+    /// `count` isn't used for these buckets (real budg.c prints "N ships"
+    /// etc. from a separately-tracked count elsewhere); only `.money` is
+    /// populated. Mirrors `struct budget`'s `bm[BUDG_BLD_MAX+1]` in
+    /// include/update.h.
+    pub bm: [BudgetItem; bm_idx::COUNT],
+    /// Per-sector-type production: `count` = units produced, `money` =
+    /// cost (negative). Indexed by `SectorType as usize`. Mirrors
+    /// `struct budget`'s `prod[]` in include/update.h.
+    pub prod: [BudgetItem; SECTOR_TYPE_SLOTS],
+}
+
+impl Default for Budget {
+    // Manual impl: std doesn't provide `[T; N]: Default` for N > 32, and
+    // SECTOR_TYPE_SLOTS (34) exceeds that.
+    fn default() -> Self {
+        Budget {
+            start_money: 0.0,
+            money: 0.0,
+            oldowned_civs: 0,
+            level: [0.0; 4],
+            civ: BudgetItem::default(),
+            mil: BudgetItem::default(),
+            uw: BudgetItem::default(),
+            bars: BudgetItem::default(),
+            bm: Default::default(),
+            prod: std::array::from_fn(|_| BudgetItem::default()),
+        }
+    }
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -283,14 +336,15 @@ async fn update_main(
     // 5. finish_sects — avail rollover clamp
     finish_sects(&mut sectors, rates);
 
-    // 6. prod_nat — accumulate tech/res/edu/hap levels
-    let mut nations_mut = nations.clone();
-    prod_nat(&mut nations_mut, &mut budgets, etu, rates);
-
-    // 7. age_levels — tech/res decay + best-tech floor
-    age_levels(&mut nations_mut, etu, rates);
-
-    // 8. prod_ships/prod_planes/prod_land — repair/build units
+    // 6. prod_ships/prod_planes/prod_land — repair/build units. Must run
+    // BEFORE prod_nat (next step): prod_nat is what actually writes the
+    // simulated budget balance into Nation.money before persistence, and
+    // real 4.4.1's update loop (update/main.c) runs prod_ship/plane/land
+    // before prod_nat for exactly this reason — otherwise these build and
+    // repair costs get computed into the budget but silently never reach
+    // the persisted treasury. (This was a real bug here until fixed: ships,
+    // planes, and land units were growing/repairing for free against every
+    // nation's treasury.)
     let mut ships      = empire_db::ships::get_all(&gs.db).await?;
     let mut planes     = empire_db::planes::get_all(&gs.db).await?;
     let mut land_units = empire_db::land_units::get_all(&gs.db).await?;
@@ -298,6 +352,13 @@ async fn update_main(
     ship_produce_ocean(&mut ships, &mut sectors, &budgets, &nations, etu);
     prod_planes(&mut planes, &mut sectors, &mut budgets, etu, rates);
     prod_land(&mut land_units, &mut sectors, &mut budgets, etu, rates);
+
+    // 7. prod_nat — accumulate tech/res/edu/hap levels, write nat.money
+    let mut nations_mut = nations.clone();
+    prod_nat(&mut nations_mut, &mut budgets, etu, rates);
+
+    // 8. age_levels — tech/res decay + best-tech floor
+    age_levels(&mut nations_mut, etu, rates);
 
     // 9. mob_inc_all — mobility accrual
     mob_inc_all(&mut sectors, &mut ships, &mut planes, &mut land_units, etu, rates);
@@ -457,7 +518,7 @@ async fn send_update_reports(
 //   ship.effic  += build
 //   budget.money -= ship_grow_cost * build / 100
 
-fn prod_ships(
+pub(crate) fn prod_ships(
     ships:   &mut [empire_types::ship::Ship],
     sectors: &mut [empire_types::sector::Sector],
     budgets: &mut [Budget],
@@ -539,13 +600,15 @@ fn prod_ships(
         // Cost
         let cost = shpchr.cost as f64 * delta as f64 / 100.0;
         budgets[ship.own as usize].money -= cost;
+        budgets[ship.own as usize].bm[bm_idx::SHIP_BUILD].money -= cost;
+        budgets[ship.own as usize].bm[bm_idx::SHIP_BUILD].count += 1;
     }
 }
 
 /// Build up plane efficiency in airfields.  Mirrors planerepair() in
 /// src/lib/update/plane.c (the carrier-based repair path is not ported —
 /// only airfield-based repair, which covers ordinary plane building).
-fn prod_planes(
+pub(crate) fn prod_planes(
     planes:  &mut [empire_types::plane::Plane],
     sectors: &mut [empire_types::sector::Sector],
     budgets: &mut [Budget],
@@ -607,6 +670,8 @@ fn prod_planes(
 
         let cost = pchr.cost as f64 * delta as f64 / 100.0;
         budgets[pln.own as usize].money -= cost;
+        budgets[pln.own as usize].bm[bm_idx::PLANE_BUILD].money -= cost;
+        budgets[pln.own as usize].bm[bm_idx::PLANE_BUILD].count += 1;
     }
 }
 
@@ -614,7 +679,7 @@ fn prod_planes(
 /// src/lib/update/land.c.  Any owned sector works, but build rate is
 /// only full speed at a headquarters or fortress -- everywhere else
 /// it's cut to a third, matching 4.4.1.
-fn prod_land(
+pub(crate) fn prod_land(
     land_units: &mut [empire_types::land::LandUnit],
     sectors:    &mut [empire_types::sector::Sector],
     budgets:    &mut [Budget],
@@ -684,6 +749,8 @@ fn prod_land(
 
         let cost = lchr.cost as f64 * build as f64 / 100.0;
         budgets[lnd.own as usize].money -= cost;
+        budgets[lnd.own as usize].bm[bm_idx::UNIT_BUILD].money -= cost;
+        budgets[lnd.own as usize].bm[bm_idx::UNIT_BUILD].count += 1;
     }
 }
 
@@ -699,7 +766,7 @@ fn prod_land(
 /// only hold 1 oil (it's a scout, not a hauler) while an oil derrick holds
 /// 990. Once a ship is full, production for that item just stops; nothing
 /// is lost.
-fn ship_produce_ocean(
+pub(crate) fn ship_produce_ocean(
     ships:    &mut [empire_types::ship::Ship],
     sectors:  &mut [empire_types::sector::Sector],
     budgets:  &[Budget],
@@ -851,7 +918,7 @@ fn total_work(sctwork: u8, etu: i32, civil: i16, milit: i16, uw: i16, maxpop: i3
 
 // ── Prepare sects (prepare.c) ─────────────────────────────────────────────────
 
-fn prepare_sects(
+pub(crate) fn prepare_sects(
     sectors: &mut [empire_types::sector::Sector],
     budgets: &mut [Budget],
     nations: &[empire_types::nation::Nation],
@@ -931,7 +998,7 @@ fn prepare_sects(
     let _ = nations;
 }
 
-fn pay_reserve(
+pub(crate) fn pay_reserve(
     nat: &empire_types::nation::Nation,
     budget: &mut Budget,
     etu: i32,
@@ -944,7 +1011,7 @@ fn pay_reserve(
 
 // ── Sector production (produce.c + sect.c) ───────────────────────────────────
 
-fn produce_sects(
+pub(crate) fn produce_sects(
     sectors: &mut [empire_types::sector::Sector],
     budgets: &mut [Budget],
     nations:  &[empire_types::nation::Nation],
@@ -971,6 +1038,7 @@ fn produce_sects(
         if dchr.maint > 0 {
             let cost = etu as f64 * dchr.maint as f64;
             budgets[own].money -= cost;
+            budgets[own].bm[bm_idx::SECTOR_MAINT].money -= cost;
         }
 
         if s.off || budgets[own].money < 0.0 {
@@ -982,6 +1050,7 @@ fn produce_sects(
         if s.effic < 100 || s.sector_type != s.new_type {
             let build_cost = build_eff(s, dchr);
             budgets[own].money -= build_cost;
+            budgets[own].bm[bm_idx::SECTOR_BUILD].money -= build_cost;
         }
 
         // Enlistment: convert civs → mil
@@ -1076,6 +1145,8 @@ fn produce(
 
     let cost = prd.cost as f64 * output / p_e;
     budgets[own].money -= cost;
+    budgets[own].prod[s.sector_type as usize].count += output as i64;
+    budgets[own].prod[s.sector_type as usize].money -= cost;
 
     if let Some(nat_lev) = prd.level {
         budgets[own].level[nat_lev as usize] += output;
@@ -1526,7 +1597,7 @@ fn do_distribute(
 
 // ── Finish sects (finish.c) ───────────────────────────────────────────────────
 
-fn finish_sects(
+pub(crate) fn finish_sects(
     sectors: &mut [empire_types::sector::Sector],
     _rates: &UpdateRates,
 ) {
@@ -1540,7 +1611,7 @@ fn finish_sects(
 
 /// Accumulate tech/res/edu/hap for all active nations.
 /// Mirrors prod_nat() in src/lib/update/nat.c
-fn prod_nat(
+pub(crate) fn prod_nat(
     nations: &mut [empire_types::nation::Nation],
     budgets: &mut [Budget],
     etu: i32,

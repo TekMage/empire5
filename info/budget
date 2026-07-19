@@ -1,0 +1,71 @@
+BUDGET
+  Simulate your nation's entire next update and report the money.
+
+SYNTAX
+  budget
+  budg
+
+DESCRIPTION
+  Runs the same production/maintenance/build logic the real update
+  would run next, on throwaway in-memory copies of your sectors,
+  ships, planes, and land units — nothing is written to the
+  database. Prints an itemized cost/income rollup for your nation,
+  plus a breakdown of which of your producing sectors are
+  capacity-limited right now and why.
+
+  This is the nation-wide counterpart to 'production' (which only
+  simulates output sector-by-sector): 'production' tells you what
+  one sector will make, 'budget' tells you whether your whole
+  economy is trending up or down, and whether you can afford to
+  start something big (a carrier group, a new factory chain) before
+  the next update lands.
+
+  THIS IS A PREVIEW, NOT A GUARANTEE. Bot activity, other players'
+  actions, or anything else that changes state between now and the
+  real update can change the actual outcome.
+
+OUTPUT — COST/INCOME ROLLUP
+  Sector Type            Per-sector-type production this update,
+                          with unit count and dollar cost.
+  Ship/Plane/Unit/Sector  Building and maintenance costs, broken out
+    building/maintenance  by category (a ship under construction costs
+                          differently than one just sitting there).
+  Military payroll        Mil pay plus reserve pay.
+  Total expenses          Sum of everything above.
+  Income from taxes       Civilian + uncompensated-worker tax income.
+  Income from bars        Bank interest income from bars on hand.
+  Total income            Sum of both income lines.
+  Balance forward          Your current treasury (right now).
+  Estimated delta          Total income minus total expenses.
+  Estimated new treasury   Balance forward + estimated delta.
+
+  If the estimated new treasury is negative, you'll see a warning:
+  once a nation's treasury goes negative, sectors stop producing,
+  stop distributing, and stop delivering (see 'info nation' for how
+  a negative treasury freezes an economy) — so this is your early
+  warning to hold off on new spending, not just a curiosity.
+
+OUTPUT — CAPACITY SHORTFALLS
+  For each of your sectors that's eligible to produce (>=60% eff,
+  has a production commodity) but isn't actually producing at
+  capacity right now, this section tallies why, grouped by cause:
+    missing <commodity>            — out of an input material (lcm,
+                                      hcm, oil, etc.) — the same
+                                      thing 'production's use1-3 vs
+                                      max1-3 columns show per-sector,
+                                      just rolled up nation-wide.
+    low natural resource (...)     — the sector's mineral/fertility/
+                                      oil/uranium deposit is too low.
+    insufficient workforce (avail) — not enough available work units.
+    nation level too low           — tech or education level is below
+    (tech/education)                 what tech centers/research labs
+                                      need to produce at all.
+
+  If every producing sector is running at capacity, you'll just see
+  a one-line confirmation instead of a list.
+
+EXAMPLE
+  budget            check your nation's projected next-update finances
+
+SEE ALSO
+  production  nation  power  show product  info happiness

@@ -237,6 +237,13 @@ impl SectorChr {
         if idx < DCHR.len() { &DCHR[idx] } else { &DCHR[0] }
     }
 
+    /// Same lookup as `for_type`, but by raw `SectorType as usize` index —
+    /// for callers (e.g. budget reports) that only have the discriminant,
+    /// not a `SectorType` value, on hand.
+    pub fn for_index(idx: usize) -> &'static SectorChr {
+        if idx < DCHR.len() { &DCHR[idx] } else { &DCHR[0] }
+    }
+
     /// True if this sector type never produces anything.
     pub fn is_productive(&self) -> bool {
         self.prd >= 0 && self.peff > 0

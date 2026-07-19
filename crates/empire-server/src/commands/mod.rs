@@ -81,6 +81,7 @@ mod assault_cmd;
 mod execute_cmd;
 mod news_cmd;
 mod prod_cmd;
+mod budget_cmd;
 mod radar_cmd;
 mod lradar_cmd;
 mod sradar_cmd;
@@ -205,6 +206,7 @@ pub async fn dispatch(line: &str, cnum: u8, state: &GameState, cfg: &Config) -> 
         "news"              => news_cmd::run(args, &ctx).await,
         "name"              => name_cmd::run(args, &ctx).await,
         "production" | "prod" => prod_cmd::run(args, &ctx).await,
+        "budget" | "budg" => budget_cmd::run(args, &ctx).await,
         "radar" | "rada"    => radar_cmd::run(args, &ctx).await,
         "lradar"            => lradar_cmd::run(args, &ctx).await,
         "sradar"            => sradar_cmd::run(args, &ctx).await,
