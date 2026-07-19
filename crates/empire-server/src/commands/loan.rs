@@ -21,7 +21,7 @@
 //   loan accept LOT#                 — accept a loan offered to you
 //   loan repay  LOT# AMOUNT          — repay some or all of a loan
 
-use empire_db::{loans, nations};
+use empire_db::{loans, nations, telegrams};
 use empire_types::loan::{Loan, LoanStatus};
 use super::ctx::CmdCtx;
 
@@ -157,6 +157,11 @@ async fn cmd_offer(parts: &[&str], ctx: &CmdCtx<'_>) -> String {
     if let Err(e) = loans::put(ctx.db, &loan).await {
         return format!("10 Failed to save loan offer: {e}\n");
     }
+
+    let _ = telegrams::send(
+        ctx.db, loanee_cnum, ctx.cnum, telegrams::TEL_NORM,
+        &format!("Country #{} has offered you a loan (#{uid})\n", ctx.cnum),
+    ).await;
 
     let borrower_name = nation_name(ctx, loanee_cnum).await;
     format!(
@@ -307,6 +312,21 @@ async fn cmd_repay(parts: &[&str], ctx: &CmdCtx<'_>) -> String {
             return format!("10 Database error during repayment: {e}\n");
         }
     }
+
+    let notice = if loan.status == LoanStatus::Paid {
+        format!(
+            "Country #{} paid off loan #{uid} with ${actual_payment:.0}\n",
+            ctx.cnum
+        )
+    } else {
+        format!(
+            "Country #{} paid ${actual_payment:.0} on loan {uid}\n",
+            ctx.cnum
+        )
+    };
+    let _ = telegrams::send(
+        ctx.db, loan.loaner, ctx.cnum, telegrams::TEL_NORM, &notice,
+    ).await;
 
     let lender_name = nation_name(ctx, loan.loaner).await;
     let status_note = if loan.status == LoanStatus::Paid {
