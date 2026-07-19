@@ -1,33 +1,42 @@
 DEMOBILIZE
-  Convert active military in sectors into national reserve.
+  Convert active military in sectors into civilians.
 
 SYNTAX
   demobilize <sects> <amount> [reserve|civ]
   demo       <sects> <amount> [reserve|civ]
 
 DESCRIPTION
-  Transfers military from sector(s) into your national reserve pool
-  (or optionally converts them to civilians).  Costs $5 per troop.
+  Converts sector military into civilians. Costs $5 per troop.
 
   <sects>   - sector(s) to draw from
   <amount>  - how many to demobilize per sector.
               Use a negative number to keep that many and demob rest.
               Example: -10 means "keep 10, demob the rest"
-  reserve   - (default) mil becomes nat_reserve
-  civ       - mil becomes civilians instead (no reserve gained)
+  reserve   - (default) demobilized troops become civilians AND are
+              also credited to your national reserve pool
+  civ       - demobilized troops become civilians only, no reserve
+              credit
+
+  Demobilized mil ALWAYS become civilians in the sector they're
+  demobilized from — that's the core effect in both modes. The
+  reserve/civ choice only controls whether they're ALSO added to
+  the national reserve on top of that; reserve is a separate
+  callback pool, not an alternative destination for the troops.
 
   Requirements:
     - Sector must be >=60% efficient
     - Sector must still be under original ownership (not conquered)
     - You must have enough money ($5/troop)
+    - Civilian count is capped at 9999 per sector; demobilization
+      into an already-full sector demobilizes fewer than requested
 
   The reserve can then be spent via 'enlist' to quickly deploy
   troops anywhere you own.
 
 EXAMPLE
-  demobilize 1,-3 100       move 100 mil to reserve, cost $500
-  demobilize * -10          keep 10 mil each sector, rest to reserve
-  demobilize 0,0 50 civ     convert 50 mil to civilians at capital
+  demobilize 1,-3 100       100 mil -> civs at 1,-3, +100 reserve, cost $500
+  demobilize * -10          keep 10 mil each sector, rest -> civs + reserve
+  demobilize 0,0 50 civ     convert 50 mil to civilians only, no reserve
   demo * 200                shorthand alias
 
 SEE ALSO

@@ -13,19 +13,26 @@
 //
 // Ported from: src/lib/commands/demo.c
 
-// "demobilize" command — convert sector military to reserve or civilians.
+// "demobilize" command — convert sector military into civilians, optionally
+// also crediting the national reserve.
 //
 // Usage: demobilize <sector-spec> <amount> [reserve|civ]
-//   demobilize * 100          — move up to 100 mil per sector to nat_reserve
-//   demobilize 0,0 50 civ     — convert 50 mil to civilians (no reserve)
+//   demobilize * 100          — demob up to 100 mil/sector to civ + reserve
+//   demobilize 0,0 50 civ     — demob 50 mil to civilians only, no reserve
 //   demobilize * -10          — keep 10 mil per sector, demob the rest
 //
 // Rules (from demo.c):
 //   - Sector must be ≥60% efficient and owned (old_own == own)
 //   - Costs $5 per military demobilized
-//   - By default (or "reserve"): mil → nat_reserve
-//   - With "civ": mil → civilians (no reserve gained)
+//   - Demobilized mil ALWAYS become civilians in the sector (civ += delta,
+//     mil -= delta) — that's what "demobilize" means. This is unconditional
+//     in the reference; it does not depend on the reserve/civ mode.
+//   - By default (or "reserve"): demobilized troops ALSO get added to
+//     nat_reserve, on top of becoming civilians — the reserve is a separate
+//     national callback pool, not an alternative destination.
+//   - With "civ": civilians only, no reserve credit.
 //   - Negative amount: keep |amount| mil, demob the rest
+//   - Civ count is capped at ITEM_MAX (9999) per sector in all modes.
 
 use empire_db::{sectors, nations};
 use empire_types::commodity::Item;
@@ -91,12 +98,9 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         };
         if delta <= 0 { continue; }
 
-        // Cap by civilian capacity (mil→civ path: can't exceed 999 civs)
-        let delta = if !to_reserve {
-            delta.min(i16::MAX - civ)
-        } else {
-            delta
-        };
+        // Demobilized mil always become civilians — cap by ITEM_MAX (9999).
+        const ITEM_MAX: i16 = 9999;
+        let delta = delta.min(ITEM_MAX - civ);
         if delta <= 0 { continue; }
 
         // Cost check: $5 per demobilized mil
@@ -109,9 +113,7 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
 
         total_cost += cost;
         s.items.set(Item::Milit, mil - delta);
-        if !to_reserve {
-            s.items.set(Item::Civil, civ + delta);
-        }
+        s.items.set(Item::Civil, civ + delta);
 
         let xy = ctx.format_xy(s.x, s.y);
         out.push_str(&format!(
@@ -134,15 +136,14 @@ pub async fn run(args: &str, ctx: &CmdCtx<'_>) -> String {
         out.push_str("1 No eligible sectors/military for demobilization\n");
     } else {
         nat.money -= total_cost as i32;
+        out.push_str(&format!(
+            "1 {} military converted to {} new civilians\n",
+            total_demob, total_demob
+        ));
         if to_reserve {
             out.push_str(&format!(
-                "1 {} total demobilized, military reserve now {}\n",
-                total_demob, nat.reserve
-            ));
-        } else {
-            out.push_str(&format!(
-                "1 {} military converted to {} new civilians\n",
-                total_demob, total_demob
+                "1 Military reserve now {}\n",
+                nat.reserve
             ));
         }
         if let Err(e) = nations::put(ctx.db, &nat).await {
