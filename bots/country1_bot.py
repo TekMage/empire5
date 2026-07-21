@@ -4,9 +4,11 @@
 Runs standalone (stdlib only, no deps) against the raw Empire wire protocol
 -- no C client, no TTY, so it works fine from cron. Scope is deliberately
 narrow ("lightweight"): each tick, explore outward from every owned sector
-that has mobility, then seed a little food into anything newly claimed so it
-doesn't starve before the next real update. No ferrying, no designation
-heuristics, no combat -- those stay manual/periodic-review territory.
+that has mobility, seed a little food into anything newly claimed so it
+doesn't starve before the next real update, and shuttle surplus civilians
+from maxed-out old-island sectors to the second island via a dedicated
+cargo ship (see ferry_civs()). No designation heuristics, no combat --
+those stay manual/periodic-review territory.
 
 Meant to be invoked hourly via cron on the TekBot host itself, talking to
 127.0.0.1:6665 (the published container port). Logs every action taken to
@@ -24,6 +26,20 @@ import socket
 import sys
 
 DIRS = "ujnbgy"
+
+# Ferry: shuttle surplus civilians from the old (main) island to the second
+# island, using 'navigate's absolute-coordinate auto-pathfinding (server-side
+# BFS -- see crates/empire-server/src/subs/pathfind.rs) so no manual route
+# needs to be plotted here. Coordinates and the ship uid are specific to
+# this world/nation, matching the rest of this script's "known, narrow
+# world" approach rather than general pathfinding/fleet management.
+OLD_HARBOR = (9, -3)
+NEW_HARBOR = (35, -3)
+FERRY_SHIP_UID = 301
+MAXED_CIV_THRESHOLD = 900   # sectors at/near the 1000-civ cap
+CIV_PULL_PER_SECTOR = 200   # "a few hundred off the top" per source sector
+FERRY_LOAD_TARGET = 600     # stop gathering once this much is queued at the harbor
+OLD_ISLAND_X_RANGE = (-20, 20)  # excludes the second island's own cluster
 
 
 class ProtocolError(RuntimeError):
@@ -206,6 +222,80 @@ def seed_new_claims(client, before, after, log_path, dry_run):
         log_line(log_path, f"seed {nx},{ny} from {hx},{hy}: {text}")
 
 
+def ferry_civs(client, sectors, log_path, dry_run):
+    """Shuttle surplus civilians from maxed-out old-island sectors to the
+    second island via FERRY_SHIP_UID, so the new island grows faster than
+    it could feeding itself alone.
+
+    Stateless across ticks -- the only "state" needed is whether the ship
+    is currently carrying civilians (means it's headed to the new island)
+    or empty (means it's headed back to reload). Re-issuing 'navigate' with
+    the same absolute destination each tick just continues the trip as
+    mobility allows; once the ship is actually sitting at that harbor, we
+    unload or reload instead of navigating.
+    """
+    ships = parse_dump(client.cmd("sdump"))
+    ship = next((s for s in ships if int(s["id"]) == FERRY_SHIP_UID), None)
+    if ship is None:
+        log_line(log_path, f"ferry: ship #{FERRY_SHIP_UID} not found, skipping")
+        return
+
+    sx, sy = int(ship["x"]), int(ship["y"])
+    civ_aboard = int(ship["civ"])
+    carrying = civ_aboard > 0
+    dest = NEW_HARBOR if carrying else OLD_HARBOR
+
+    if (sx, sy) != dest:
+        if dry_run:
+            log_line(log_path, f"[dry-run] would navigate ship {FERRY_SHIP_UID} toward {dest}")
+            return
+        resp = client.cmd(f"navigate {FERRY_SHIP_UID} {dest[0]},{dest[1]}")
+        log_line(log_path, f"ferry: en route to {dest}: {' '.join(resp).strip()[:200]}")
+        return
+
+    if carrying:
+        if dry_run:
+            log_line(log_path, f"[dry-run] would unload {civ_aboard} civ from ship {FERRY_SHIP_UID} at {dest}")
+            return
+        resp = client.cmd(f"unload civ {FERRY_SHIP_UID} {civ_aboard}")
+        log_line(log_path, f"ferry: unloaded at {dest}: {' '.join(resp).strip()}")
+        return
+
+    # At the old-island harbor, empty -- gather a fresh load from maxed
+    # sectors and depart again.
+    hx, hy = OLD_HARBOR
+    maxed = [
+        r for r in sectors
+        if OLD_ISLAND_X_RANGE[0] <= int(r["x"]) <= OLD_ISLAND_X_RANGE[1]
+        and int(r["civ"]) >= MAXED_CIV_THRESHOLD
+        and (int(r["x"]), int(r["y"])) != (hx, hy)
+    ]
+
+    gathered = 0
+    for m in maxed:
+        if gathered >= FERRY_LOAD_TARGET:
+            break
+        mx, my = int(m["x"]), int(m["y"])
+        if dry_run:
+            log_line(log_path, f"[dry-run] would move {CIV_PULL_PER_SECTOR} civ from {mx},{my} to harbor")
+            gathered += CIV_PULL_PER_SECTOR
+            continue
+        resp = client.cmd(f"move civ {mx},{my} {CIV_PULL_PER_SECTOR} {hx},{hy}")
+        log_line(log_path, f"ferry: pulled from {mx},{my}: {' '.join(resp).strip()}")
+        gathered += CIV_PULL_PER_SECTOR
+
+    if gathered == 0:
+        log_line(log_path, "ferry: no maxed old-island sectors to pull from this tick")
+        return
+    if dry_run:
+        return
+
+    resp = client.cmd(f"load civ {FERRY_SHIP_UID} {gathered}")
+    log_line(log_path, f"ferry: loaded: {' '.join(resp).strip()}")
+    resp = client.cmd(f"navigate {FERRY_SHIP_UID} {NEW_HARBOR[0]},{NEW_HARBOR[1]}")
+    log_line(log_path, f"ferry: departing toward {NEW_HARBOR}: {' '.join(resp).strip()[:200]}")
+
+
 def run_tick(host, port, user, country, password, log_path, dry_run):
     client = EmpireClient(host, port)
     try:
@@ -217,6 +307,8 @@ def run_tick(host, port, user, country, password, log_path, dry_run):
 
         after = parse_dump(client.cmd("dump")) if claims and not dry_run else before
         seed_new_claims(client, before, after, log_path, dry_run)
+
+        ferry_civs(client, after, log_path, dry_run)
 
         log_line(log_path, f"tick done: {len(claims)} new sector(s) claimed, "
                             f"{len(after)} total owned")
