@@ -52,17 +52,20 @@ All major game systems are implemented. The server is running live on **TekBot**
 | `bomb` / `fly` / `launch` / `mission` | ✅ Air combat — bomb, relocate planes, fire missiles, standing orders |
 | `fire` / `torpedo` | ✅ Ship/land/fort gunnery and submarine torpedo combat, no-miss shelling with return fire |
 | `satellite` / `launch` (orbital) / `lradar` | ✅ Launch and query orbital recon satellites; long-range radar via satellite |
-| `recon` / `sweep` | ✅ Multi-sector reconnaissance flight (SPY-vs-generic report per hex); sweep additionally clears naval mines |
+| `recon` / `sweep` | ✅ Multi-sector reconnaissance flight (SPY-vs-generic report per hex); `sweep`'s mine-clearing code path exists but has nothing to clear yet (see Open Items) |
 | `fleetadd` / `army` | ✅ Group ships/land units by letter, addressable from navigate/fire/torpedo/tend/march/attack |
 | `load` / `unload` (plane) | ✅ Put planes aboard (or off) a carrier or missile sub; `fly`/`recon`/`sweep` also land directly on a friendly carrier at the destination |
-| `sell` / `buy` / `trade` / `loan` | ✅ Commodity market and P2P lending |
+| `sell` / `buy` / `trade` / `loan` | ✅ Commodity market and P2P lending; loan offer/repay notify by telegram |
+| `budget` | ✅ Nation-wide simulated economy report (production, build/maintenance costs, income, capacity shortfalls) |
+| `board` | ✅ Ship boarding/capture — undefended ships taken free, defended ones fight (ship-to-ship only, see Open Items) |
+| `resource` / `report` / `commodity` | ✅ Resource survey, cross-nation tech/research comparison, per-sector deliverable-commodity report |
 | `show` | ✅ Build cost/stat tables for sectors, ships, land units, planes, items |
 | `power` | ✅ Nation power rankings |
 | `news` | ✅ In-game news feed of recent world events |
 | `telegram` / `read` / `announce` | ✅ Player-to-player messages and broadcast announcements |
 | `add` / `capital` / `newcap` | ✅ Deity nation management |
 | `enable` / `disable` / `shutdown` | ✅ Deity server control |
-| `info` | ✅ 76 help pages covering every implemented command |
+| `info` | ✅ 85 help pages covering every implemented command |
 | `xdump` | ✅ Structured data export (nations, sectors, relations, ships, planes, units) |
 | `version` | ✅ Server version, world dimensions, ETU |
 | Docker deployment | ✅ Multi-stage Dockerfile, named volume, container running on TekBot |
@@ -203,7 +206,12 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `recon` / `sweep` — multi-sector reconnaissance flight, minesweeping
 - [x] `fleetadd` / `army` — group ships/land units for letter-based targeting
 - [x] `load` / `unload` (plane) — put planes aboard carriers/missile subs
-- [x] `sell` / `buy` / `trade` / `loan` — market and finance
+- [x] `sell` / `buy` / `trade` / `loan` — market and finance; loan offer/repay send telegrams
+- [x] `budget` — nation-wide simulated economy report (production, build/maintenance, income, capacity shortfalls)
+- [x] `board` — ship boarding/capture (undefended = free, defended = combat; ship-to-ship only, see Open Items)
+- [x] `resource` — sector resource survey (min/gold/fert/oil/uran)
+- [x] `report` — cross-nation tech/research comparison
+- [x] `commodity` — per-sector deliverable-commodity report (deliver directions, thresholds, inventory)
 - [x] `explore` — move civilians into adjacent wilderness to claim territory
 - [x] `move` — move commodities between owned sectors
 - [x] `telegram` / `read` / `announce` — player messaging and broadcasts
@@ -227,12 +235,36 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] `docker/empire.toml` — production config: 96×64 world, 6 nations, 60 ETU
 - [x] `docker/entrypoint.sh` — auto-runs world gen on first start, then starts server
 - [x] Live deployment on TekBot (192.168.40.95:6665), 6 active player slots
-- [x] 83 official Wolfpack Empire info pages installed in `info/`
+- [x] 85 official Wolfpack Empire info pages installed in `info/`
 
 ### Phase 8 — Open Items
-- [ ] `resource` / `report` / `commodity` commands (stubs in dispatch; output incomplete)
 - [ ] `edit` — deity sector/nation/unit editing
-- [ ] `empire-client` Rust client (Phase 11 placeholder; use C client from empire4.4.1)
+- [ ] `empire-client` Rust client (Phase 7 placeholder; use C client from empire4.4.1)
+- [ ] Nuclear weapons — build, arm, launch, detonate, fallout (DB schema and
+      `Nuke` type exist in `empire-db`/`empire-types`; no command surface at all)
+- [ ] Standing missions do not fire during the update tick (`update.rs` never
+      references plane/ship mission state — `mission` only sets the standing
+      order, nothing consumes it automatically)
+- [ ] Naval mine-laying — `Sector.mines` exists and `recon`/`sweep` can clear
+      mines, but nothing in the codebase ever sets `mines > 0`; minesweeping
+      is currently dead code with nothing to sweep
+- [ ] `assault` combat against enemy-owned sectors — explicitly marked "not
+      yet fully implemented" in `assault_cmd.rs`; uses ad-hoc inline combat
+      math instead of the shared `att_resolve()` engine `attack`/`board` use
+- [ ] Land unit / plane takeover on sector capture — no `takeover_units()`;
+      `attack` currently just destroys defending land units (`effic = 0`)
+      instead of following the real spy-unit-escape/capture rules, and
+      grounded planes in a captured sector aren't handled at all
+- [ ] Carrier-based plane repair — `prod_planes()` only ports the
+      airfield-based repair path; planes stationed aboard a carrier don't
+      self-repair efficiency like the reference does
+- [ ] `nation`'s "Max population estimate" — still a placeholder formula
+      (`research * 10 + 50_000`, capped at 1M) instead of the real
+      `max_population()` from `res_pop.c`
+- [ ] `board` — v1 only supports boarding from another ship in the same
+      sector; real 4.4.1 also allows launching from a sector's own militia
+      or land units, with a mobility-gated approach phase where nearby
+      hostile coastal defense can fire back first
 
 ---
 
@@ -260,12 +292,21 @@ Core commands (port of `src/lib/commands/`, 151 C files):
 - [x] Naval/land/fort gunnery and torpedo combat (`fire`, `torpedo`)
 - [x] Orbital reconnaissance and long-range radar (`satellite`, `lradar`)
 - [x] Fleet/army grouping for letter-based unit targeting (`fleetadd`, `army`)
-- [x] Multi-sector recon flights and naval minesweeping (`recon`, `sweep`)
+- [x] Multi-sector recon flights (`recon`, `sweep`) — the minesweeping portion of `sweep` has no mines to clear yet, see mine-laying below
 - [x] Carrier and missile-sub plane loading (`load`/`unload` plane, carrier landing on `fly`/`recon`/`sweep`)
 - [x] Telegrams / player messaging (`telegram`, `read`, `announce`)
-- [ ] Nuclear weapons: build, arm, launch, detonate, fallout
+- [x] Nation-wide simulated economy/budget report (`budget`)
+- [x] Ship boarding and capture, ship-to-ship (`board`)
+- [x] Resource survey, nation comparison, deliverable-commodity report (`resource`, `report`, `commodity`)
+- [ ] Nuclear weapons: build, arm, launch, detonate, fallout (data model exists, no commands)
 - [ ] Standing missions firing during update
 - [ ] `edit` command (deity sector/nation/unit editing)
+- [ ] Naval mine-laying (minesweeping exists; nothing ever lays a mine)
+- [ ] `assault` combat against enemy-owned sectors (placeholder math, not the shared combat engine)
+- [ ] Land unit / plane takeover on sector capture (`takeover_units()` doesn't exist)
+- [ ] Carrier-based plane repair (only airfield-based repair is ported)
+- [ ] Real `max_population()` formula for `nation`'s population estimate
+- [ ] `board` from a sector's own militia/land units (ship-to-ship only today)
 
 ---
 
