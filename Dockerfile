@@ -7,7 +7,7 @@
 # Run:    docker compose up -d
 
 # ── Stage 1: build ────────────────────────────────────────────────────────────
-FROM rust:1.87-slim AS builder
+FROM rust:1.96-slim-trixie AS builder
 
 # System libs needed by sqlx (links against libssl via OpenSSL)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -57,11 +57,14 @@ RUN find crates -name "*.rs" -exec touch {} +
 RUN cargo build --release
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 10001 empire \
+    && useradd --system --uid 10001 --gid 10001 --no-create-home --home-dir /srv/empire empire
 
 WORKDIR /srv/empire
 
@@ -76,12 +79,14 @@ COPY --from=builder /build/target/release/pconfig        /usr/local/bin/
 COPY docker/empire.toml    ./empire.toml
 COPY docker/entrypoint.sh  ./entrypoint.sh
 COPY info/                 ./info/
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh && mkdir -p data && chown empire:empire data
 
 # /srv/empire/data is the only path that must persist across container restarts.
-# Mount a named volume or bind-mount here.
+# Mount a named volume or bind-mount here. Existing root-owned volumes need a
+# one-time `chown -R 10001:10001` before running this image.
 VOLUME ["/srv/empire/data"]
 
 EXPOSE 6665
+USER empire
 
 ENTRYPOINT ["./entrypoint.sh"]
